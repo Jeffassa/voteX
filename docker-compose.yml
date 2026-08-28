@@ -1,0 +1,103 @@
+# ESATIC SmartVote — stack de dev complète.
+#
+# Usage :
+#   docker compose up --build
+#   → Postgres sur localhost:5432
+#   → Backend FastAPI sur http://localhost:8000  (docs: /docs)
+#   → Frontend Vite sur   http://localhost:5173
+#
+# Le backend crée les tables au démarrage (Base.metadata.create_all)
+# puis exécute scripts/seed.py pour générer les données de démo (idempotent).
+#
+# Pour activer Realtime + Email + Blockchain, ajoute les variables d'env
+# correspondantes dans un fichier `.env` à la racine (chargé automatiquement
+# par docker-compose via la directive env_file).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: smartvote-postgres
+    environment:
+      POSTGRES_USER: smartvote
+      POSTGRES_PASSWORD: smartvote
+      POSTGRES_DB: smartvote
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartvote -d smartvote"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    container_name: smartvote-backend
+    environment:
+      DATABASE_URL: postgresql://smartvote:smartvote@postgres:5432/smartvote
+      # Dev only — en prod, générer avec : openssl rand -hex 32
+      JWT_SECRET: "Z9k4vPq8rMnL3jH7sB2dX5cF1gW6tY0aQiE4uN8RsoVbPyDmCkJfAhXgZrTwLnQp"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "15"
+      REFRESH_TOKEN_EXPIRE_DAYS: "7"
+      FRONTEND_URL: http://localhost:5173
+      # Cookies — dev sur HTTP, donc Secure=false. En prod : Secure=true (HTTPS obligatoire)
+      COOKIE_SECURE: "false"
+      COOKIE_SAMESITE: "lax"
+      COOKIE_DOMAIN: ""
+      # Supabase / Blockchain / Email vides → dégradation propre
+      SUPABASE_URL: ""
+      SUPABASE_ANON_KEY: ""
+      SUPABASE_SERVICE_KEY: ""
+      WEB3_RPC_URL: ""
+      CONTRACT_ADDRESS: ""
+      ADMIN_PRIVATE_KEY: ""
+      MAIL_USERNAME: ${MAIL_USERNAME:-""}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-""}
+      MAIL_SERVER: ${MAIL_SERVER:-""}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_FROM: ${MAIL_FROM:-"noreply@esatic-smartvote.ci"}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # Live reload pour le dev — modifie un .py, le container reload
+      - ./backend/app:/app/app
+      - ./backend/scripts:/app/scripts
+    command: >
+      sh -c "
+        echo '> Création des tables...' &&
+        python -c 'from app.models import ClassRoom, Student, Election, Candidate, Vote; from app.core.database import Base, engine; Base.metadata.create_all(engine); print(\"tables OK\")' &&
+        # echo '> Seed des données de démo...' &&
+        # python -m scripts.seed &&
+        echo '> Démarrage de l API FastAPI...' &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: smartvote-frontend
+    environment:
+      VITE_API_URL: ""
+      VITE_SUPABASE_URL: ""
+      VITE_SUPABASE_ANON_KEY: ""
+      VITE_CHAIN_EXPLORER_BASE: https://sepolia.etherscan.io
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - ./frontend/tailwind.config.js:/app/tailwind.config.js
+      - ./frontend/postcss.config.js:/app/postcss.config.js
+      - ./frontend/tsconfig.json:/app/tsconfig.json
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

@@ -1,106 +1,156 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
-import { AlertOctagon, RotateCw } from "lucide-react";
+import { Component, ErrorInfo, ReactNode } from "react";
+import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 
 interface Props {
   children: ReactNode;
-  fallback?: (error: Error, reset: () => void) => ReactNode;
 }
 
 interface State {
+  hasError: boolean;
   error: Error | null;
 }
 
-/**
- * Attrape les erreurs React (render, lifecycle) qui sortiraient du tree.
- * Sans ça, n'importe quelle exception → écran blanc + console muette pour l'utilisateur.
- */
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null };
+  public state: State = {
+    hasError: false,
+    error: null,
+  };
 
-  static getDerivedStateFromError(error: Error): State {
-    return { error };
+  public static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo): void {
-    // Log pour le dev. En prod on enverrait à Sentry / un endpoint de télémétrie.
-    console.error("[ErrorBoundary]", error, info.componentStack);
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Uncaught React rendering error:", error, errorInfo);
   }
 
-  reset = () => this.setState({ error: null });
+  private handleReload = () => {
+    window.location.reload();
+  };
 
-  render() {
-    if (this.state.error) {
-      if (this.props.fallback) {
-        return this.props.fallback(this.state.error, this.reset);
-      }
-      return <DefaultFallback error={this.state.error} onReset={this.reset} />;
-    }
-    return this.props.children;
-  }
-}
+  private handleGoHome = () => {
+    window.location.href = "/";
+  };
 
-function DefaultFallback({ error, onReset }: { error: Error; onReset: () => void }) {
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "grid",
-        placeItems: "center",
-        padding: 24,
-        background: "var(--bg)",
-      }}
-    >
-      <div className="card card-pad" style={{ maxWidth: 520, textAlign: "center" }}>
+  public render() {
+    if (this.state.hasError) {
+      return (
         <div
           style={{
-            width: 64, height: 64, margin: "0 auto 20px",
-            borderRadius: "50%", background: "var(--danger-50)",
-            display: "grid", placeItems: "center",
-            color: "var(--danger-500)",
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "var(--surface, #F8FAFC)",
+            padding: 24,
+            fontFamily: "Inter, sans-serif",
           }}
         >
-          <AlertOctagon size={28} />
+          <div
+            style={{
+              maxWidth: 480,
+              width: "100%",
+              background: "white",
+              padding: 36,
+              borderRadius: 16,
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01)",
+              border: "1px solid #E2E8F0",
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: "50%",
+                background: "#FEF2F2",
+                color: "#EF4444",
+                display: "grid",
+                placeItems: "center",
+                margin: "0 auto 20px auto",
+              }}
+            >
+              <AlertTriangle size={28} />
+            </div>
+
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: 0 }}>
+              Une erreur inattendue est survenue
+            </h2>
+
+            <p style={{ fontSize: 14, color: "#64748B", marginTop: 10, lineHeight: 1.6 }}>
+              L'application a rencontré un problème technique temporaire. Vos données et vos votes restent en sécurité.
+            </p>
+
+            {this.state.error && (
+              <div
+                style={{
+                  marginTop: 16,
+                  padding: 12,
+                  background: "#F1F5F9",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontFamily: "monospace",
+                  color: "#475569",
+                  textAlign: "left",
+                  overflowX: "auto",
+                  maxHeight: 100,
+                }}
+              >
+                {this.state.error.message}
+              </div>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                marginTop: 28,
+                justifyContent: "center",
+              }}
+            >
+              <button
+                onClick={this.handleReload}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "10px 18px",
+                  background: "#0A2540",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                <RefreshCw size={16} /> Recharger la page
+              </button>
+
+              <button
+                onClick={this.handleGoHome}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "10px 18px",
+                  background: "transparent",
+                  color: "#475569",
+                  border: "1px solid #CBD5E1",
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                }}
+              >
+                <Home size={16} /> Accueil
+              </button>
+            </div>
+          </div>
         </div>
-        <h1
-          style={{
-            fontSize: 22, fontWeight: 600, color: "var(--navy-900)",
-            letterSpacing: "-0.02em", margin: 0,
-          }}
-        >
-          Quelque chose s'est mal passé.
-        </h1>
-        <p
-          className="muted"
-          style={{ fontSize: 14, marginTop: 8, lineHeight: 1.55 }}
-        >
-          Une erreur inattendue a empêché l'affichage de cette page. Tu peux
-          réessayer ou recharger la page.
-        </p>
-        <details
-          style={{
-            marginTop: 20, padding: 14,
-            background: "var(--surface-2)", borderRadius: "var(--r-md)",
-            textAlign: "left", fontSize: 12,
-            fontFamily: "var(--font-mono)", color: "var(--ink-700)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <summary style={{ cursor: "pointer", color: "var(--ink-500)" }}>
-            Détails techniques
-          </summary>
-          <pre style={{ margin: "8px 0 0", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-            {error.name}: {error.message}
-          </pre>
-        </details>
-        <div className="row gap-3" style={{ marginTop: 24, justifyContent: "center" }}>
-          <button className="btn btn-outline" onClick={() => window.location.reload()}>
-            Recharger la page
-          </button>
-          <button className="btn btn-primary" onClick={onReset}>
-            <RotateCw size={16} /> Réessayer
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+      );
+    }
+
+    return this.props.children;
+  }
 }

@@ -13,8 +13,12 @@ from app.core.exceptions import DomainError
 from app.core.rate_limit import limiter
 
 
+from app.core.monitoring import init_monitoring
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    init_monitoring()
     yield
 
 

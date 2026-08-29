@@ -77,6 +77,11 @@ class Settings(BaseSettings):
     RATE_LIMIT_VOTE: str = "5/minute"
     RATE_LIMIT_LOGIN: str = "10/minute"
 
+    # Cache Redis — optionnel. Si vide, le cache est désactivé (mode passthrough).
+    REDIS_URL: str = ""
+    # Durée de vie des résultats d'élections fermées en cache (en secondes). 5 minutes par défaut.
+    CACHE_TTL_SECONDS: int = 300
+
     @field_validator("JWT_SECRET")
     @classmethod
     def _validate_jwt_secret(cls, v: str) -> str:

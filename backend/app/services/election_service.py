@@ -4,6 +4,15 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.cache import (
+    cache_delete,
+    cache_delete_pattern,
+    cache_get,
+    cache_set,
+    key_election_list_class,
+    key_election_results,
+)
+from app.core.config import settings
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.models import Candidate, Election, Student, Vote
 from app.models.election import ElectionStatus
@@ -104,6 +113,10 @@ def delete(db: Session, election_id: UUID) -> None:
         )
     db.delete(election)
     db.commit()
+    # Invalide le cache des résultats et de la liste pour cette élection
+    cache_delete(key_election_results(str(election_id)))
+    if election.class_id:
+        cache_delete(key_election_list_class(str(election.class_id)))
 
 
 def set_status(db: Session, election_id: UUID, status: ElectionStatus) -> Election:
@@ -137,6 +150,11 @@ def set_status(db: Session, election_id: UUID, status: ElectionStatus) -> Electi
     db.commit()
     db.refresh(election)
 
+    # Invalide le cache à chaque changement de statut (ouverture, clôture, publication)
+    cache_delete(key_election_results(str(election_id)))
+    if election.class_id:
+        cache_delete(key_election_list_class(str(election.class_id)))
+
     if previous != status:
         audit_action = (
             AuditAction.ELECTION_OPENED if status == ElectionStatus.OPEN
@@ -154,6 +172,23 @@ def set_status(db: Session, election_id: UUID, status: ElectionStatus) -> Electi
 
 
 def compute_results(db: Session, election_id: UUID) -> ElectionResults:
+    """Calcule les résultats d'une élection avec mise en cache Redis.
+
+    - Cache-Hit  : retour immédiat depuis Redis (<1 ms, 0 requête SQL).
+    - Cache-Miss : calcul complet en SQL puis stockage en cache.
+    - Les résultats des élections OUVERTES sont cachés 30 secondes (données vivantes).
+    - Les résultats des élections FERMÉES/PUBLIÉES sont cachés CACHE_TTL_SECONDS (5 min par défaut).
+    """
+    cache_key = key_election_results(str(election_id))
+
+    # ── Cache-Hit ──────────────────────────────────────────────────────────────
+    cached = cache_get(cache_key)
+    if cached is not None:
+        logger.debug("Cache HIT pour les résultats de l'élection %s", election_id)
+        return ElectionResults(**cached)
+
+    # ── Cache-Miss : calcul SQL complet ───────────────────────────────────────
+    logger.debug("Cache MISS pour les résultats de l'élection %s", election_id)
     election = get_or_404(db, election_id)
 
     total_eligible = (
@@ -165,7 +200,7 @@ def compute_results(db: Session, election_id: UUID) -> ElectionResults:
     total_votes = (
         db.query(func.count(Vote.id)).filter(Vote.election_id == election_id).scalar() or 0
     )
-    
+
     blank_votes = (
         db.query(func.count(Vote.id))
         .filter(Vote.election_id == election_id, Vote.candidate_id == None)
@@ -201,7 +236,7 @@ def compute_results(db: Session, election_id: UUID) -> ElectionResults:
     ]
     candidates.sort(key=lambda c: c.votes, reverse=True)
 
-    return ElectionResults(
+    result = ElectionResults(
         election_id=election_id,
         total_eligible=total_eligible,
         total_votes=total_votes,
@@ -211,6 +246,14 @@ def compute_results(db: Session, election_id: UUID) -> ElectionResults:
         ),
         candidates=candidates,
     )
+
+    # ── Mise en cache ──────────────────────────────────────────────────────────
+    # Elections ouvertes : TTL court (30s) car les votes arrivent en temps réel.
+    # Elections fermées ou publiées : TTL long (CACHE_TTL_SECONDS = 5 min par défaut).
+    ttl = 30 if election.status == ElectionStatus.OPEN else settings.CACHE_TTL_SECONDS
+    cache_set(cache_key, result.model_dump(), ttl=ttl)
+
+    return result
 
 
 def list_candidates(db: Session, election_id: UUID) -> list[Candidate]:

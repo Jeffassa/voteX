@@ -21,8 +21,12 @@ def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UU
     if election.status != ElectionStatus.OPEN:
         raise ValidationError("L'élection n'est pas ouverte au vote")
 
+    starts_at = election.starts_at.replace(tzinfo=timezone.utc) if election.starts_at and election.starts_at.tzinfo is None else election.starts_at
+    ends_at = election.ends_at.replace(tzinfo=timezone.utc) if election.ends_at and election.ends_at.tzinfo is None else election.ends_at
     now = datetime.now(timezone.utc)
-    if now < election.starts_at or now > election.ends_at:
+    if starts_at and now < starts_at:
+        raise ValidationError("L'élection n'est pas dans sa période active")
+    if ends_at and now > ends_at:
         raise ValidationError("L'élection n'est pas dans sa période active")
 
     if user.class_id is None or user.class_id != election.class_id:
@@ -49,22 +53,25 @@ def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UU
     vote_hash = compute_vote_hash(str(user.id), str(election_id), str(candidate_id), nonce)
     chain = record_vote_on_chain(vote_hash, election.blockchain_id)
 
-    # 1. Enregistre la participation (découplée de l'opinion exprimée)
-    voter_record = VoterRecord(
-        election_id=election_id,
-        student_id=user.id,
-    )
-    db.add(voter_record)
+    # Transaction atomique : VoterRecord + Vote créés ensemble ou rien du tout
+    with db.begin_nested():
+        # 1. Enregistre la participation (découplée de l'opinion exprimée)
+        voter_record = VoterRecord(
+            election_id=election_id,
+            student_id=user.id,
+        )
+        db.add(voter_record)
 
-    # 2. Enregistre le bulletin anonyme
-    vote = Vote(
-        election_id=election_id,
-        candidate_id=candidate_id,
-        vote_hash=vote_hash,
-        tx_hash=chain.get("tx_hash"),
-        block_number=chain.get("block_number"),
-    )
-    db.add(vote)
+        # 2. Enregistre le bulletin anonyme
+        vote = Vote(
+            election_id=election_id,
+            candidate_id=candidate_id,
+            vote_hash=vote_hash,
+            tx_hash=chain.get("tx_hash"),
+            block_number=chain.get("block_number"),
+        )
+        db.add(vote)
+
     db.commit()
     db.refresh(vote)
 

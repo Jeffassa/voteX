@@ -69,6 +69,7 @@ def voter(db, classroom):
         password_hash=hash_password("student12345"),
         role=UserRole.STUDENT,
         class_id=classroom.id,
+        is_active=True,  # Actif pour être comptabilisé dans total_eligible
     )
     db.add(s)
     db.commit()

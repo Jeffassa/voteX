@@ -13,11 +13,13 @@ from app.core.rate_limit import limiter
 
 
 from app.core.monitoring import init_monitoring
+from app.core.startup_checks import run_startup_checks
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    init_monitoring()
+    run_startup_checks()   # Vérifications de sécurité avant toute requête
+    init_monitoring()      # Sentry APM
     yield
 
 

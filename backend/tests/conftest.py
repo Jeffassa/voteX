@@ -107,6 +107,7 @@ def candidate_students(db, classroom):
             password_hash=hash_password("x" * 12),
             role=UserRole.STUDENT,
             class_id=classroom.id,
+            is_active=True,   # Doit être actif pour être comptabilisé dans total_eligible
         )
         for i in range(1, 4)  # 3 candidate students
     ]

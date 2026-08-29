@@ -6,7 +6,6 @@ from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from app.api import admin, auth, candidates, classes, elections, students, votes
 from app.core.config import SECURITY_HEADERS, settings
 from app.core.csrf import needs_csrf_check, verify_csrf
 from app.core.exceptions import DomainError
@@ -89,6 +88,19 @@ async def rate_limit_handler(_request: Request, exc: RateLimitExceeded):
     )
 
 
+from uuid import uuid4
+from app.api import admin, auth, candidates, classes, elections, health, students, votes
+
+
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID", str(uuid4()))
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
+app.include_router(health.router)
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(students.router, prefix="/api/students", tags=["students"])
 app.include_router(classes.router, prefix="/api/classes", tags=["classes"])

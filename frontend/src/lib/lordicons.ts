@@ -1,22 +1,24 @@
 /**
  * URLs des icônes Lordicon utilisées dans l'app.
  *
- * Pour swap : va sur https://lordicon.com → choisis l'icône → clique "Copy URL"
- * (n'importe quel pack gratuit ou Lite est exploitable). Colle ici.
+ * Les animations sont SERVIES PAR L'APPLICATION (frontend/public/vendor/lordicon),
+ * pas par le CDN : un tiers capable d'exécuter du script sur cette page verrait
+ * le bulletin choisi. Pour en ajouter une, télécharge son JSON depuis
+ * https://lordicon.com dans ce dossier, puis référence-la ici.
  *
  * Tant qu'une URL est vide, le composant Lordicon ne s'affiche pas et on
  * retombe sur l'icône Lucide statique du composant parent.
  */
 export const LORDICONS = {
-  shield: "https://cdn.lordicon.com/yqzmiobz.json",
-  activity: "https://cdn.lordicon.com/wloilxuq.json",
-  blockchain: "https://cdn.lordicon.com/rpviwvwn.json",
-  check: "https://cdn.lordicon.com/lupuorrc.json",
+  shield: "/vendor/lordicon/yqzmiobz.json",
+  activity: "/vendor/lordicon/wloilxuq.json",
+  blockchain: "/vendor/lordicon/rpviwvwn.json",
+  check: "/vendor/lordicon/lupuorrc.json",
   // Ces deux identifiants ne sont plus servis par le CDN (404 renvoyant du
   // HTML, que le lecteur tente de parser en JSON → promesse rejetée dans la
   // console). Vides, ils déclenchent le repli documenté sur l'icône Lucide.
   clock: "",
-  hash: "https://cdn.lordicon.com/yxczfiyc.json",
+  hash: "/vendor/lordicon/yxczfiyc.json",
   vote: "",
 } as const;
 

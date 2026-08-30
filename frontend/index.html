@@ -59,7 +59,12 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <script src="https://cdn.lordicon.com/lordicon.js" defer></script>
+    <!-- Lecteur d'animations servi par l'application, non par un CDN tiers.
+         Un <script> distant sur une plateforme de vote peut lire et modifier
+         la page à volonté : il verrait le bulletin choisi et pourrait altérer
+         l'interface au moment du vote. L'héberger fige aussi la version — le
+         CDN ne peut plus la changer sans que personne s'en aperçoive. -->
+    <script src="/vendor/lordicon/lordicon.js" defer></script>
   </head>
   <body>
     <div id="root"></div>

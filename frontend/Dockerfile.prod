@@ -62,8 +62,9 @@ server {
     # que c'est cette page qui exécute du JavaScript. Sans elle, un XSS peut
     # exfiltrer un bulletin ou piloter le vote à la place de l'électeur.
     # Les origines listées sont celles réellement chargées par index.html
-    # (polices Google, lordicon) ; connect-src ouvre l'appel à l'API.
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://cdn.lordicon.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' ${API_ORIGIN} https://cdn.lordicon.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'" always;
+    # (polices Google) ; connect-src ouvre l'appel à l'API. Plus aucun script
+    # tiers : le lecteur d'animations est servi par l'application.
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' ${API_ORIGIN}; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'" always;
 }
 EOF
 

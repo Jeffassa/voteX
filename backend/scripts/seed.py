@@ -175,6 +175,22 @@ def main():
             gender=Gender.MALE,
         )
 
+        # Étudiant d'une AUTRE classe — indispensable pour éprouver le
+        # cloisonnement : sans lui, aucun compte utilisable n'existe hors de la
+        # promotion de l'élection, et la règle « on ne voit que le scrutin de sa
+        # classe » ne peut être vérifiée que dans le sens positif.
+        upsert_student(
+            db,
+            matricule="24-ESATIC0755KD",
+            first_name="Fatoumata",
+            last_name="Koné",
+            email="fatoumata.kone@esatic.ci",
+            password="student12345",
+            role=UserRole.STUDENT,
+            class_id=classes["Cybersécurité"].id,
+            gender=Gender.FEMALE,
+        )
+
         candidate_students = [
             upsert_student(
                 db,
@@ -229,6 +245,7 @@ def main():
         print("Seed OK :")
         print("  super-admin : matricule=SUPERADMIN")
         print(f"  voter démo  : matricule=24-ESATIC0398SB  ({voter.first_name} {voter.last_name})")
+        print("  autre classe : matricule=24-ESATIC0755KD  (Fatoumata Koné, L3 Cybersécurité)")
         print("  candidats   :")
         for c in CANDIDATES_GL:
             print(f"    - matricule={c['matricule']}  ({c['first_name']} {c['last_name']})")

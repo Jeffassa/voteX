@@ -36,6 +36,19 @@ def test_admin_reads_any_election(db, other_class_voter, open_election):
     assert election.id == open_election.id
 
 
+def test_voting_in_another_class_election_is_forbidden(db, other_class_voter, open_election):
+    """Le refus doit venir de l'appartenance à la classe, pas d'autre chose.
+
+    Vérifié en exécution le 30/08/2026 : l'API répond 403, et non 400 — ce
+    dernier code signalerait un scrutin fermé et masquerait le contrôle.
+    """
+    from app.core.exceptions import ForbiddenError
+    from app.services import vote_service
+
+    with pytest.raises(ForbiddenError):
+        vote_service.cast_vote(db, user=other_class_voter, election_id=open_election.id)
+
+
 def test_unknown_election_is_not_found(db, voter):
     from uuid import uuid4
 

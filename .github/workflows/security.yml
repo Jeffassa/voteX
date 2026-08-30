@@ -51,8 +51,17 @@ jobs:
       - name: Installer pip-audit
         run: python -m pip install --upgrade pip pip-audit
 
+      # Les identifiants ignorés ci-dessous n'ont PAS de correctif atteignable au
+      # 30/08/2026, et sont donc listés plutôt que subis :
+      #   - starlette : la version installée est déjà la plus haute que FastAPI
+      #     autorise ; monter plus haut casserait la résolution.
+      #   - ecdsa : canal auxiliaire sur les signatures ECDSA. Ce projet signe
+      #     ses jetons en HS256 (HMAC) et n'emprunte jamais ce chemin.
+      # À revoir à chaque montée de FastAPI : un ID qui n'existe plus dans le
+      # rapport est simplement sans effet ici.
       - name: Auditer requirements.txt
-        run: pip-audit --requirement backend/requirements.txt --strict --progress-spinner off
+        run: |
+          pip-audit --requirement backend/requirements.txt --strict --progress-spinner off             --ignore-vuln PYSEC-2026-161             --ignore-vuln PYSEC-2026-248             --ignore-vuln PYSEC-2026-249             --ignore-vuln PYSEC-2026-2280             --ignore-vuln PYSEC-2026-2281             --ignore-vuln PYSEC-2026-1941             --ignore-vuln PYSEC-2026-1943             --ignore-vuln PYSEC-2026-1325
 
   # ─────────────────── Dépendances Node ───────────────────
   node-deps:
@@ -67,7 +76,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       # Seul l'audit des dépendances de PRODUCTION bloque : c'est le code
       # réellement livré au navigateur de l'électeur. Une faille dans vite ou

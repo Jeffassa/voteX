@@ -159,8 +159,11 @@ def request_password_reset(
     request: Request,
     payload: PasswordResetRequest,
     db: Annotated[Session, Depends(get_db)],
+    background_tasks: BackgroundTasks,
 ):
-    auth_service.request_password_reset(db, email=payload.email)
+    auth_service.request_password_reset(
+        db, email=payload.email, background_tasks=background_tasks
+    )
     return {"detail": "Si l'email existe, un lien de réinitialisation a été envoyé."}
 
 

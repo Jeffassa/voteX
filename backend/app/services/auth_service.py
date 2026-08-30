@@ -46,7 +46,10 @@ def register_student(db: Session, payload: RegisterRequest) -> Student:
     # Si le matricule existe déjà
     if user:
         if user.is_activated:
-            raise ConflictError("Un étudiant possède déjà ce matricule.")
+            raise ConflictError(
+                "Ce compte est déjà activé. Connectez-vous ou utilisez "
+                "« mot de passe oublié »."
+            )
         
         # Le compte existe mais n'est pas activé : c'est un compte importé à revendiquer
         if user.activation_code:
@@ -132,17 +135,29 @@ async def send_activation_code(db: Session, payload: ActivationCodeRequest, back
     import secrets
     activation_code = secrets.token_hex(3).upper() # 6 chars
     user.activation_code = activation_code
-    
-    # On enregistre l'email pour pouvoir lui envoyer le code
-    user.email = payload.email
-    
+
+    # Le code part TOUJOURS vers l'adresse déjà rattachée au compte quand il y
+    # en a une. Sinon, matricule + nom (des informations qui circulent sur les
+    # listes de classe) suffiraient à rediriger le code vers une boîte tierce,
+    # puis à revendiquer le compte via /register : détournement complet.
+    # Un compte fraîchement importé n'a pas d'email : là, on enregistre celui
+    # que l'étudiant fournit.
+    destination = user.email or payload.email
+    if not user.email:
+        user.email = payload.email
+    elif user.email.lower() != payload.email.lower():
+        logger.warning(
+            "activation: email divergent pour matricule=%s — envoi vers l'adresse en base",
+            user.matricule,
+        )
+
     db.commit()
 
     # Envoi de l'email
     from app.services import resend_email_service
     background_tasks.add_task(
         resend_email_service.send_activation_code_email,
-        to_email=payload.email,
+        to_email=destination,
         student_name=f"{user.first_name} {user.last_name}",
         activation_code=activation_code,
     )
@@ -182,17 +197,25 @@ def authenticate(db: Session, matricule: str, password: str) -> Student:
 # ───────────────────── password reset ─────────────────────
 
 
-def _create_reset_token(user_id: UUID) -> str:
+def _create_reset_token(user_id: UUID, password_version: int) -> str:
+    """Le token porte la version du mot de passe au moment de l'émission.
+
+    Conséquence : dès que le mot de passe change (reset abouti, changement
+    self-service, révocation admin), password_version est incrémenté et TOUS
+    les liens de reset émis avant deviennent inutilisables — au lieu de rester
+    rejouables jusqu'à leur expiration.
+    """
     expire = datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
     payload = {
         "sub": str(user_id),
+        "pwd_v": password_version,
         "aud": RESET_TOKEN_AUDIENCE,
         "exp": expire,
     }
     return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
-def _decode_reset_token(token: str) -> UUID:
+def _decode_reset_token(token: str) -> tuple[UUID, int | None]:
     try:
         payload = jwt.decode(
             token,
@@ -203,35 +226,38 @@ def _decode_reset_token(token: str) -> UUID:
         sub = payload.get("sub")
         if not sub:
             raise ValidationError("Token invalide")
-        return UUID(sub)
+        return UUID(sub), payload.get("pwd_v")
     except JWTError as exc:
         raise ValidationError("Token de réinitialisation invalide ou expiré") from exc
 
 
-def request_password_reset(db: Session, email: str) -> str | None:
+def request_password_reset(
+    db: Session, email: str, background_tasks: BackgroundTasks | None = None
+) -> str | None:
+    """Émet un lien de réinitialisation et programme son envoi.
+
+    L'envoi passe par BackgroundTasks : la route est synchrone, donc elle
+    s'exécute dans le threadpool où il n'existe aucune boucle asyncio — un
+    `asyncio.create_task` y échoue silencieusement et le mail ne part jamais.
+    """
     user = db.query(Student).filter(Student.email == email).first()
     if not user or not user.is_active or not user.is_activated:
         return None
 
-    token = _create_reset_token(user.id)
+    token = _create_reset_token(user.id, user.password_version)
     reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
 
-    try:
-        import asyncio
-        from app.services import email_service
+    from app.services import email_service
 
-        asyncio.create_task(
-            email_service.send_password_reset_email(
-                to_email=user.email,
-                voter_name=f"{user.first_name} {user.last_name}",
-                reset_url=reset_url,
-            )
+    if background_tasks is not None:
+        background_tasks.add_task(
+            email_service.send_password_reset_email,
+            to_email=user.email,
+            voter_name=f"{user.first_name} {user.last_name}",
+            reset_url=reset_url,
         )
-    except RuntimeError:
-        logger.info("password reset token for %s : %s", email, reset_url)
-    except Exception as exc:
-        logger.warning("password reset email failed: %s", exc)
-        logger.info("fallback link for %s : %s", email, reset_url)
+    else:
+        logger.info("password reset (aucun canal d'envoi) pour %s : %s", email, reset_url)
 
     return token
 
@@ -239,10 +265,13 @@ def request_password_reset(db: Session, email: str) -> str | None:
 def confirm_password_reset(db: Session, *, token: str, new_password: str) -> Student:
     from app.services import refresh_token_service
 
-    user_id = _decode_reset_token(token)
+    user_id, token_pwd_v = _decode_reset_token(token)
     user = db.query(Student).filter(Student.id == user_id).first()
     if not user or not user.is_active:
         raise ValidationError("Token invalide ou compte introuvable")
+    # Un lien déjà consommé (ou émis avant un autre changement de mdp) est mort.
+    if token_pwd_v is not None and token_pwd_v != user.password_version:
+        raise ValidationError("Ce lien de réinitialisation n'est plus valide.")
 
     user.password_hash = hash_password(new_password)
     user.password_version += 1

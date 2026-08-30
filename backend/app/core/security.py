@@ -20,6 +20,9 @@ from app.core.config import JWT_AUDIENCE, JWT_ISSUER, settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# Claims sans lesquels un access token n'a aucun sens exploitable.
+REQUIRED_CLAIMS = ("sub", "exp", "iat", "iss", "aud", "role", "pwd_v")
+
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
@@ -63,13 +66,20 @@ def decode_token(token: str) -> dict[str, Any]:
     Token expiré, mauvais issuer ou mauvaise audience → JWTError.
     """
     try:
-        return jwt.decode(
+        payload = jwt.decode(
             token,
             settings.JWT_SECRET,
             algorithms=[settings.JWT_ALGORITHM],
             audience=JWT_AUDIENCE,
             issuer=JWT_ISSUER,
-            options={"require": ["sub", "exp", "iat", "iss", "aud"]},
         )
     except JWTError as exc:
         raise ValueError(f"Token invalide : {exc}") from exc
+
+    # python-jose ignore silencieusement l'option `require` (c'est une clé PyJWT).
+    # On vérifie donc la présence des claims nous-mêmes, sinon un token forgé
+    # sans `sub` passerait le décodage.
+    missing = [claim for claim in REQUIRED_CLAIMS if payload.get(claim) is None]
+    if missing:
+        raise ValueError(f"Token invalide : claims manquants {missing}")
+    return payload

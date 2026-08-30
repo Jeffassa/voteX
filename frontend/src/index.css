@@ -210,12 +210,32 @@ a { color: inherit; text-decoration: none; }
 .app-header nav a.active { background: var(--navy-900); color: white; }
 
 /* Scene fade transition */
-.scene { animation: sv-fade-in 360ms cubic-bezier(.2,.7,.2,1); }
+/* Entrée de page.
+   La keyframe n'anime PLUS l'opacité, seulement le déplacement. Elle partait
+   d'`opacity: 0`, ce qui rendait la page invisible tant que l'animation
+   n'avait pas progressé — et une animation peut ne jamais démarrer : onglet
+   ouvert en arrière-plan, économie d'énergie, moteur qui suspend le rendu.
+   Constaté en test : `playState: running`, `currentTime: 0` pendant six
+   secondes, page blanche. Un contenu ne doit jamais dépendre d'un mouvement
+   pour s'afficher. */
+.scene { animation: sv-rise-in 360ms cubic-bezier(.2,.7,.2,1); }
+@keyframes sv-rise-in {
+  from { transform: translateY(6px); }
+  to { transform: translateY(0); }
+}
+
+/* `fade-in` conserve un fondu — il s'applique à des éléments transitoires
+   (messages, résultats de recherche) qui existent déjà à l'écran, et non à
+   l'ossature d'une page. */
+.fade-in { animation: sv-fade-in 320ms ease both; }
 @keyframes sv-fade-in {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.fade-in { animation: sv-fade-in 320ms ease both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .scene, .fade-in { animation: none; }
+}
 
 /* Modal */
 .backdrop {

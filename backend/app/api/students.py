@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Query, UploadFile
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -104,6 +104,7 @@ async def import_students_from_xlsx(
     file: Annotated[UploadFile, File(description="Fichier .xlsx ESATIC (multi-feuilles)")],
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[Student, Depends(require_admin)],
+    background_tasks: BackgroundTasks,
     dry_run: bool = Query(default=False),
     auto_create_classes: bool = Query(
         default=False,
@@ -132,10 +133,11 @@ async def import_students_from_xlsx(
             "default_level requis quand auto_create_classes=true (ex: L1, L2, M1...)"
         )
 
-    return await student_import_service.import_students(
+    return student_import_service.import_students(
         db,
         file_bytes=contents,
         dry_run=dry_run,
         auto_create_classes=auto_create_classes,
         default_level=default_level,
+        background_tasks=background_tasks,
     )

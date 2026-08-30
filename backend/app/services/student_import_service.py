@@ -17,8 +17,10 @@ Les étudiants importés ont password_hash=NULL → ils devront s'inscrire via
 
 import io
 import logging
+from dataclasses import dataclass
 from typing import Any
 
+from fastapi import BackgroundTasks
 from openpyxl import load_workbook
 from sqlalchemy.orm import Session
 
@@ -31,6 +33,15 @@ from app.services import email_service
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class PendingActivationEmail:
+    """Un mail d'activation à envoyer une fois l'import commité."""
+
+    to_email: str
+    voter_name: str
+    activation_code: str
 
 
 COLUMN_ALIASES = {
@@ -146,12 +157,15 @@ def _auto_create_class(db: Session, *, sheet_name: str, default_level: str) -> C
 
 
 def _parse_gender(value: str | None) -> Gender | None:
+    """Normalise avant lookup : les fichiers ESATIC écrivent "Féminin",
+    "MASCULIN", "Homme "… et un simple .lower() laissait passer les accents,
+    ce qui perdait silencieusement le genre de toutes les étudiantes."""
     if not value:
         return None
-    return GENDER_NORMALIZATION.get(value.strip().lower())
+    return GENDER_NORMALIZATION.get(normalize_name(str(value)))
 
 
-async def _process_sheet(
+def _process_sheet(
     db: Session,
     *,
     sheet_name: str,
@@ -160,8 +174,11 @@ async def _process_sheet(
     dry_run: bool,
     auto_create_classes: bool = False,
     default_level: str | None = None,
+    pending_emails: list["PendingActivationEmail"] | None = None,
 ) -> tuple[list[ImportRowResult], int, int]:
     """Traite une feuille — retourne (results, created, skipped)."""
+    if pending_emails is None:
+        pending_emails = []
     results: list[ImportRowResult] = []
     created = 0
     skipped = 0
@@ -320,13 +337,18 @@ async def _process_sheet(
             is_active=True,
         )
         db.add(student)
-        
-        # Envoi de l'email si l'email est présent
+
+        # On N'ENVOIE PAS ici : l'envoi se fait après le commit, hors du cycle
+        # requête/réponse. Envoyer en ligne rendait l'import O(n) appels SMTP
+        # bloquants (des minutes pour une promo entière) et pouvait notifier
+        # des étudiants dont l'insertion était ensuite annulée.
         if email:
-            await email_service.send_activation_code_email(
-                to_email=email,
-                voter_name=f"{first_name} {last_name}",
-                activation_code=activation_code,
+            pending_emails.append(
+                PendingActivationEmail(
+                    to_email=email,
+                    voter_name=f"{first_name} {last_name}",
+                    activation_code=activation_code,
+                )
             )
 
         results.append(
@@ -340,18 +362,42 @@ async def _process_sheet(
     return results, created, skipped
 
 
-async def import_students(
+def _dispatch_activation_emails(
+    pending: list[PendingActivationEmail],
+    background_tasks: "BackgroundTasks | None",
+) -> None:
+    if not pending:
+        return
+    if background_tasks is None:
+        logger.info(
+            "import: %s code(s) d'activation générés, aucun canal d'envoi fourni", len(pending)
+        )
+        return
+    for item in pending:
+        background_tasks.add_task(
+            email_service.send_activation_code_email,
+            to_email=item.to_email,
+            voter_name=item.voter_name,
+            activation_code=item.activation_code,
+        )
+
+
+def import_students(
     db: Session,
     *,
     file_bytes: bytes,
     dry_run: bool = False,
     auto_create_classes: bool = False,
     default_level: str | None = None,
+    background_tasks: "BackgroundTasks | None" = None,
 ) -> ImportReport:
     """Importe tous les étudiants présents dans toutes les feuilles du xlsx.
 
     Si auto_create_classes=True et default_level fourni, les classes
     inexistantes sont créées automatiquement (utile pour bulk par niveau).
+
+    Les codes d'activation ne sont envoyés qu'APRÈS le commit, et seulement si
+    un `background_tasks` est fourni — sinon ils sont seulement journalisés.
     """
     try:
         wb = load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
@@ -362,6 +408,7 @@ async def import_students(
         )
 
     all_results: list[ImportRowResult] = []
+    pending_emails: list[PendingActivationEmail] = []
     seen_in_file: set[str] = set()
     total_created = 0
     total_skipped = 0
@@ -374,7 +421,7 @@ async def import_students(
             continue
         total_rows += max(0, len(rows) - 1)
 
-        results, created, skipped = await _process_sheet(
+        results, created, skipped = _process_sheet(
             db,
             sheet_name=sheet_name,
             rows=rows,
@@ -382,6 +429,7 @@ async def import_students(
             dry_run=dry_run,
             auto_create_classes=auto_create_classes,
             default_level=default_level,
+            pending_emails=pending_emails,
         )
         all_results.extend(results)
         total_created += created
@@ -389,8 +437,10 @@ async def import_students(
 
     if dry_run:
         db.rollback()  # annule aussi les classes auto-créées en dry-run
+        pending_emails.clear()  # rien n'a été créé, personne ne doit être notifié
     else:
         db.commit()
+        _dispatch_activation_emails(pending_emails, background_tasks)
 
     errors = sum(1 for r in all_results if r.status == "error")
     return ImportReport(

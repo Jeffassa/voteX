@@ -21,6 +21,9 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     css: false,
+    // Le pool "forks" (défaut de Vitest 4) n'arrive pas à démarrer ses workers
+    // sur cette machine : « Timeout waiting for worker to respond ».
+    pool: "threads",
   },
   server: {
     host: true,

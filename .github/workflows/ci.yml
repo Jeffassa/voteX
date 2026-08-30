@@ -71,6 +71,11 @@ jobs:
       - name: Type-check
         run: npx tsc --noEmit
 
+      # Contient le garde-fou qui interdit d'écrire dans le stockage du
+      # navigateur — sans cette étape, il ne protégerait rien.
+      - name: Tests
+        run: npm test
+
       - name: Build
         run: npm run build
 

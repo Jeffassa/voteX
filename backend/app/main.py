@@ -23,9 +23,16 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-# Désactive /docs et /redoc en production (COOKIE_SECURE=true = HTTPS = prod)
-_docs_url = "/docs" if not settings.COOKIE_SECURE else None
-_redoc_url = "/redoc" if not settings.COOKIE_SECURE else None
+# Désactive /docs et /redoc en production : l'OpenAPI complet est une carte de
+# la surface d'attaque, inutile de la publier.
+_expose_docs = not (settings.is_production or settings.COOKIE_SECURE)
+_docs_url = "/docs" if _expose_docs else None
+_redoc_url = "/redoc" if _expose_docs else None
+
+# Swagger UI charge ses assets depuis un CDN et exécute du script inline : la
+# CSP stricte de l'API les bloque et la page reste blanche. On l'exempte —
+# ces routes n'existent qu'en dehors de la production.
+_CSP_EXEMPT_PATHS = frozenset({"/docs", "/redoc", "/docs/oauth2-redirect"})
 
 app = FastAPI(
     title="ESATIC SmartVote API",
@@ -38,19 +45,6 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
-
-# CORS : allow_credentials=True est nécessaire pour que les cookies traversent
-# la frontière origine. allow_origins doit être une liste explicite — JAMAIS "*"
-# avec credentials, ça désactive silencieusement les cookies.
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*", "X-CSRF-Token"],
-    expose_headers=["X-CSRF-Token"],
-)
-
 
 _SECURITY_HEADERS = SECURITY_HEADERS
 
@@ -72,7 +66,10 @@ async def csrf_protection(request: Request, call_next):
 async def security_headers(request: Request, call_next):
     """Headers HTTP de durcissement."""
     response = await call_next(request)
+    exempt_csp = request.url.path in _CSP_EXEMPT_PATHS
     for k, v in _SECURITY_HEADERS.items():
+        if exempt_csp and k == "Content-Security-Policy":
+            continue
         response.headers[k] = v
     return response
 
@@ -100,6 +97,24 @@ async def add_request_id(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     return response
+
+
+# CORS : allow_credentials=True est nécessaire pour que les cookies traversent
+# la frontière origine. allow_origins doit être une liste explicite — JAMAIS "*"
+# avec credentials, ça désactive silencieusement les cookies.
+#
+# Ajouté EN DERNIER, donc exécuté en premier : Starlette empile les middlewares
+# du plus récent au plus externe. Quand le CORS était enregistré avant le garde
+# CSRF, un rejet 403 repartait sans en-tête Access-Control-* et le navigateur le
+# présentait comme une erreur réseau opaque — impossible à diagnostiquer côté SPA.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*", "X-CSRF-Token"],
+    expose_headers=["X-CSRF-Token", "X-Request-ID"],
+)
 
 
 app.include_router(health.router)

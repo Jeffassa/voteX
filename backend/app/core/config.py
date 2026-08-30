@@ -28,6 +28,11 @@ class Settings(BaseSettings):
         return v
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
+    # Environnement de déploiement : "development" | "staging" | "production".
+    # Sert de source de vérité pour les gardes de démarrage et pour Sentry —
+    # avant, la production était devinée à partir de COOKIE_SECURE.
+    ENVIRONMENT: str = "development"
+
     DATABASE_URL: str
 
     # Supabase — optionnel pour le backend (utilisé par le frontend pour Realtime).
@@ -77,6 +82,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_VOTE: str = "5/minute"
     RATE_LIMIT_LOGIN: str = "10/minute"
 
+    # Monitoring — si vide, Sentry n'est pas initialisé.
+    SENTRY_DSN: str = ""
+
     # Cache Redis — optionnel. Si vide, le cache est désactivé (mode passthrough).
     REDIS_URL: str = ""
     # Durée de vie des résultats d'élections fermées en cache (en secondes). 5 minutes par défaut.
@@ -99,6 +107,10 @@ class Settings(BaseSettings):
                 "Utilise un secret aléatoire en production."
             )
         return v
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT.strip().lower() in {"production", "prod"}
 
     @property
     def cors_origins(self) -> list[str]:

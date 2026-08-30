@@ -240,5 +240,31 @@ def main():
         db.close()
 
 
+def _guard_environment() -> None:
+    """Le seed crée un super-admin au mot de passe public (admin12345).
+
+    Le laisser s'exécuter en production installerait une porte d'entrée connue
+    de quiconque a lu ce dépôt. On exige donc un opt-in explicite.
+    """
+    import os
+    import sys
+
+    from app.core.config import settings
+
+    if not settings.is_production:
+        return
+    if os.environ.get("SEED_ALLOW_PRODUCTION") == "yes-i-know":
+        print("ATTENTION : seed de démo exécuté en production (opt-in explicite).")
+        return
+    print(
+        "Refus : ENVIRONMENT=production. Ce seed installe des comptes de "
+        "démonstration avec des mots de passe publics. "
+        "Pour créer un vrai administrateur, utilisez : python -m scripts.create_admin",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+
 if __name__ == "__main__":
+    _guard_environment()
     main()

@@ -20,9 +20,21 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+# Secrets qui circulent en clair dans le dépôt (docker-compose de dev, README,
+# exemples). Quiconque a lu le repo peut forger un JWT admin avec — donc aucun
+# d'entre eux ne doit jamais survivre à une mise en production.
+PUBLISHED_DEV_SECRETS = frozenset(
+    {
+        "Z9k4vPq8rMnL3jH7sB2dX5cF1gW6tY0aQiE4uN8RsoVbPyDmCkJfAhXgZrTwLnQp",
+        "Z9k4vPq8rMnL3jH7sB2dX5cF1gW6tY0aQiE4uN8RsoVbPyDmCkJfAhXgZrTwLnQpE2vSBuY1",
+        "ci-testing-secret-long-enough-for-hs256-validation-purposes",
+    }
+)
+
+
 def _is_production() -> bool:
-    """Heuristique : si COOKIE_SECURE=True, on est en production (HTTPS)."""
-    return settings.COOKIE_SECURE
+    """ENVIRONMENT fait foi ; COOKIE_SECURE reste un filet pour les configs anciennes."""
+    return settings.is_production or settings.COOKIE_SECURE
 
 
 def _check_jwt_secret() -> None:
@@ -30,6 +42,11 @@ def _check_jwt_secret() -> None:
     secret = settings.JWT_SECRET
     if len(secret) < 32:
         _fail("SÉCURITÉ : JWT_SECRET trop court. Minimum 32 caractères.")
+    if secret in PUBLISHED_DEV_SECRETS:
+        _fail(
+            "SÉCURITÉ : JWT_SECRET est un secret de développement publié dans le "
+            "dépôt. Générez-en un propre : openssl rand -hex 32"
+        )
     trivial_values = {"secret", "password", "changeme", "dev", "test", "1234"}
     if secret.lower() in trivial_values or "change" in secret.lower():
         _fail(
@@ -40,7 +57,7 @@ def _check_jwt_secret() -> None:
 
 def _check_cookie_security() -> None:
     """En production, les cookies doivent être sécurisés (HTTPS uniquement)."""
-    if _is_production() and not settings.COOKIE_SECURE:
+    if settings.is_production and not settings.COOKIE_SECURE:
         _fail(
             "SÉCURITÉ : COOKIE_SECURE=false en production. "
             "Activez HTTPS et définissez COOKIE_SECURE=true."

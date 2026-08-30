@@ -15,8 +15,14 @@ FROM nginx:1.27-alpine AS production
 # Copier les fichiers statiques buildés
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Configuration Nginx pour SPA (redirige toutes les routes vers index.html)
-RUN cat > /etc/nginx/conf.d/default.conf << 'EOF'
+# Origine de l'API, injectée dans la CSP au démarrage du conteneur.
+# À surcharger : docker run -e API_ORIGIN="https://api.smartvote.esatic.ci"
+ENV API_ORIGIN="http://localhost:8000"
+
+# Configuration Nginx pour SPA. Écrite comme un *template* : nginx:alpine
+# passe /etc/nginx/templates/*.template dans envsubst au démarrage, ce qui
+# permet d'injecter l'origine de l'API dans connect-src sans rebuild.
+RUN rm -f /etc/nginx/conf.d/default.conf && mkdir -p /etc/nginx/templates     && cat > /etc/nginx/templates/default.conf.template << 'EOF'
 server {
     listen 80;
     server_name _;
@@ -50,6 +56,14 @@ server {
     add_header X-Frame-Options "DENY" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+
+    # CSP — c'est ici qu'elle compte : le backend ne sert que du JSON, alors
+    # que c'est cette page qui exécute du JavaScript. Sans elle, un XSS peut
+    # exfiltrer un bulletin ou piloter le vote à la place de l'électeur.
+    # Les origines listées sont celles réellement chargées par index.html
+    # (polices Google, lordicon) ; connect-src ouvre l'appel à l'API.
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://cdn.lordicon.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' ${API_ORIGIN} https://cdn.lordicon.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'" always;
 }
 EOF
 

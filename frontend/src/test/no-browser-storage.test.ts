@@ -9,8 +9,9 @@
  * compris : le choix de l'électeur était persisté sur le disque de la machine.
  *
  * La session vit exclusivement dans des cookies httpOnly, que le JavaScript ne
- * peut pas lire. Le seul cookie accessible au script est `sv_csrf`, exigé par le
- * double-submit ; il est explicitement toléré ci-dessous.
+ * peut pas lire — il n'existe plus aucun cookie accessible au script. Le jeton
+ * CSRF arrive par l'en-tête `X-CSRF-Token` et ne vit qu'en mémoire, le temps de
+ * l'onglet.
  *
  * Ce test lit le code source plutôt que d'observer l'exécution : il attrape la
  * réintroduction dès l'écriture, y compris sur un chemin qu'aucun test ne
@@ -66,16 +67,16 @@ describe("stockage du navigateur", () => {
     ).toEqual([]);
   });
 
-  it("ne lit du cookie que le jeton CSRF", () => {
-    const offenders = files
-      .filter((file) => /\bdocument\.cookie\b/.test(stripComments(readFileSync(file, "utf8"))))
-      .filter((file) => !file.endsWith(join("lib", "api.ts")));
+  it("ne touche jamais aux cookies", () => {
+    const offenders = files.filter((file) =>
+      /\bdocument\.cookie\b/.test(stripComments(readFileSync(file, "utf8"))),
+    );
 
     expect(
       offenders,
-      "document.cookie n'est légitime que dans lib/api.ts, pour relire sv_csrf " +
-        "(double-submit). Les cookies de session sont httpOnly et ne doivent jamais " +
-        "être manipulés par le script.",
+      "Plus aucun cookie n'est lisible par le script : la session vit dans des " +
+        "cookies httpOnly, et le jeton CSRF arrive par l'en-tête X-CSRF-Token, " +
+        "gardé en mémoire. Lire document.cookie n'a donc plus de raison d'être.",
     ).toEqual([]);
   });
 });

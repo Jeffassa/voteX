@@ -7,16 +7,17 @@ from sqlalchemy.orm import Session, joinedload
 from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.cookies import (
+    CSRF_HEADER,
     REFRESH_COOKIE,
     clear_auth_cookies,
     set_access_cookie,
-    set_csrf_cookie,
     set_refresh_cookie,
 )
 from app.core.csrf import generate_csrf_token
 from app.core.database import get_db
 from app.core.rate_limit import limiter
-from app.core.security import create_access_token
+from app.core.cookies import ACCESS_COOKIE
+from app.core.security import create_access_token, decode_token
 from app.models import Student
 from app.schemas.auth import (
     ActivationCodeRequest,
@@ -39,18 +40,25 @@ def _set_session_cookies(
     user: Student,
     refresh_token: str,
 ) -> str:
-    """Émet access JWT + refresh + CSRF, attache tout aux cookies. Retourne l'access."""
+    """Émet la paire de cookies httpOnly et publie le jeton CSRF en en-tête.
+
+    Le jeton CSRF est scellé dans l'access token (claim `csrf`) et renvoyé au
+    client par `X-CSRF-Token`. Aucun cookie n'est lisible par le script : le
+    client garde ce jeton en mémoire, le temps de l'onglet.
+    """
+    csrf_token = generate_csrf_token()
     access_token = create_access_token(
         subject=user.id,
         role=user.role.value,
         password_version=user.password_version,
+        extra={"csrf": csrf_token},
     )
     access_max_age = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     refresh_max_age = settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400
 
     set_access_cookie(response, access_token, access_max_age)
     set_refresh_cookie(response, refresh_token, refresh_max_age)
-    set_csrf_cookie(response, generate_csrf_token(), refresh_max_age)
+    response.headers[CSRF_HEADER] = csrf_token
     return access_token
 
 
@@ -169,9 +177,23 @@ def logout(
 
 @router.get("/me", response_model=MeResponse)
 def me(
+    request: Request,
+    response: Response,
     current: Annotated[Student, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
 ):
+    # Un rechargement de page vide la mémoire du client : /me est le premier
+    # appel qu'il émet, c'est donc ici qu'il récupère son jeton CSRF. La réponse
+    # n'est lisible que par les origines autorisées (CORS).
+    access_cookie = request.cookies.get(ACCESS_COOKIE)
+    if access_cookie:
+        try:
+            csrf = decode_token(access_cookie).get("csrf")
+        except ValueError:
+            csrf = None
+        if csrf:
+            response.headers[CSRF_HEADER] = csrf
+
     user = (
         db.query(Student)
         .options(joinedload(Student.classroom))

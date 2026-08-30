@@ -4,16 +4,16 @@ import axios, { type AxiosRequestConfig } from "axios";
  * Client HTTP — modèle cookie-based.
  *
  * - withCredentials: true → axios envoie les cookies httpOnly automatiquement
- * - Pour les mutations (POST/PUT/PATCH/DELETE), on lit le cookie `sv_csrf`
- *   (non httpOnly, exposé au JS) et on le renvoie en header `X-CSRF-Token`
- *   (pattern double-submit cookie — voir backend csrf.py)
+ * - Le jeton CSRF n'est plus lu dans un cookie : le serveur le scelle dans
+ *   l'access token (httpOnly) et en publie une copie dans l'en-tête de réponse
+ *   `X-CSRF-Token`. On le garde EN MÉMOIRE et on le recopie dans les mutations.
  * - Sur 401, on tente un /refresh une seule fois puis on déconnecte
  *
- * Aucun token n'est manipulé côté client — c'est le serveur qui gère tout via
- * les cookies httpOnly. Une faille XSS ne peut donc pas voler la session.
+ * Aucun cookie n'est lisible par le script, et rien n'est écrit dans le
+ * stockage du navigateur : le jeton meurt avec l'onglet. Sur une machine
+ * partagée, l'onglet suivant ne trouve donc aucune trace de la session.
  */
 
-const CSRF_COOKIE = "sv_csrf";
 const CSRF_HEADER = "X-CSRF-Token";
 
 export const api = axios.create({
@@ -21,12 +21,35 @@ export const api = axios.create({
   withCredentials: true,
 });
 
-function readCsrfCookie(): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(
-    new RegExp(`(?:^|; )${CSRF_COOKIE}=([^;]+)`)
-  );
-  return match ? decodeURIComponent(match[1]) : null;
+/**
+ * Jeton CSRF courant. Volontairement une variable de module : ni cookie, ni
+ * localStorage, ni sessionStorage — sa durée de vie est celle de la page.
+ */
+let csrfToken: string | null = null;
+
+/** Le serveur republie le jeton à chaque login, refresh et /me. */
+api.interceptors.response.use((response) => {
+  const issued = response.headers?.[CSRF_HEADER.toLowerCase()];
+  if (typeof issued === "string" && issued) {
+    csrfToken = issued;
+  }
+  return response;
+});
+
+const ME_URL = "/api/auth/me";
+
+/**
+ * Récupère un jeton quand la mémoire est vide — après un rechargement de page,
+ * la première mutation peut précéder l'appel à /me. Un GET ne déclenche pas de
+ * vérification CSRF, la requête ne peut donc pas boucler.
+ */
+async function ensureCsrfToken(): Promise<void> {
+  if (csrfToken) return;
+  try {
+    await api.get(ME_URL);
+  } catch {
+    /* non authentifié : la mutation recevra un 401, ce qui est correct */
+  }
 }
 
 const MUTATING_METHODS = new Set(["post", "put", "patch", "delete"]);
@@ -34,12 +57,19 @@ const REFRESH_URL = "/api/auth/refresh";
 const LOGIN_URL = "/api/auth/login";
 const LOGOUT_URL = "/api/auth/logout";
 
-api.interceptors.request.use((config) => {
+/**
+ * Routes qui n'exigent pas de jeton CSRF côté serveur (aucune session n'existe
+ * encore, ou c'est justement l'appel qui en délivre un). Aller y chercher un
+ * jeton ferait une requête inutile avant chaque tentative de connexion.
+ */
+const CSRF_EXEMPT_URLS = [LOGIN_URL, REFRESH_URL, "/api/auth/register", "/api/auth/password-reset"];
+
+api.interceptors.request.use(async (config) => {
   const method = (config.method || "get").toLowerCase();
-  if (MUTATING_METHODS.has(method)) {
-    const csrf = readCsrfCookie();
-    if (csrf) {
-      config.headers.set(CSRF_HEADER, csrf);
+  if (MUTATING_METHODS.has(method) && !CSRF_EXEMPT_URLS.some((u) => config.url?.includes(u))) {
+    await ensureCsrfToken();
+    if (csrfToken) {
+      config.headers.set(CSRF_HEADER, csrfToken);
     }
   }
   return config;
@@ -57,6 +87,7 @@ export function onLogout(cb: () => void) {
 }
 
 function triggerLogout() {
+  csrfToken = null; // rien ne doit survivre à la fin de session
   for (const cb of onLogoutCallbacks) {
     try {
       cb();

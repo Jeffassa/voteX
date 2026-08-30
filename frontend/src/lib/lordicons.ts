@@ -12,9 +12,12 @@ export const LORDICONS = {
   activity: "https://cdn.lordicon.com/wloilxuq.json",
   blockchain: "https://cdn.lordicon.com/rpviwvwn.json",
   check: "https://cdn.lordicon.com/lupuorrc.json",
-  clock: "https://cdn.lordicon.com/abvsilqn.json",
+  // Ces deux identifiants ne sont plus servis par le CDN (404 renvoyant du
+  // HTML, que le lecteur tente de parser en JSON → promesse rejetée dans la
+  // console). Vides, ils déclenchent le repli documenté sur l'icône Lucide.
+  clock: "",
   hash: "https://cdn.lordicon.com/yxczfiyc.json",
-  vote: "https://cdn.lordicon.com/iukaodst.json",
+  vote: "",
 } as const;
 
 /** Format de couleurs Lordicon : "primary:#xxxxxx,secondary:#yyyyyy". */

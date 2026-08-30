@@ -222,20 +222,19 @@ def main():
                 )
 
         db.commit()
+        # Les mots de passe ne sont PAS imprimés : la sortie d'un conteneur finit
+        # dans `docker logs`, puis dans une collecte centralisée. Des identifiants
+        # y restent lisibles longtemps après la démonstration. Ils sont
+        # documentés dans README.md, à côté du reste.
         print("Seed OK :")
-        print(f"  super-admin : matricule=SUPERADMIN       password=admin12345")
-        print(
-            f"  voter démo  : matricule=24-ESATIC0398SB  password=student12345  "
-            f"({voter.first_name} {voter.last_name})"
-        )
-        print(f"  candidats   :")
+        print("  super-admin : matricule=SUPERADMIN")
+        print(f"  voter démo  : matricule=24-ESATIC0398SB  ({voter.first_name} {voter.last_name})")
+        print("  candidats   :")
         for c in CANDIDATES_GL:
-            print(
-                f"    - matricule={c['matricule']}  password=student12345  "
-                f"({c['first_name']} {c['last_name']})"
-            )
+            print(f"    - matricule={c['matricule']}  ({c['first_name']} {c['last_name']})")
         print(f"  élection    : {election.title} ({election.status.value})")
         print(f"  classes     : {', '.join(c.level + ' ' + c.name for c in classes.values())}")
+        print("  mots de passe de démonstration : voir README.md")
     finally:
         db.close()
 

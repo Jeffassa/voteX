@@ -245,7 +245,11 @@ def request_password_reset(
         return None
 
     token = _create_reset_token(user.id, user.password_version)
-    reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+    # Le jeton voyage dans le FRAGMENT (#), pas dans la query string : un
+    # fragment n'est jamais transmis au serveur, n'apparaît donc ni dans les
+    # journaux d'accès, ni dans ceux d'un reverse proxy, ni dans l'en-tête
+    # Referer d'une ressource tierce chargée par la page.
+    reset_url = f"{settings.FRONTEND_URL}/reset-password#token={token}"
 
     from app.services import email_service
 

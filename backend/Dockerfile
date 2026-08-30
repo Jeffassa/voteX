@@ -37,4 +37,6 @@ HEALTHCHECK --interval=10s --timeout=3s --retries=10 \
 # confiance qu'à 127.0.0.1 par défaut — élargir via FORWARDED_ALLOW_IPS,
 # jamais à "*" sur un port exposé publiquement (X-Forwarded-For devient
 # alors falsifiable, donc le rate limit contournable).
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
+# --no-server-header : `Server: uvicorn` annonçait la pile technique à chaque
+# réponse. C'est une indication gratuite offerte à qui cherche un exploit ciblé.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--no-server-header"]

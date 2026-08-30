@@ -1,13 +1,44 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Lock } from "lucide-react";
 
 import { Brand } from "@/components/Brand";
 import { useConfirmPasswordReset } from "@/lib/queries";
 
+/**
+ * Récupère le jeton du lien reçu par e-mail, puis l'efface de l'URL.
+ *
+ * Il arrive dans le FRAGMENT (`#token=…`) : un fragment n'est pas transmis au
+ * serveur, il ne se retrouve donc ni dans les journaux d'accès ni dans un
+ * en-tête Referer. On le retire ensuite de la barre d'adresse — sans quoi il
+ * resterait visible et consultable dans l'historique du navigateur, sur une
+ * machine potentiellement partagée.
+ *
+ * La query string reste acceptée en repli, le temps que les liens déjà envoyés
+ * expirent (trente minutes).
+ */
+let cachedToken: string | null = null;
+
+function readResetToken(): string {
+  // Mémorisé au niveau du module : React StrictMode monte deux fois en
+  // développement, et la seconde lecture arriverait après le nettoyage de
+  // l'URL — l'utilisateur verrait « lien invalide » avec un lien valide.
+  if (cachedToken !== null) return cachedToken;
+  if (typeof window === "undefined") return "";
+
+  const fromHash = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("token");
+  const fromQuery = new URLSearchParams(window.location.search).get("token");
+  cachedToken = fromHash || fromQuery || "";
+
+  if (cachedToken) {
+    window.history.replaceState(null, "", window.location.pathname);
+  }
+  return cachedToken;
+}
+
 export default function ResetPasswordPage() {
-  const [params] = useSearchParams();
-  const token = params.get("token") || "";
+  // Lu une seule fois : l'URL est nettoyée dans la foulée.
+  const [token] = useState(readResetToken);
   const navigate = useNavigate();
 
   const [password, setPassword] = useState("");

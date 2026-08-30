@@ -1,0 +1,22 @@
+modules:
+  # Sonde HTTP simple : la cible doit répondre 2xx. Utilisée par le job
+  # « frontend » de Prometheus, dont dépend l'alerte FrontendDown.
+  http_2xx:
+    prober: http
+    timeout: 5s
+    http:
+      valid_http_versions: [HTTP/1.1, HTTP/2.0]
+      valid_status_codes: []  # 2xx par défaut
+      method: GET
+      follow_redirects: true
+      preferred_ip_protocol: ip4
+
+  # Sonde de disponibilité de l'API : /healthz ne touche pas la base, il ne
+  # dit que « le processus répond ». C'est ce qu'on veut pour une sonde
+  # externe — la santé de la base est déjà couverte par postgres-exporter.
+  http_healthz:
+    prober: http
+    timeout: 5s
+    http:
+      method: GET
+      preferred_ip_protocol: ip4

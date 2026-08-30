@@ -142,6 +142,21 @@ docker compose exec backend python -m scripts.seed
 
 Sans les optionnels : pas de realtime (polling 5s), pas de hash on-chain, pas d'email envoyé. Le reste fonctionne.
 
+## Supervision (optionnelle)
+
+```bash
+docker compose up -d                                  # l'app crée le réseau votex-network
+docker compose -f docker-compose.monitoring.yml up -d  # s'y raccroche
+```
+
+- Prometheus : http://localhost:9090 — Grafana : http://localhost:3000
+- Le backend n'expose `/metrics` que si `METRICS_ENABLED=true` (déjà positionné
+  dans `docker-compose.yml`). En production, protégez-le avec `METRICS_TOKEN` et
+  renseignez le bloc `authorization` du job `backend` dans
+  `monitoring/prometheus/prometheus.yml`.
+- Les deux stacks sont des projets Compose distincts : démarrez l'application en
+  premier, sinon le réseau `votex-network` n'existe pas encore.
+
 ## Mise en production
 
 `ENVIRONMENT=production` durcit le démarrage : le backend refuse de démarrer si

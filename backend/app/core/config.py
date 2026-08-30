@@ -85,6 +85,11 @@ class Settings(BaseSettings):
     # Monitoring — si vide, Sentry n'est pas initialisé.
     SENTRY_DSN: str = ""
 
+    # Métriques Prometheus — voir app/core/metrics.py. Fermé par défaut :
+    # /metrics décrit toute la surface de l'API et le rythme des votes.
+    METRICS_ENABLED: bool = False
+    METRICS_TOKEN: str = ""
+
     # Cache Redis — optionnel. Si vide, le cache est désactivé (mode passthrough).
     REDIS_URL: str = ""
     # Durée de vie des résultats d'élections fermées en cache (en secondes). 5 minutes par défaut.

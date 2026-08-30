@@ -1,0 +1,90 @@
+groups:
+  - name: smartvote_alerts
+    rules:
+      - alert: BackendDown
+        expr: up{job="backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend ESATIC SmartVote est down"
+          description: "Le service backend n'est plus disponible depuis plus d'une minute."
+
+      - alert: FrontendDown
+        expr: probe_success{job="frontend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Frontend ESATIC SmartVote est down"
+          description: "Le service frontend n'est plus accessible."
+
+      - alert: PostgresDown
+        expr: up{job="postgres-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL est down"
+          description: "La base de données PostgreSQL n'est plus disponible."
+
+      # Le compteur porte le namespace de l'instrumentation applicative
+      # (app/core/metrics.py). L'ancienne règle visait `http_requests_total`,
+      # une série jamais produite, et comparait un taux absolu (0,1 req/s) en
+      # prétendant mesurer un pourcentage : elle ne pouvait ni se déclencher,
+      # ni dire ce qu'elle annonçait.
+      - alert: HighErrorRate
+        expr: >
+          sum(rate(smartvote_http_requests_total{status=~"5.."}[5m]))
+          /
+          sum(rate(smartvote_http_requests_total[5m])) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taux d'erreur HTTP élevé"
+          description: "Plus de 10% des requêtes retournent une erreur 5xx."
+
+      # Pas de règle BlockchainDown : aucun job « blockchain » n'est scrapé.
+      # `up{job="blockchain"} == 0` ne s'évalue sur aucune série, donc l'alerte
+      # ne se déclenchait jamais — elle donnait l'illusion d'une surveillance
+      # du nœud Sepolia qui n'existait pas. À rétablir en même temps que le job.
+
+      - alert: VoteSubmissionFailures
+        expr: >
+          sum(rate(smartvote_http_requests_total{handler="/api/votes/",status=~"5.."}[5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Des bulletins sont refusés par une erreur serveur"
+          description: >
+            Au moins un POST /api/votes/ répond 5xx. Un scrutin ouvert qui perd
+            des bulletins est une urgence, pas un avertissement.
+
+      - alert: HighDatabaseConnections
+        expr: pg_stat_activity_count > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Nombre élevé de connexions DB"
+          description: "Plus de 80 connexions actives sur PostgreSQL."
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Espace disque faible"
+          description: "Moins de 10% d'espace disque disponible."
+
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Utilisation mémoire élevée"
+          description: "Plus de 90% de la mémoire système est utilisée."

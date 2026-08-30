@@ -12,6 +12,7 @@ from app.core.exceptions import DomainError
 from app.core.rate_limit import limiter
 
 
+from app.core.metrics import init_metrics
 from app.core.monitoring import init_monitoring
 from app.core.startup_checks import run_startup_checks
 
@@ -45,6 +46,10 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
+
+# Instrumentation avant l'ajout des autres middlewares, pour que les temps
+# mesurés incluent bien la chaîne complète.
+init_metrics(app)
 
 _SECURITY_HEADERS = SECURITY_HEADERS
 

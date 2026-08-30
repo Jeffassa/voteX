@@ -61,6 +61,10 @@ services:
       MAIL_SERVER: ${MAIL_SERVER:-""}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_FROM: ${MAIL_FROM:-"noreply@esatic-smartvote.ci"}
+      # Supervision : /metrics reste fermé par défaut, on l'ouvre ici pour que
+      # la stack docker-compose.monitoring.yml ait quelque chose à scraper.
+      METRICS_ENABLED: "true"
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
     ports:
       - "8000:8000"
     depends_on:
@@ -104,3 +108,10 @@ services:
 
 volumes:
   pgdata:
+
+networks:
+  # Le réseau du projet est nommé explicitement : la stack de supervision
+  # (docker-compose.monitoring.yml) s'y raccroche en `external`, sinon
+  # Prometheus ne peut joindre ni le backend ni le frontend.
+  default:
+    name: votex-network

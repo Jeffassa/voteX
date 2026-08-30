@@ -1,36 +1,56 @@
-import pytest
-from fastapi.testclient import TestClient
-from app.main import app
+"""Intégrité du jeton CSRF sur la durée d'une session.
 
-@pytest.fixture(scope="module")
-def client():
-    return TestClient(app)
+Le double-submit ne tient que si le cookie `sv_csrf` posé par le serveur reste
+celui que le client renvoie en header. Ces tests vérifient les deux moments où
+le serveur réémet le jeton — login et refresh — et le comportement attendu
+d'un client qui n'a pas suivi la réémission.
+"""
 
-def test_csrf_token_consistency(client):
-    # Perform login (using a known test user – adjust credentials as needed)
-    login_data = {
-        "username": "testuser",  # replace with a real matricule in test DB
-        "password": "testpassword"
-    }
-    response = client.post("/api/auth/login", data=login_data)
-    assert response.status_code == 200
+from app.core.cookies import CSRF_COOKIE, CSRF_HEADER
 
-    # The CSRF token should be set as a cookie and also exposed via header
-    csrf_cookie = response.cookies.get("sv_csrf")
-    csrf_header = response.headers.get("X-CSRF-Token")
-    assert csrf_cookie is not None, "CSRF cookie missing after login"
-    assert csrf_header is not None, "CSRF header missing after login"
-    # Verify that the token values match (no modification during login)
-    assert csrf_cookie == csrf_header, "CSRF token was altered between cookie and header"
 
-    # Use the token in a subsequent mutating request (e.g., change password)
-    # Include the cookie automatically; add the header manually
-    client.headers.update({"X-CSRF-Token": csrf_header})
-    change_payload = {
-        "token": "oldpassword",
-        "new_password": "newsecurepwd"
-    }
-    # Assuming the test user exists and old password is correct; otherwise expect 401/403
-    resp2 = client.post("/api/auth/me/change-password", json=change_payload)
-    # The request should be processed (or fail gracefully) but the CSRF token must remain unchanged
-    assert resp2.headers.get("X-CSRF-Token") == csrf_header, "CSRF token changed on subsequent request"
+def test_csrf_cookie_is_issued_at_login(client, voter):
+    r = client.post(
+        "/api/auth/login",
+        data={"username": voter.matricule, "password": "student12345"},
+    )
+    assert r.status_code == 200, r.text
+    assert client.cookies.get(CSRF_COOKIE)
+
+
+def test_mutation_passes_with_current_csrf_cookie(auth_client):
+    """Le jeton courant autorise une mutation : on ne doit PAS être bloqué en 403."""
+    csrf = auth_client.cookies.get(CSRF_COOKIE)
+    r = auth_client.post(
+        "/api/auth/me/change-password",
+        json={"token": "student12345", "new_password": "nouveau-mdp-12"},
+        headers={CSRF_HEADER: csrf},
+    )
+    assert r.status_code != 403, r.text
+
+
+def test_refresh_reissues_a_usable_csrf_token(auth_client):
+    """Après rotation, le nouveau cookie CSRF doit être celui qui fait autorité."""
+    before = auth_client.cookies.get(CSRF_COOKIE)
+
+    r = auth_client.post("/api/auth/refresh")
+    assert r.status_code == 200, r.text
+
+    after = auth_client.cookies.get(CSRF_COOKIE)
+    assert after and after != before, "le refresh doit réémettre un jeton CSRF"
+
+    ok = auth_client.post(
+        "/api/auth/sessions/revoke-all", headers={CSRF_HEADER: after}
+    )
+    assert ok.status_code == 204, ok.text
+
+
+def test_stale_csrf_token_is_rejected_after_refresh(auth_client):
+    """Un client qui rejoue l'ancien jeton après rotation est refusé."""
+    stale = auth_client.cookies.get(CSRF_COOKIE)
+    assert auth_client.post("/api/auth/refresh").status_code == 200
+
+    r = auth_client.post(
+        "/api/auth/sessions/revoke-all", headers={CSRF_HEADER: stale}
+    )
+    assert r.status_code == 403, r.text

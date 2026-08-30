@@ -82,9 +82,22 @@ def test_register_name_match_is_accent_insensitive(db, pending_student):
 
 
 def test_register_invalid_matricule_format_rejected():
-    with pytest.raises(ValueError, match="invalide"):
+    """L'ancien format numérique (8 chiffres) n'est plus accepté."""
+    with pytest.raises(ValueError):
         RegisterRequest(
             matricule="20240398",  # ancien format
+            first_name="X",
+            last_name="Y",
+            password="my-secure-pass-12",
+            confirm_password="my-secure-pass-12",
+        )
+
+
+def test_register_wrong_shape_but_right_length_rejected():
+    """Bonne longueur, mauvais motif → c'est bien le validateur de format qui parle."""
+    with pytest.raises(ValueError, match="invalide"):
+        RegisterRequest(
+            matricule="22-ESATIC12345A",  # 5 chiffres + 1 lettre
             first_name="X",
             last_name="Y",
             password="my-secure-pass-12",
@@ -117,7 +130,12 @@ def test_register_passwords_must_match():
 # ─────────────────────────── garde-fous ───────────────────────────
 
 
-def test_register_unknown_matricule_rejected(db):
+def test_register_unknown_matricule_creates_inactive_account(db):
+    """Matricule absent de l'import : le compte est créé mais reste en salle d'attente.
+
+    C'est le garde-fou du flux d'auto-inscription — sans validation admin,
+    aucune connexion n'est possible.
+    """
     payload = RegisterRequest(
         matricule="99-ESATIC9999ZZ",
         first_name="Inconnu",
@@ -125,8 +143,13 @@ def test_register_unknown_matricule_rejected(db):
         password="my-secure-pass-12",
         confirm_password="my-secure-pass-12",
     )
-    with pytest.raises(NotFoundError, match="Matricule inconnu"):
-        auth_service.register_student(db, payload)
+    user = auth_service.register_student(db, payload)
+    assert user.is_active is False
+
+    with pytest.raises(ForbiddenError, match="désactivé"):
+        auth_service.authenticate(
+            db, matricule="99-ESATIC9999ZZ", password="my-secure-pass-12"
+        )
 
 
 def test_register_already_activated_rejected(db, pending_student):
@@ -158,7 +181,12 @@ def test_register_name_mismatch_rejected(db, pending_student):
         auth_service.register_student(db, payload)
 
 
-def test_register_inactive_account_rejected(db, pending_student):
+def test_claiming_a_disabled_account_does_not_grant_access(db, pending_student):
+    """Revendiquer un compte désactivé n'ouvre aucune session.
+
+    La revendication pose le mot de passe, mais `is_active` reste faux : la
+    seule porte d'entrée reste la réactivation par un admin.
+    """
     pending_student.is_active = False
     db.commit()
 
@@ -169,8 +197,13 @@ def test_register_inactive_account_rejected(db, pending_student):
         password="my-secure-pass-12",
         confirm_password="my-secure-pass-12",
     )
+    user = auth_service.register_student(db, payload)
+    assert user.is_active is False
+
     with pytest.raises(ForbiddenError, match="désactivé"):
-        auth_service.register_student(db, payload)
+        auth_service.authenticate(
+            db, matricule="22-ESATIC0273DN", password="my-secure-pass-12"
+        )
 
 
 # ─────────────────────────── authenticate guard ───────────────────────────
@@ -178,7 +211,7 @@ def test_register_inactive_account_rejected(db, pending_student):
 
 def test_authenticate_pending_account_rejected(db, pending_student):
     """Un compte pré-importé sans mdp ne peut pas se connecter — message indicatif."""
-    with pytest.raises(UnauthorizedError, match="Inscrivez-vous"):
+    with pytest.raises(UnauthorizedError, match="non activé"):
         auth_service.authenticate(db, matricule="22-ESATIC0273DN", password="anything")
 
 

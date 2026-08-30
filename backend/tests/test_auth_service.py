@@ -19,45 +19,53 @@ from app.services import auth_service
 # ─────────────────────────── register ───────────────────────────
 
 
-def test_register_creates_active_student(db, classroom):
+def test_register_new_matricule_lands_in_waiting_room(db, classroom):
+    """Une auto-inscription crée un compte INACTIF : l'admin doit le valider."""
     payload = RegisterRequest(
-        matricule="20240777",
+        matricule="22-ESATIC0777AB",
         first_name="Test",
         last_name="User",
         email="test@esatic.ci",
         password="secure-pass-12",
+        confirm_password="secure-pass-12",
         class_id=str(classroom.id),
     )
     user = auth_service.register_student(db, payload)
 
     assert user.id is not None
     assert user.role == UserRole.STUDENT
-    assert user.is_active is True
+    assert user.is_active is False, "un compte auto-inscrit ne doit pas être actif d'emblée"
+    assert user.is_activated is True, "le mot de passe est bien posé"
     assert user.class_id == classroom.id
     # Le mot de passe ne doit JAMAIS être stocké en clair
     assert user.password_hash != "secure-pass-12"
     assert verify_password("secure-pass-12", user.password_hash) is True
 
 
-def test_register_rejects_duplicate_matricule(db, voter):
+def test_register_rejects_already_activated_matricule(db, voter):
     payload = RegisterRequest(
-        matricule=voter.matricule,
+        matricule="22-ESATIC0398CD",
         first_name="Other",
         last_name="Person",
         email="other@esatic.ci",
         password="secure-pass-12",
+        confirm_password="secure-pass-12",
     )
-    with pytest.raises(ConflictError, match="Matricule"):
+    voter.matricule = "22-ESATIC0398CD"
+    db.commit()
+
+    with pytest.raises(ConflictError, match="déjà activé"):
         auth_service.register_student(db, payload)
 
 
 def test_register_rejects_duplicate_email(db, voter):
     payload = RegisterRequest(
-        matricule="20249999",
+        matricule="22-ESATIC9999EF",
         first_name="Other",
         last_name="Person",
         email=voter.email,
         password="secure-pass-12",
+        confirm_password="secure-pass-12",
     )
     with pytest.raises(ConflictError, match="Email"):
         auth_service.register_student(db, payload)
@@ -65,11 +73,12 @@ def test_register_rejects_duplicate_email(db, voter):
 
 def test_register_without_class_id_is_allowed(db):
     payload = RegisterRequest(
-        matricule="20248888",
+        matricule="22-ESATIC8888GH",
         first_name="Solo",
         last_name="Student",
         email="solo@esatic.ci",
         password="secure-pass-12",
+        confirm_password="secure-pass-12",
         class_id=None,
     )
     user = auth_service.register_student(db, payload)

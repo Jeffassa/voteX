@@ -26,6 +26,19 @@ from app.core.security import create_access_token, decode_token
 from app.models.student import UserRole
 
 
+
+def _auth(token: str | None, db):
+    """Appelle get_current_user comme le ferait FastAPI.
+
+    La dépendance lit d'abord le cookie `sv_access`, puis retombe sur le header
+    Bearer. On lui passe donc une Request sans cookie et le token en header.
+    """
+    from starlette.requests import Request
+
+    request = Request({"type": "http", "headers": [], "method": "GET", "path": "/"})
+    return get_current_user(request, db, token)
+
+
 # ─────────────────────────── création + claims ───────────────────────────
 
 
@@ -184,7 +197,7 @@ def test_get_current_user_accepts_valid_token(db, voter):
     token = create_access_token(
         subject=voter.id, role=voter.role.value, password_version=voter.password_version
     )
-    user = get_current_user(token=token, db=db)
+    user = _auth(token, db)
     assert user.id == voter.id
 
 
@@ -198,7 +211,7 @@ def test_get_current_user_rejects_token_after_password_change(db, voter):
     db.commit()
 
     with pytest.raises(HTTPException) as exc:
-        get_current_user(token=token, db=db)
+        _auth(token, db)
     assert exc.value.status_code == 401
     assert "Session expirée" in exc.value.detail
 
@@ -213,7 +226,7 @@ def test_get_current_user_rejects_token_after_role_change(db, voter):
     db.commit()
 
     with pytest.raises(HTTPException) as exc:
-        get_current_user(token=token, db=db)
+        _auth(token, db)
     assert exc.value.status_code == 401
     assert "Rôle modifié" in exc.value.detail
 
@@ -226,7 +239,7 @@ def test_get_current_user_rejects_inactive_user(db, voter):
     db.commit()
 
     with pytest.raises(HTTPException) as exc:
-        get_current_user(token=token, db=db)
+        _auth(token, db)
     assert exc.value.status_code == 401
 
 
@@ -234,7 +247,7 @@ def test_get_current_user_rejects_unknown_subject(db, voter):
     """Token bien formé mais sub pointe vers un user qui n'existe pas (compte supprimé)."""
     fake_token = create_access_function_orphan(uuid4())
     with pytest.raises(HTTPException) as exc:
-        get_current_user(token=fake_token, db=db)
+        _auth(fake_token, db)
     assert exc.value.status_code == 401
 
 
@@ -245,7 +258,7 @@ def create_access_function_orphan(uid):
 
 def test_get_current_user_rejects_garbage_token(db):
     with pytest.raises(HTTPException) as exc:
-        get_current_user(token="not-a-jwt", db=db)
+        _auth("not-a-jwt", db)
     assert exc.value.status_code == 401
 
 
@@ -256,7 +269,7 @@ def test_get_current_user_rejects_tampered_token(db, voter):
     )
     tampered = _tamper_payload(token, {"role": "super_admin"})
     with pytest.raises(HTTPException) as exc:
-        get_current_user(token=tampered, db=db)
+        _auth(tampered, db)
     assert exc.value.status_code == 401
 
 
@@ -273,7 +286,7 @@ def test_password_change_workflow_invalidates_old_tokens(db, voter):
     )
 
     # L'ancien token marche
-    user = get_current_user(token=token_before, db=db)
+    user = _auth(token_before, db)
     assert user.id == voter.id
 
     # Changement de mot de passe
@@ -283,14 +296,14 @@ def test_password_change_workflow_invalidates_old_tokens(db, voter):
 
     # L'ancien token ne marche plus — fenêtre de vol fermée
     with pytest.raises(HTTPException) as exc:
-        get_current_user(token=token_before, db=db)
+        _auth(token_before, db)
     assert exc.value.status_code == 401
 
     # Un nouveau token avec le nouveau pwd_v fonctionne
     token_after = create_access_token(
         subject=voter.id, role=voter.role.value, password_version=voter.password_version
     )
-    assert get_current_user(token=token_after, db=db).id == voter.id
+    assert _auth(token_after, db).id == voter.id
 
 
 # ─────────────────────────── validation du secret JWT ───────────────────────────

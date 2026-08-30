@@ -14,30 +14,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.cookies import ACCESS_COOKIE, CSRF_COOKIE, REFRESH_COOKIE
-from app.core.database import Base, get_db
+from app.core.database import get_db
 from app.main import app
 from app.models import RefreshToken
-
-
-@pytest.fixture()
-def client(db):
-    """TestClient câblé à la DB du test (override get_db)."""
-    Base.metadata.create_all(bind=db.get_bind())
-    app.dependency_overrides[get_db] = lambda: db
-    with TestClient(app) as c:
-        yield c
-    app.dependency_overrides.clear()
-
-
-@pytest.fixture()
-def auth_client(client, voter):
-    """Client déjà connecté avec voter."""
-    r = client.post(
-        "/api/auth/login",
-        data={"username": voter.matricule, "password": "student12345"},
-    )
-    assert r.status_code == 200
-    return client
 
 
 # ─────────────────────────── login → cookies ───────────────────────────

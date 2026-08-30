@@ -25,6 +25,7 @@ os.environ.setdefault(
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base
 from app.core.security import hash_password
@@ -33,11 +34,34 @@ from app.models.election import ElectionStatus
 from app.models.student import UserRole
 
 
+@pytest.fixture(autouse=True)
+def _disable_rate_limit():
+    """slowapi garde son compteur en mémoire pour tout le process.
+
+    Sans reset, le 11e test qui touche /login se prend un 429 alors que le
+    scénario testé n'a rien à voir avec le rate limiting. On désactive le
+    limiter globalement ; les tests qui veulent le vérifier le réactivent
+    explicitement via la fixture `rate_limited_client`.
+    """
+    from app.core.rate_limit import limiter
+
+    limiter.enabled = False
+    limiter.reset()
+    yield
+    limiter.enabled = True
+
+
 @pytest.fixture()
 def db():
+    # StaticPool : une seule connexion partagée pour toute la durée du test.
+    # Sans ça, SQLite ":memory:" donne une base VIDE à chaque nouvelle
+    # connexion (une par thread avec le pool par défaut) — d'où les
+    # "no such table" dès qu'un endpoint sync s'exécute dans le threadpool
+    # de Starlette après un commit qui a rendu la connexion au pool.
     engine = create_engine(
         "sqlite:///:memory:",
         connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
         future=True,
     )
     Base.metadata.create_all(engine)
@@ -48,6 +72,33 @@ def db():
     finally:
         session.close()
         engine.dispose()
+
+
+
+@pytest.fixture()
+def client(db):
+    """TestClient câblé sur la base du test (override de get_db)."""
+    from fastapi.testclient import TestClient
+
+    from app.core.database import get_db
+    from app.main import app
+
+    Base.metadata.create_all(bind=db.get_bind())
+    app.dependency_overrides[get_db] = lambda: db
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def auth_client(client, voter):
+    """Client déjà authentifié avec la fixture `voter`."""
+    r = client.post(
+        "/api/auth/login",
+        data={"username": voter.matricule, "password": "student12345"},
+    )
+    assert r.status_code == 200, r.text
+    return client
 
 
 @pytest.fixture()

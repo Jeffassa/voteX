@@ -55,6 +55,20 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 REVOKE CREATE ON SCHEMA public FROM smartvote_app;
 REVOKE TEMPORARY ON DATABASE smartvote_db FROM smartvote_app;
 
+-- 7bis. Tables dont le contenu ne doit JAMAIS être réécrit par l'application
+--
+--   Le code n'émet aucun UPDATE ni DELETE sur ces trois tables : un bulletin
+--   déposé est définitif, une participation est un fait, un événement d'audit
+--   est une trace. Tant que le rôle applicatif détient ces droits, la garantie
+--   ne tient qu'à la discipline du code — une injection SQL ou un bug suffirait
+--   à réécrire un scrutin ou à effacer les traces de l'attaque.
+--
+--   Révoquer ici transforme cette discipline en propriété de la base.
+--   Conséquence assumée : corriger une de ces tables exige le rôle de migration.
+REVOKE UPDATE, DELETE ON TABLE votes FROM smartvote_app;
+REVOKE UPDATE, DELETE ON TABLE voter_records FROM smartvote_app;
+REVOKE UPDATE, DELETE ON TABLE audit_events FROM smartvote_app;
+
 -- 8. Création d'un rôle de migration séparé (pour Alembic en CI/CD uniquement)
 DO $$
 BEGIN

@@ -9,6 +9,7 @@ from app.api.deps import require_admin
 from app.core.database import get_db
 from app.models import ClassRoom, Election, Student, Vote
 from app.models.election import ElectionStatus
+from app.models.audit import AuditAction
 from app.schemas.audit import AuditEventOut
 from app.schemas.student import StudentOut
 from app.services import audit_service
@@ -71,7 +72,7 @@ def activate_student(
     student_id: UUID,
     background: BackgroundTasks,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(require_admin)],
+    current: Annotated[Student, Depends(require_admin)],
 ):
     """Active le compte d'un étudiant et lui envoie un email de notification."""
     student = db.query(Student).filter(Student.id == student_id).first()
@@ -84,6 +85,17 @@ def activate_student(
     student.is_active = True
     db.commit()
     db.refresh(student)
+
+    # L'activation fait entrer un électeur dans le corps électoral : c'est une
+    # décision qui doit être attribuable à un administrateur nommé.
+    audit_service.record(
+        db,
+        action=AuditAction.STUDENT_UPDATED,
+        actor_id=current.id,
+        target_type="student",
+        target_id=student.id,
+        details=f"compte activé (matricule={student.matricule})",
+    )
 
     # Envoi de l'email asynchrone si une adresse email est renseignée
     if student.email:

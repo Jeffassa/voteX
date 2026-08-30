@@ -101,7 +101,9 @@ def create(db: Session, payload: ElectionCreate, *, actor_id: UUID | None = None
     return election
 
 
-def update(db: Session, election_id: UUID, payload: ElectionUpdate) -> Election:
+def update(
+    db: Session, election_id: UUID, payload: ElectionUpdate, *, actor_id: UUID | None = None
+) -> Election:
     election = get_or_404(db, election_id)
     if election.status != ElectionStatus.DRAFT:
         raise ValidationError(
@@ -119,10 +121,19 @@ def update(db: Session, election_id: UUID, payload: ElectionUpdate) -> Election:
 
     db.commit()
     db.refresh(election)
+
+    audit_service.record(
+        db,
+        action=AuditAction.ELECTION_UPDATED,
+        actor_id=actor_id,
+        target_type="election",
+        target_id=election.id,
+        details=f"champs={sorted(data)}",
+    )
     return election
 
 
-def delete(db: Session, election_id: UUID) -> None:
+def delete(db: Session, election_id: UUID, *, actor_id: UUID | None = None) -> None:
     election = get_or_404(db, election_id)
     if election.status not in (ElectionStatus.DRAFT, ElectionStatus.CLOSED):
         raise ConflictError(
@@ -135,15 +146,32 @@ def delete(db: Session, election_id: UUID) -> None:
         raise ConflictError(
             "Impossible de supprimer une élection avec des votes enregistrés"
         )
+    title = election.title
+    class_id = election.class_id
     db.delete(election)
     db.commit()
     # Invalide le cache des résultats et de la liste pour cette élection
     cache_delete(key_election_results(str(election_id)))
-    if election.class_id:
-        cache_delete(key_election_list_class(str(election.class_id)))
+    if class_id:
+        cache_delete(key_election_list_class(str(class_id)))
+
+    audit_service.record(
+        db,
+        action=AuditAction.ELECTION_DELETED,
+        actor_id=actor_id,
+        target_type="election",
+        target_id=election_id,
+        details=f"title={title!r}",
+    )
 
 
-def set_status(db: Session, election_id: UUID, status: ElectionStatus) -> Election:
+def set_status(
+    db: Session,
+    election_id: UUID,
+    status: ElectionStatus,
+    *,
+    actor_id: UUID | None = None,
+) -> Election:
     """Met à jour le statut + propage sur la blockchain (best-effort).
 
     Quand on passe à OPEN, on crée l'élection on-chain si pas encore fait,
@@ -188,6 +216,7 @@ def set_status(db: Session, election_id: UUID, status: ElectionStatus) -> Electi
         audit_service.record(
             db,
             action=audit_action,
+            actor_id=actor_id,
             target_type="election",
             target_id=election.id,
             details=f"{previous.value} → {status.value}",

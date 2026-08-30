@@ -26,7 +26,8 @@ from app.schemas.auth import (
     TokenResponse,
 )
 from app.schemas.student import MeResponse, StudentOut
-from app.services import auth_service, refresh_token_service
+from app.models.audit import AuditAction
+from app.services import audit_service, auth_service, refresh_token_service
 
 
 router = APIRouter()
@@ -84,7 +85,20 @@ def login(
     db: Annotated[Session, Depends(get_db)],
 ):
     """Authentification matricule/mdp. Émet access + refresh + csrf cookies."""
-    user = auth_service.authenticate(db, matricule=form.username, password=form.password)
+    client_ip = request.client.host if request.client else None
+    try:
+        user = auth_service.authenticate(db, matricule=form.username, password=form.password)
+    except Exception:
+        # Une tentative infructueuse est le signal le plus utile du journal :
+        # sans elle, une attaque par force brute ne laisse aucune trace.
+        audit_service.record(
+            db,
+            action=AuditAction.LOGIN_FAILED,
+            target_type="matricule",
+            target_id=form.username[:64],
+            ip_address=client_ip,
+        )
+        raise
 
     raw_refresh, _ = refresh_token_service.issue(
         db,
@@ -94,6 +108,15 @@ def login(
     )
 
     access_token = _set_session_cookies(response, user=user, refresh_token=raw_refresh)
+
+    audit_service.record(
+        db,
+        action=AuditAction.LOGIN,
+        actor_id=user.id,
+        target_type="student",
+        target_id=user.id,
+        ip_address=client_ip,
+    )
 
     # Body conservé pour compat clients non-SPA (CLI, Swagger).
     return TokenResponse(access_token=access_token, role=user.role.value, user_id=str(user.id))
@@ -137,6 +160,11 @@ def logout(
     if raw_refresh:
         refresh_token_service.revoke(db, raw_token=raw_refresh)
     clear_auth_cookies(response)
+    audit_service.record(
+        db,
+        action=AuditAction.LOGOUT,
+        ip_address=request.client.host if request.client else None,
+    )
 
 
 @router.get("/me", response_model=MeResponse)
@@ -172,7 +200,16 @@ def confirm_password_reset(
     payload: PasswordResetConfirm,
     db: Annotated[Session, Depends(get_db)],
 ):
-    auth_service.confirm_password_reset(db, token=payload.token, new_password=payload.new_password)
+    user = auth_service.confirm_password_reset(
+        db, token=payload.token, new_password=payload.new_password
+    )
+    audit_service.record(
+        db,
+        action=AuditAction.PASSWORD_RESET_CONFIRMED,
+        actor_id=user.id,
+        target_type="student",
+        target_id=user.id,
+    )
     return {"detail": "Mot de passe réinitialisé avec succès."}
 
 
@@ -187,6 +224,13 @@ def change_password(
         db, user=current, old_password=payload.token, new_password=payload.new_password
     )
     clear_auth_cookies(response)
+    audit_service.record(
+        db,
+        action=AuditAction.PASSWORD_CHANGED,
+        actor_id=current.id,
+        target_type="student",
+        target_id=current.id,
+    )
     return {"detail": "Mot de passe modifié. Reconnectez-vous."}
 
 

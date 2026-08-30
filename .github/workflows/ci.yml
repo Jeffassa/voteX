@@ -12,7 +12,10 @@ on:
     branches: [main]
 
 env:
-  # Variables minimales pour que le backend démarre sans DB réelle
+  # Variables minimales pour que le backend démarre sans DB réelle.
+  # ENVIRONMENT reste "development" : les gardes de démarrage refusent ce
+  # secret de CI dès qu'on passe en production.
+  ENVIRONMENT: development
   DATABASE_URL: sqlite:///./test.db
   JWT_SECRET: ci-testing-secret-long-enough-for-hs256-validation-purposes
 

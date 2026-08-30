@@ -3,11 +3,16 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 
+// `import.meta.dirname` plutôt que `__dirname` : Vite 8 avertit que le
+// chargeur natif de configuration, appelé à devenir le défaut, ne fournit pas
+// les variables CommonJS.
+const projectRoot = import.meta.dirname;
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "src"),
+      "@": path.resolve(projectRoot, "src"),
     },
   },
   test: {

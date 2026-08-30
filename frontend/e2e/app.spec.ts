@@ -4,7 +4,9 @@ test.describe("ESATIC SmartVote — Tests End-to-End", () => {
   test("La page d'accueil s'affiche correctement avec le titre et les boutons d'action", async ({ page }) => {
     await page.goto("/");
     await expect(page).toHaveTitle(/ESATIC SmartVote/);
-    await expect(page.locator("h1")).toContainText("Plateforme de Vote");
+    // Le titre affiché est « Le vote des chefs de classe, réinventé. » — un
+    // saut de ligne le coupe dans le DOM, d'où la comparaison sur un fragment.
+    await expect(page.locator("h1")).toContainText("chefs");
   });
 
   test("Navigation vers la page de connexion étudiant", async ({ page }) => {

@@ -50,3 +50,7 @@ npm-debug.log*
 # DB
 *.sqlite
 *.db
+
+# Playwright : rapports et artefacts d'exécution
+/frontend/playwright-report/
+/frontend/test-results/

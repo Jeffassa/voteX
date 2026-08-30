@@ -69,8 +69,9 @@ services:
     image: grafana/promtail:2.9.0
     container_name: votex-promtail
     volumes:
-      - /c/ProgramData/Docker/containers:/var/lib/docker/containers:ro
-      - /c/ProgramData/Docker/log:/var/log:ro
+      # Le socket, et non les fichiers de journaux : sur Docker Desktop ceux-ci
+      # vivent dans la VM du moteur et le montage hôte arrivait vide.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./monitoring/promtail/promtail.yml:/etc/promtail/config.yml:ro
     command: -config.file=/etc/promtail/config.yml
     networks:

@@ -216,6 +216,18 @@ def test_authenticate_pending_account_rejected(db, pending_student):
 
 
 def test_authenticate_after_register_succeeds(db, pending_student):
+    """Revendication d'un compte dont l'école connaissait déjà l'adresse.
+
+    Ce test décrivait auparavant une revendication appuyée sur le seul couple
+    matricule + nom, qui ouvrait aussitôt la session. Cette voie a été fermée :
+    ces deux informations figurent sur n'importe quelle liste d'appel. La
+    connexion immédiate reste réservée aux comptes dont l'identité a été
+    confirmée par un canal que l'école contrôle — voir
+    `tests/test_account_takeover.py` pour l'autre cas.
+    """
+    pending_student.identity_verified = True
+    db.commit()
+
     payload = RegisterRequest(
         matricule="22-ESATIC0273DN",
         first_name="Aïcha",

@@ -335,6 +335,12 @@ def _process_sheet(
             gender=gender,
             class_id=classroom.id,
             is_active=True,
+            # Une adresse venue du fichier de l'école est une adresse que
+            # l'établissement contrôle : le code d'activation qui y sera envoyé
+            # vaut alors preuve d'identité, et la revendication n'aura pas
+            # besoin d'un examen manuel. Sans adresse, l'étudiant devra passer
+            # par la salle d'attente — c'est le prix d'un fichier incomplet.
+            identity_verified=bool(email),
         )
         db.add(student)
 

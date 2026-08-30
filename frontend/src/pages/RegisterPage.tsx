@@ -24,6 +24,8 @@ export default function RegisterPage() {
   const [err, setErr] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [requestingCode, setRequestingCode] = useState(false);
+  // Revendication en attente d'une validation par l'administration.
+  const [pendingReview, setPendingReview] = useState(false);
   const navigate = useNavigate();
 
   // Calcul visuel de la force du mot de passe
@@ -101,7 +103,7 @@ export default function RegisterPage() {
     setSubmitting(true);
 
     try {
-      await api.post("/api/auth/register", {
+      const { data } = await api.post("/api/auth/register", {
         matricule: normalizeMatricule(matricule),
         first_name: firstName.trim(),
         last_name: lastName.trim(),
@@ -109,6 +111,17 @@ export default function RegisterPage() {
         password,
         confirm_password: confirmPassword,
       });
+
+      // Une revendication que l'école n'a pas pu rattacher à une adresse
+      // connue attend une validation humaine. Annoncer « compte activé »
+      // enverrait l'étudiant droit vers un refus de connexion qu'il ne
+      // comprendrait pas : mieux vaut lui dire tout de suite ce qui se passe.
+      if (data?.is_active === false) {
+        toast.success("Demande enregistrée.", { duration: 6000 });
+        setPendingReview(true);
+        trackEvent("account_pending_review");
+        return;
+      }
 
       toast.success("Compte activé. Connecte-toi maintenant.");
       trackEvent("account_activated");
@@ -141,6 +154,46 @@ export default function RegisterPage() {
   }
 
   const matriculeFormatOk = matricule === "" || isValidMatricule(normalizeMatricule(matricule));
+
+  // Écran d'attente : la demande est partie, elle ne se transformera pas en
+  // session tant qu'un administrateur n'aura pas vérifié l'identité. Le dire
+  // en toutes lettres, avec la marche à suivre, évite un aller-retour inutile
+  // vers la page de connexion — où l'étudiant ne récolterait qu'un refus.
+  if (pendingReview) {
+    return (
+      <div
+        className="scene"
+        style={{
+          minHeight: "100vh",
+          display: "grid",
+          placeItems: "center",
+          padding: 24,
+          background: "var(--surface)",
+        }}
+      >
+        <div className="card" style={{ maxWidth: 520, padding: 32, textAlign: "center" }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }} aria-hidden="true">
+            ⏳
+          </div>
+          <h1 style={{ fontSize: 22, marginBottom: 12, color: "var(--navy-900)" }}>
+            Demande enregistrée
+          </h1>
+          <p style={{ color: "var(--ink-700)", lineHeight: 1.6, marginBottom: 16 }}>
+            Ton matricule et ton nom figurent sur les listes de classe : ils ne
+            suffisent pas à prouver que ce compte est bien le tien. La scolarité
+            va vérifier ton identité avant d'ouvrir l'accès.
+          </p>
+          <p style={{ color: "var(--ink-700)", lineHeight: 1.6, marginBottom: 24 }}>
+            Présente-toi au secrétariat avec ta carte d'étudiant, ou écris depuis
+            ton adresse ESATIC. Tu recevras un message dès l'activation.
+          </p>
+          <button className="btn btn-primary" onClick={() => navigate("/login", { replace: true })}>
+            Retour à la connexion
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

@@ -16,7 +16,7 @@ import {
   useUpdateStudent,
   type AdminStudent,
 } from "@/lib/queries";
-import { usePendingStudents, useActivateStudent } from "@/lib/queries/admin";
+import { usePendingStudents, useActivateStudent, useRejectClaim } from "@/lib/queries/admin";
 import type { UserRole } from "@/types/api";
 
 export default function StudentsPage() {
@@ -40,6 +40,7 @@ export default function StudentsPage() {
   
   const { data: pendingStudents, isLoading: isLoadingPending } = usePendingStudents();
   const activateStudent = useActivateStudent();
+  const rejectClaim = useRejectClaim();
 
   const classMap = new Map(classes?.map((c) => [c.id, `${c.level} ${c.name}`]) || []);
   const isSuper = me?.role === "super_admin";
@@ -50,6 +51,29 @@ export default function StudentsPage() {
       toast.success("Étudiant activé avec succès ! Un e-mail lui a été envoyé.");
     } catch (e: any) {
       toast.error(e?.response?.data?.detail || "Erreur lors de l'activation");
+    }
+  };
+
+  /**
+   * Refuse la revendication et rend le compte revendicable.
+   *
+   * La confirmation n'est pas une politesse : refuser à tort renvoie
+   * l'étudiant légitime à la case départ. Le nom rappelé dans la question
+   * évite le clic sur la mauvaise ligne.
+   */
+  const handleReject = async (id: string, label: string) => {
+    if (!window.confirm(
+      `Refuser la demande de ${label} ?
+
+` +
+      "Le compte redeviendra revendicable : personne ne le détiendra, et le " +
+      "titulaire pourra recommencer son inscription."
+    )) return;
+    try {
+      await rejectClaim.mutateAsync(id);
+      toast.success("Demande refusée. Le compte est de nouveau revendicable.");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || "Erreur lors du refus");
     }
   };
 
@@ -201,12 +225,23 @@ export default function StudentsPage() {
             <div style={{ fontSize: 13, color: "var(--ink-700)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.email}</div>
             <div>
               <div className="badge" style={{ background: "var(--orange-100)", color: "var(--orange-800)", padding: "2px 6px", borderRadius: "4px", fontSize: 11 }}>
-                En attente
+                {/* Le libellé dit à l'administrateur ce qu'il doit vérifier :
+                    une identité non confirmée se contrôle sur pièce, carte
+                    d'étudiant à l'appui, pas au jugé. */}
+                {s.identity_verified ? "En attente" : "Identité à vérifier"}
               </div>
             </div>
             <div style={{ fontSize: 12, color: "var(--ink-500)" }}>{s.class_id ? classMap.get(s.class_id) || "—" : "—"}</div>
-            <div style={{ textAlign: "right" }}>
-              <button className="btn btn-primary btn-sm" onClick={() => handleActivate(s.id)} disabled={activateStudent.isPending}>
+            <div className="row items-center gap-2" style={{ justifyContent: "flex-end" }}>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => handleReject(s.id, `${s.first_name} ${s.last_name}`)}
+                disabled={rejectClaim.isPending || activateStudent.isPending}
+                title="Refuser et libérer le compte"
+              >
+                <UserX size={14} /> Refuser
+              </button>
+              <button className="btn btn-primary btn-sm" onClick={() => handleActivate(s.id)} disabled={activateStudent.isPending || rejectClaim.isPending}>
                 <UserCheck size={14} /> Autoriser
               </button>
             </div>

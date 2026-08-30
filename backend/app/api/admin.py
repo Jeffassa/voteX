@@ -106,3 +106,67 @@ def activate_student(
         )
 
     return {"detail": f"Étudiant {student.matricule} activé avec succès."}
+
+
+@router.patch("/reject-claim/{student_id}")
+def reject_claim(
+    student_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[Student, Depends(require_admin)],
+):
+    """Rejette une revendication et **libère** le compte.
+
+    Sans cette action, le durcissement de l'inscription se contenterait de
+    déplacer le problème : le premier venu ne peut plus se connecter avec le
+    compte d'un camarade, mais sa tentative laisse le compte marqué « déjà
+    activé » — l'étudiant légitime, lui, ne peut plus le revendiquer. Un vol
+    devient un blocage, ce qui n'est pas un progrès en période de campagne.
+
+    Rejeter remet donc le compte dans l'état où l'import l'avait laissé :
+    revendicable, sans mot de passe, sans adresse choisie par le demandeur.
+    L'étudiant légitime peut recommencer — et repassera par cette même salle
+    d'attente, où l'administrateur tranchera sur pièce (carte d'étudiant).
+
+    Le même traitement s'applique à une auto-inscription sur un matricule
+    inconnu : la ligne n'est pas supprimée — on ne détruit pas une donnée dont
+    on n'est pas certain qu'elle soit illégitime — mais elle redevient inerte,
+    sans mot de passe et sans identité confirmée.
+    """
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Étudiant introuvable")
+
+    if student.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ce compte n'est pas en attente : il n'y a rien à rejeter.",
+        )
+
+    matricule = student.matricule
+    student.password_hash = None
+    student.activation_code = None
+    # Toute session ou lien de réinitialisation émis pour cette revendication
+    # cesse d'être valable.
+    student.password_version += 1
+    # L'adresse présente ne peut venir que du demandeur : un compte dont
+    # l'école connaissait l'adresse n'atterrit pas en salle d'attente.
+    if not student.identity_verified:
+        student.email = None
+    student.failed_login_count = 0
+    student.locked_until = None
+    student.is_active = True
+
+    db.commit()
+
+    # Refuser une revendication est une décision qui engage : elle doit être
+    # attribuable, au même titre que l'activation.
+    audit_service.record(
+        db,
+        action=AuditAction.STUDENT_UPDATED,
+        actor_id=current.id,
+        target_type="student",
+        target_id=student.id,
+        details=f"revendication rejetée, compte libéré (matricule={matricule})",
+    )
+
+    return {"detail": f"Revendication rejetée. Le compte {matricule} est de nouveau revendicable."}

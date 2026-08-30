@@ -77,8 +77,21 @@ def register_student(db: Session, payload: RegisterRequest) -> Student:
             if existing_email:
                 raise ConflictError("Email déjà utilisé par un autre compte")
             user.email = payload.email
-            
-        # Si le compte importé était inactif (comportement par défaut des imports), il reste inactif (salle d'attente)
+
+        # Le compte ne devient utilisable QUE si l'identité a été confirmée par
+        # un canal que l'école contrôle : adresse issue du fichier d'import, ou
+        # code d'activation envoyé à une adresse déjà connue.
+        #
+        # Sinon, le seul « secret » présenté est le couple matricule + nom, qui
+        # figure sur toute liste d'appel. La revendication part donc en salle
+        # d'attente, où un administrateur tranche. C'est le compromis assumé :
+        # une étape manuelle plutôt qu'un compte pris par le premier venu.
+        if not user.identity_verified:
+            user.is_active = False
+            logger.info(
+                "register: revendication non vérifiée pour matricule=%s — mise en attente",
+                user.matricule,
+            )
         
     else:
         # Auto-inscription d'un nouvel étudiant (salle d'attente)
@@ -144,12 +157,22 @@ async def send_activation_code(db: Session, payload: ActivationCodeRequest, back
     # que l'étudiant fournit.
     destination = user.email or payload.email
     if not user.email:
+        # Aucune adresse connue de l'école : le demandeur choisit la boîte qui
+        # recevra le code. Celui-ci ne prouve donc RIEN sur son identité — il
+        # prouve seulement qu'il sait lire ses propres messages. La revendication
+        # devra être validée par un administrateur.
         user.email = payload.email
+        user.identity_verified = False
     elif user.email.lower() != payload.email.lower():
         logger.warning(
             "activation: email divergent pour matricule=%s — envoi vers l'adresse en base",
             user.matricule,
         )
+        # Le code part vers l'adresse que l'école détenait : le recevoir prouve
+        # l'accès à cette boîte, donc l'identité.
+        user.identity_verified = True
+    else:
+        user.identity_verified = True
 
     db.commit()
 
@@ -161,6 +184,34 @@ async def send_activation_code(db: Session, payload: ActivationCodeRequest, back
         student_name=f"{user.first_name} {user.last_name}",
         activation_code=activation_code,
     )
+
+
+# Verrouillage progressif : quelques essais malheureux sont normaux, une
+# vingtaine ne l'est pas. Les paliers coûtent cher à un attaquant sans gêner un
+# étudiant qui cherche son mot de passe.
+LOCKOUT_STEPS = ((5, 1), (8, 5), (12, 30))  # (échecs cumulés, minutes de blocage)
+
+
+def _lockout_minutes(failures: int) -> int | None:
+    """Durée de blocage correspondant au nombre d'échecs, ou None."""
+    palier = None
+    for seuil, minutes in LOCKOUT_STEPS:
+        if failures >= seuil:
+            palier = minutes
+    return palier
+
+
+def _register_failure(db: Session, user: Student) -> None:
+    """Compte un échec et verrouille le compte si le palier est atteint."""
+    user.failed_login_count = (user.failed_login_count or 0) + 1
+    minutes = _lockout_minutes(user.failed_login_count)
+    if minutes:
+        user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=minutes)
+        logger.warning(
+            "auth: compte %s verrouillé %s min après %s échecs",
+            user.matricule, minutes, user.failed_login_count,
+        )
+    db.commit()
 
 
 def authenticate(db: Session, matricule: str, password: str) -> Student:
@@ -180,6 +231,20 @@ def authenticate(db: Session, matricule: str, password: str) -> Student:
     if not user:
         raise UnauthorizedError("Matricule ou mot de passe incorrect")
 
+    # Le verrou porte sur le COMPTE visé, pas sur l'adresse IP : dans une salle
+    # informatique, toute une promotion sort par la même IP publique. Une limite
+    # par IP y punirait les voisins de l'attaquant plutôt que l'attaquant.
+    locked_until = user.locked_until
+    if locked_until is not None:
+        if locked_until.tzinfo is None:  # SQLite rend un datetime naïf
+            locked_until = locked_until.replace(tzinfo=timezone.utc)
+        if locked_until > datetime.now(timezone.utc):
+            reste = int((locked_until - datetime.now(timezone.utc)).total_seconds() // 60) + 1
+            raise UnauthorizedError(
+                f"Trop de tentatives. Réessayez dans {reste} minute(s), "
+                "ou utilisez « mot de passe oublié »."
+            )
+
     if not user.is_active:
         raise ForbiddenError("Compte désactivé. Contacte l'administration.")
 
@@ -189,7 +254,15 @@ def authenticate(db: Session, matricule: str, password: str) -> Student:
         )
 
     if not verify_password(password, user.password_hash):
+        _register_failure(db, user)
         raise UnauthorizedError("Matricule ou mot de passe incorrect")
+
+    # Connexion réussie : le compteur repart de zéro, sinon des échecs étalés
+    # sur des semaines finiraient par verrouiller un utilisateur légitime.
+    if user.failed_login_count or user.locked_until:
+        user.failed_login_count = 0
+        user.locked_until = None
+        db.commit()
 
     return user
 
@@ -279,6 +352,12 @@ def confirm_password_reset(db: Session, *, token: str, new_password: str) -> Stu
 
     user.password_hash = hash_password(new_password)
     user.password_version += 1
+    # Le message affiché à un compte verrouillé propose « mot de passe oublié »
+    # comme issue : encore faut-il que cette porte s'ouvre. Qui a suivi le lien
+    # reçu dans sa boîte a prouvé davantage qu'un mot de passe, et la série
+    # d'essais que le verrou punissait est terminée.
+    user.failed_login_count = 0
+    user.locked_until = None
     db.commit()
     db.refresh(user)
 
@@ -299,6 +378,10 @@ def change_password(
 
     user.password_hash = hash_password(new_password)
     user.password_version += 1
+    # Même raison qu'au-dessus : l'ancien mot de passe a été fourni, il n'y a
+    # plus de tâtonnement à sanctionner.
+    user.failed_login_count = 0
+    user.locked_until = None
     db.commit()
     db.refresh(user)
 

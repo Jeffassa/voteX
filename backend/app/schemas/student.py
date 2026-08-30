@@ -31,6 +31,10 @@ class StudentOut(BaseModel):
     photo_url: str | None = None
     class_id: UUID | None = None
     is_active: bool
+    # Permet à l'écran d'administration de distinguer, dans la salle d'attente,
+    # une revendication appuyée sur un canal fiable d'une revendication qui ne
+    # présente que matricule et nom — deux informations publiques.
+    identity_verified: bool = False
     created_at: datetime
 
 

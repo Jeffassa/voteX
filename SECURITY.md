@@ -48,6 +48,21 @@ sécurité, pas une évolution.
    chaîne.
 5. **Aucun secret de production dans le dépôt.** Le démarrage refuse les secrets
    de développement publiés ici (`app/core/startup_checks.py`).
+6. **Matricule et nom ne sont pas un secret.** Ils figurent sur toute liste
+   d'appel : les présenter ne suffit donc pas à prendre possession d'un compte
+   importé. Une revendication n'est immédiate que si l'identité a été confirmée
+   par un canal que l'école contrôle — adresse issue du fichier d'import, ou
+   code envoyé à une adresse déjà connue d'elle. Sinon, elle attend une décision
+   humaine. Un refus **libère** le compte au lieu de le geler, pour que la
+   tentative d'un tiers ne prive pas le titulaire de son scrutin. Vérifié par
+   `tests/test_account_takeover.py`.
+7. **Les essais répétés sont sanctionnés par compte, pas par adresse IP.** Sur
+   un campus, une promotion entière sort par la même IP : n'y limiter que le
+   débit punirait tout le monde sans gêner un attaquant patient. Le compte visé
+   se verrouille par paliers (5 échecs → 1 min, 8 → 5 min, 12 → 30 min) ; la
+   limite par IP demeure, mais comme protection de l'infrastructure. Une
+   réinitialisation de mot de passe lève le verrou — le message qui la propose
+   doit dire vrai.
 
 ## Configuration attendue en production
 

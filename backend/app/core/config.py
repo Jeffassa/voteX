@@ -79,8 +79,17 @@ class Settings(BaseSettings):
     EXTRA_CORS_ORIGINS: str = ""
 
     # Rate limiting
-    RATE_LIMIT_VOTE: str = "5/minute"
-    RATE_LIMIT_LOGIN: str = "10/minute"
+    #
+    # Ces limites sont par ADRESSE IP. Sur un campus, une promotion entière sort
+    # par la même IP publique : une limite serrée y bloquerait les étudiants les
+    # uns après les autres un jour de scrutin, sans gêner un attaquant opérant
+    # depuis chez lui. Elles servent donc à protéger l'infrastructure d'un
+    # afflux anormal, pas à protéger les comptes.
+    #
+    # Contre les essais de mots de passe, la défense est le verrouillage
+    # progressif du COMPTE visé — voir auth_service.LOCKOUT_STEPS.
+    RATE_LIMIT_VOTE: str = "30/minute"
+    RATE_LIMIT_LOGIN: str = "60/minute"
 
     # Monitoring — si vide, Sentry n'est pas initialisé.
     SENTRY_DSN: str = ""

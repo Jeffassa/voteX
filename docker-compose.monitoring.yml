@@ -26,7 +26,10 @@ services:
     image: grafana/grafana:10.1.0
     container_name: votex-grafana
     volumes:
-      - ./monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini
+      # Pas de grafana.ini monté : le fichier n'existait pas, et Docker créait
+      # un DOSSIER vide à sa place — Grafana démarrait alors sur une
+      # configuration illisible. Les réglages passent par les variables
+      # d'environnement ci-dessous, qui suffisent ici.
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
       - grafana_data:/var/lib/grafana

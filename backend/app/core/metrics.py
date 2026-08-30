@@ -17,6 +17,14 @@ import hmac
 import logging
 
 from fastapi import FastAPI, Request, Response, status
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    CollectorRegistry,
+    generate_latest,
+)
+from prometheus_client.gc_collector import GCCollector
+from prometheus_client.platform_collector import PlatformCollector
+from prometheus_client.process_collector import ProcessCollector
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.core.config import settings
@@ -56,15 +64,28 @@ def init_metrics(app: FastAPI) -> None:
             METRICS_PATH,
         )
 
+    # Registre dédié plutôt que le registre global : celui-ci refuse deux
+    # collecteurs de même nom, donc instrumenter une seconde application dans
+    # le même processus (une suite de tests, un worker qui recrée l'app) levait
+    # DuplicateTimeseries au démarrage.
+    registry = CollectorRegistry()
+    for collector in (ProcessCollector, PlatformCollector, GCCollector):
+        collector(registry=registry)
+
     instrumentator = Instrumentator(
-        should_group_status_codes=True,
         # Les chemins portent des UUID (élections, candidats, étudiants) :
-        # sans regroupement, chaque identifiant créerait sa propre série et
-        # ferait exploser la cardinalité côté Prometheus.
-        should_instrument_requests_inprogress=True,
+        # sans regroupement par route, chaque identifiant créerait sa propre
+        # série et ferait exploser la cardinalité côté Prometheus.
+        should_group_status_codes=True,
+        # `requests_inprogress` est créé sur le registre GLOBAL quel que soit le
+        # registre passé ici : instrumenter une deuxième application dans le
+        # même processus levait alors DuplicateTimeseries. La métrique est un
+        # confort — le tableau de bord n'en dépend pas — on s'en passe.
+        should_instrument_requests_inprogress=False,
         excluded_handlers=[METRICS_PATH, "/healthz", "/readyz", "/health"],
-        inprogress_name="smartvote_requests_inprogress",
+        registry=registry,
     )
+    # Le registre est porté par le constructeur ; instrument() ne le reçoit pas.
     instrumentator.instrument(app, metric_namespace="smartvote")
 
     @app.get(METRICS_PATH, include_in_schema=False)
@@ -76,8 +97,6 @@ def init_metrics(app: FastAPI) -> None:
                 request.client.host if request.client else "?",
             )
             return _unauthorized()
-        from prometheus_client import CONTENT_TYPE_LATEST, REGISTRY, generate_latest
-
-        return Response(generate_latest(REGISTRY), media_type=CONTENT_TYPE_LATEST)
+        return Response(generate_latest(registry), media_type=CONTENT_TYPE_LATEST)
 
     logger.info("Métriques Prometheus exposées sur %s.", METRICS_PATH)

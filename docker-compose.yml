@@ -81,7 +81,7 @@ services:
         echo '> Seed des données de démo...' &&
         python -m scripts.seed &&
         echo '> Démarrage de l API FastAPI...' &&
-        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-exclude '*.pyc' --reload-exclude '__pycache__/*' 
       "
 
   frontend:

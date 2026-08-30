@@ -1,7 +1,9 @@
+import logging
 import secrets
 from datetime import datetime, timezone
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
@@ -11,6 +13,9 @@ from app.models.audit import AuditAction
 from app.schemas.vote import VoteVerification
 from app.services import audit_service
 from app.services.blockchain import compute_vote_hash, record_vote_on_chain
+
+
+logger = logging.getLogger(__name__)
 
 
 def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UUID | None = None) -> Vote:
@@ -54,25 +59,36 @@ def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UU
     chain = record_vote_on_chain(vote_hash, election.blockchain_id)
 
     # Transaction atomique : VoterRecord + Vote créés ensemble ou rien du tout
-    with db.begin_nested():
-        # 1. Enregistre la participation (découplée de l'opinion exprimée)
-        voter_record = VoterRecord(
-            election_id=election_id,
-            student_id=user.id,
-        )
-        db.add(voter_record)
+    try:
+        with db.begin_nested():
+            # 1. Enregistre la participation (découplée de l'opinion exprimée)
+            voter_record = VoterRecord(
+                election_id=election_id,
+                student_id=user.id,
+            )
+            db.add(voter_record)
 
-        # 2. Enregistre le bulletin anonyme
-        vote = Vote(
-            election_id=election_id,
-            candidate_id=candidate_id,
-            vote_hash=vote_hash,
-            tx_hash=chain.get("tx_hash"),
-            block_number=chain.get("block_number"),
-        )
-        db.add(vote)
+            # 2. Enregistre le bulletin anonyme
+            vote = Vote(
+                election_id=election_id,
+                candidate_id=candidate_id,
+                vote_hash=vote_hash,
+                tx_hash=chain.get("tx_hash"),
+                block_number=chain.get("block_number"),
+            )
+            db.add(vote)
 
-    db.commit()
+        db.commit()
+    except IntegrityError as exc:
+        # Deux requêtes simultanées du même électeur : le contrôle `existing`
+        # plus haut peut passer deux fois, seule la contrainte unique arbitre.
+        # Sans ce filet, le second vote sortait en 500 au lieu d'un 409 clair.
+        db.rollback()
+        logger.warning(
+            "vote refusé pour user=%s election=%s : %s", user.id, election_id, exc.orig
+        )
+        raise ConflictError("Vous avez déjà voté pour cette élection")
+
     db.refresh(vote)
 
     # Audit (best-effort, ne révèle PAS le candidat — on ne trace que le fait du vote)

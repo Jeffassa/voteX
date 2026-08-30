@@ -14,7 +14,7 @@ from app.core.cache import (
 )
 from app.core.config import settings
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
-from app.models import Candidate, Election, Student, Vote
+from app.models import Candidate, Election, Student, Vote, VoterRecord
 from app.models.election import ElectionStatus
 from app.models.student import UserRole
 from app.models.audit import AuditAction
@@ -54,6 +54,30 @@ def get_active_for_user(db: Session, user: Student) -> Election | None:
 def get_or_404(db: Session, election_id: UUID) -> Election:
     election = db.query(Election).filter(Election.id == election_id).first()
     if not election:
+        raise NotFoundError("Élection introuvable")
+    return election
+
+
+def can_access(user: Student, election: Election) -> bool:
+    """Un étudiant ne voit que les élections de SA classe.
+
+    Les admins voient tout. Sans cette barrière, n'importe quel compte
+    authentifié pouvait lire le détail et les résultats en direct de
+    n'importe quelle classe en devinant/collectant un UUID d'élection.
+    """
+    if user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        return True
+    return user.class_id is not None and user.class_id == election.class_id
+
+
+def get_for_user(db: Session, election_id: UUID, user: Student) -> Election:
+    """Comme get_or_404, mais renvoie « introuvable » si l'accès est refusé.
+
+    On ne distingue pas 403 et 404 volontairement : confirmer l'existence
+    d'une élection d'une autre classe est déjà une fuite.
+    """
+    election = get_or_404(db, election_id)
+    if not can_access(user, election):
         raise NotFoundError("Élection introuvable")
     return election
 
@@ -270,10 +294,12 @@ def list_non_voters(db: Session, election_id: UUID) -> list[Student]:
     """Retourne les étudiants de la classe de l'élection qui n'ont pas encore voté."""
     election = get_or_404(db, election_id)
 
-    # Sous-requête : IDs des étudiants qui ont déjà voté dans cette élection
+    # Sous-requête : IDs des étudiants qui ont déjà voté dans cette élection.
+    # La participation vit dans VoterRecord — Vote est anonyme et ne porte
+    # AUCUN lien vers l'électeur (c'est tout l'intérêt du découplage).
     voted_subq = (
-        db.query(Vote.student_id)
-        .filter(Vote.election_id == election_id)
+        db.query(VoterRecord.student_id)
+        .filter(VoterRecord.election_id == election_id)
         .subquery()
     )
 

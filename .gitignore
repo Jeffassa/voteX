@@ -20,6 +20,10 @@ build/
 .cache/
 *.local
 
+# Cache incrémental de TypeScript — régénéré à chaque compilation, sans valeur
+# partagée, et il salissait le diff après chaque build.
+*.tsbuildinfo
+
 # Hardhat
 contracts/cache/
 contracts/artifacts/

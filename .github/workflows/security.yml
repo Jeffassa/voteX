@@ -51,17 +51,15 @@ jobs:
       - name: Installer pip-audit
         run: python -m pip install --upgrade pip pip-audit
 
-      # Les identifiants ignorés ci-dessous n'ont PAS de correctif atteignable au
-      # 30/08/2026, et sont donc listés plutôt que subis :
-      #   - starlette : la version installée est déjà la plus haute que FastAPI
-      #     autorise ; monter plus haut casserait la résolution.
-      #   - ecdsa : canal auxiliaire sur les signatures ECDSA. Ce projet signe
-      #     ses jetons en HS256 (HMAC) et n'emprunte jamais ce chemin.
-      # À revoir à chaque montée de FastAPI : un ID qui n'existe plus dans le
-      # rapport est simplement sans effet ici.
+      # Un seul avis est ignoré, et il l'est pour une raison précise :
+      # PYSEC-2026-1325 vise un canal auxiliaire sur les signatures ECDSA de la
+      # bibliothèque pure-Python `ecdsa` (tirée par python-jose). Ce projet signe
+      # ses jetons en HS256 — un HMAC — et n'emprunte donc jamais ce chemin de
+      # code. Aucun correctif n'est publié à ce jour.
+      # Toute autre vulnérabilité fait échouer le job : c'est le but.
       - name: Auditer requirements.txt
         run: |
-          pip-audit --requirement backend/requirements.txt --strict --progress-spinner off             --ignore-vuln PYSEC-2026-161             --ignore-vuln PYSEC-2026-248             --ignore-vuln PYSEC-2026-249             --ignore-vuln PYSEC-2026-2280             --ignore-vuln PYSEC-2026-2281             --ignore-vuln PYSEC-2026-1941             --ignore-vuln PYSEC-2026-1943             --ignore-vuln PYSEC-2026-1325
+          pip-audit --requirement backend/requirements.txt --strict --progress-spinner off             --ignore-vuln PYSEC-2026-1325
 
   # ─────────────────── Dépendances Node ───────────────────
   node-deps:

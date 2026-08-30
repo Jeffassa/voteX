@@ -11,6 +11,9 @@ bcrypt==4.0.1
 python-multipart==0.0.32
 email-validator==2.3.0
 web3==7.5.0
+# Épinglé explicitement : web3 et resend l'acceptent large, et la résolution
+# retombait sur 2.31.0, qui traîne trois avis de sécurité.
+requests==2.33.0
 python-dotenv==1.2.2
 httpx==0.28.1
 fastapi-mail==1.6.8
@@ -18,5 +21,8 @@ slowapi==0.1.9
 openpyxl==3.1.5
 redis[hiredis]==5.2.1
 sentry-sdk[fastapi]==2.19.2
-resend==0.5.1
+# 0.5.1 épinglait requests==2.31.0 — trois avis de sécurité — et rendait toute
+# mise à jour impossible. Les 2.x gardent la même forme d'appel (resend.api_key
+# puis resend.Emails.send({...})).
+resend==2.42.0
 prometheus-fastapi-instrumentator==8.1.0

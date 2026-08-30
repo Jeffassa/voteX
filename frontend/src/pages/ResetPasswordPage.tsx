@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Lock } from "lucide-react";
 
+import { useReveal } from "@/hooks/useReveal";
 import { Brand } from "@/components/Brand";
 import { useConfirmPasswordReset } from "@/lib/queries";
 
@@ -37,6 +38,8 @@ function readResetToken(): string {
 }
 
 export default function ResetPasswordPage() {
+  // Carte unique et centrée : une entrée sobre suffit.
+  const pageRef = useReveal<HTMLDivElement>({ rise: 14 });
   // Lu une seule fois : l'URL est nettoyée dans la foulée.
   const [token] = useState(readResetToken);
   const navigate = useNavigate();
@@ -88,6 +91,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div
+      ref={pageRef}
       style={{
         minHeight: "100vh", display: "grid", placeItems: "center",
         padding: 24, background: "var(--bg)",

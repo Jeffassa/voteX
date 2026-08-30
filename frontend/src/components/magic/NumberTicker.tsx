@@ -1,5 +1,6 @@
 import { useEffect, useRef, type CSSProperties } from "react";
-import { useInView, useMotionValue, useSpring } from "framer-motion";
+
+import { countTo, prefersReducedMotion } from "@/lib/motion";
 
 interface NumberTickerProps {
   value: number;
@@ -10,6 +11,13 @@ interface NumberTickerProps {
   style?: CSSProperties;
 }
 
+/**
+ * Chiffre qui grimpe jusqu'à sa valeur, une fois entré dans le champ de vision.
+ *
+ * Le comptage démarre à la visibilité, pas au montage : lancer l'animation d'un
+ * chiffre situé trois écrans plus bas la ferait passer inaperçue, et le lecteur
+ * n'en verrait que le résultat.
+ */
 export function NumberTicker({
   value,
   decimals = 0,
@@ -19,31 +27,35 @@ export function NumberTicker({
   style,
 }: NumberTickerProps) {
   const ref = useRef<HTMLSpanElement>(null);
-  const motionValue = useMotionValue(0);
-  const springValue = useSpring(motionValue, { damping: 60, stiffness: 100 });
-  const isInView = useInView(ref, { once: true, margin: "0px" });
 
   useEffect(() => {
-    if (isInView) {
-      const t = setTimeout(() => motionValue.set(value), delay * 1000);
-      return () => clearTimeout(t);
+    const el = ref.current;
+    if (!el) return;
+
+    if (prefersReducedMotion()) {
+      return countTo(el, value, { decimals, suffix });
     }
-  }, [motionValue, isInView, delay, value]);
 
-  useEffect(() => {
-    return springValue.on("change", (latest) => {
-      if (ref.current) {
-        ref.current.textContent =
-          new Intl.NumberFormat("fr-FR", {
-            minimumFractionDigits: decimals,
-            maximumFractionDigits: decimals,
-          }).format(Number(latest.toFixed(decimals))) + suffix;
-      }
-    });
-  }, [springValue, decimals, suffix]);
+    let stop: (() => void) | undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        observer.disconnect();
+        stop = countTo(el, value, { decimals, suffix, delay });
+      },
+      { threshold: 0.2 },
+    );
+    observer.observe(el);
+
+    return () => {
+      observer.disconnect();
+      stop?.();
+    };
+  }, [value, decimals, suffix, delay]);
 
   return (
     <span className={className} style={style} ref={ref}>
+      {/* Valeur de départ visible avant l'animation : jamais de case vide. */}
       0{suffix}
     </span>
   );

@@ -2,6 +2,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowRight, Box, Download, ExternalLink } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { useReveal } from "@/hooks/useReveal";
 import { AppHeader } from "@/components/AppHeader";
 import { HashChip } from "@/components/HashChip";
 import { useElection, useMe } from "@/lib/queries";
@@ -11,6 +12,8 @@ import { downloadVoteReceiptPdf } from "@/lib/pdfReceipt";
 import type { Candidate, VoteReceipt } from "@/types/api";
 
 export default function ReceiptPage() {
+  // Le reçu est une confirmation : on le laisse s'installer posément.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", delay: 0.1 });
   const { id } = useParams<{ id: string }>();
   const { state } = useLocation() as {
     state?: { receipt?: VoteReceipt; candidate?: Candidate };
@@ -44,6 +47,7 @@ export default function ReceiptPage() {
     <div>
       <AppHeader />
       <div
+        ref={pageRef}
         className="container container-narrow scene"
         style={{ padding: "64px 32px", textAlign: "center" }}
       >

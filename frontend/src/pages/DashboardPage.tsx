@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, CheckCircle2, Hash, History, Shield } from "lucide-react";
 
+import { useReveal } from "@/hooks/useReveal";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar, getInitials } from "@/components/Avatar";
 import { Countdown } from "@/components/Countdown";
@@ -12,6 +13,9 @@ import { LORDICONS, LORDICON_COLORS } from "@/lib/lordicons";
 import { useElections, useMe, useMyVotes } from "@/lib/queries";
 
 export default function DashboardPage() {
+  // En-tête, carte de scrutin, puis les deux colonnes du bas : l'ordre
+  // d'apparition suit l'ordre de lecture.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *" });
   const { data: me, isLoading: meLoading } = useMe();
   const { data: elections } = useElections();
   const { data: myVotes } = useMyVotes();
@@ -34,7 +38,7 @@ export default function DashboardPage() {
   return (
     <div>
       <AppHeader />
-      <div className="container" style={{ padding: "40px 32px 80px" }}>
+      <div ref={pageRef} className="container" style={{ padding: "40px 32px 80px" }}>
         <div className="row items-center gap-4" style={{ marginBottom: 36 }}>
           <Avatar
             initials={getInitials(me?.first_name, me?.last_name)}

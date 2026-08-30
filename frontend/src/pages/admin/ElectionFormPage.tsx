@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useReveal } from "@/hooks/useReveal";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Save } from "lucide-react";
 import toast from "react-hot-toast";
@@ -40,6 +41,9 @@ interface Props {
 }
 
 export default function ElectionFormPage({ mode }: Props) {
+  // Écran d'administration : les blocs se posent de haut en bas, sans
+  // retarder la lecture d'un tableau qu'on vient consulter.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", rise: 12 });
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { data: classes } = useClasses();
@@ -106,7 +110,7 @@ export default function ElectionFormPage({ mode }: Props) {
   const pending = createElection.isPending || updateElection.isPending;
 
   return (
-    <div style={{ padding: "40px 40px 80px", maxWidth: 720 }}>
+    <div ref={pageRef} style={{ padding: "40px 40px 80px", maxWidth: 720 }}>
       <button
         className="btn btn-ghost btn-sm"
         onClick={() => navigate(mode === "edit" && id ? `/admin/elections/${id}` : "/admin/elections")}

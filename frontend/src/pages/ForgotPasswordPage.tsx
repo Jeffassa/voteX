@@ -2,10 +2,13 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Mail } from "lucide-react";
 
+import { useReveal } from "@/hooks/useReveal";
 import { Brand } from "@/components/Brand";
 import { useRequestPasswordReset } from "@/lib/queries";
 
 export default function ForgotPasswordPage() {
+  // Carte unique et centrée : une entrée sobre suffit.
+  const pageRef = useReveal<HTMLDivElement>({ rise: 14 });
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const request = useRequestPasswordReset();
@@ -23,6 +26,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div
+      ref={pageRef}
       style={{
         minHeight: "100vh", display: "grid", placeItems: "center",
         padding: 24, background: "var(--bg)",

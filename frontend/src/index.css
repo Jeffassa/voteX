@@ -270,9 +270,6 @@ a { color: inherit; text-decoration: none; }
   0%, 100% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
 }
-@keyframes sv-border-beam {
-  to { offset-distance: 100%; }
-}
 @keyframes sv-meteor {
   0% { transform: rotate(215deg) translateX(0); opacity: 1; }
   70% { opacity: 1; }
@@ -285,13 +282,45 @@ a { color: inherit; text-decoration: none; }
   background-size: 200% 200%;
   animation: sv-gradient-x 6s ease infinite;
 }
-.sv-animate-border-beam {
+/* Liseré lumineux d'une carte — voir components/magic/BorderBeam.tsx.
+   Le dégradé est peint dans la bordure et tourne : `background-clip` et
+   `rotate` suffisent, sans masque composite ni chemin de mouvement. */
+.sv-beam {
   position: absolute;
-  aspect-ratio: 1;
-  width: var(--beam-size, 200px);
-  offset-path: rect(0 auto auto 0 round calc(var(--beam-size, 200px) * 1));
-  animation: sv-border-beam var(--beam-duration, 15s) infinite linear;
+  inset: 0;
+  border-radius: var(--beam-radius, 20px);
+  padding: var(--beam-width, 1.5px);
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--beam-angle, 0deg),
+    transparent 0deg,
+    var(--beam-from, #ff7a00) 40deg,
+    var(--beam-to, #ffc988) 70deg,
+    transparent 110deg
+  );
+  /* Seule la bordure reste peinte : le centre est découpé. */
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: sv-beam-spin var(--beam-duration, 12s) linear infinite;
   animation-delay: var(--beam-delay, 0s);
+}
+
+@property --beam-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes sv-beam-spin {
+  to { --beam-angle: 360deg; }
+}
+
+/* Sans @property, l'angle n'est pas interpolable : la bordure reste fixe,
+   ce qui est un repli acceptable — jamais un artefact. */
+@media (prefers-reduced-motion: reduce) {
+  .sv-beam { animation: none; }
 }
 
 /* Layout utility shorthands used in the design */
@@ -415,3 +444,56 @@ a { color: inherit; text-decoration: none; }
     align-items: flex-start;
   }
 }
+
+
+/* ── Décor 3D du hero (page d'accueil) ─────────────────────────────────────
+   Posé derrière le contenu et inerte au pointeur : le décor ne doit jamais
+   intercepter un clic destiné à un bouton. L'opacité le maintient en retrait
+   du texte, qui reste l'élément à lire. */
+.hero-scene {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.42;
+  z-index: 0;
+  /* Le décor s'efface du côté du texte. Sans ce masque, le maillage traverse
+     la zone de lecture : le titre reste lisible mais le paragraphe se noie
+     dedans, ce qu'aucun gain esthétique ne justifie sur un service public. */
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 38%, black 72%);
+  mask-image: linear-gradient(to right, transparent 0%, transparent 38%, black 72%);
+}
+
+/* Le contenu passe explicitement au-dessus : sans z-index, texte et décor
+   partagent le même plan et l'ordre de peinture devient une question de
+   chance. */
+.hero-copy {
+  position: relative;
+  z-index: 1;
+}
+
+/* Sur petit écran, le décor cède la place : la hauteur utile est précieuse et
+   la charge GPU d'un téléphone d'entrée de gamme ne l'est pas moins. */
+@media (max-width: 900px) {
+  .hero-scene { display: none; }
+}
+
+/* Un utilisateur qui a demandé moins de mouvement garde le décor — la scène
+   se rend alors sur une image fixe — mais rien ne bouge. Voir motion.ts. */
+
+/* Élévation au survol — traitée par le navigateur plutôt que par JavaScript.
+   `transform` et `box-shadow` sont composés sur le GPU : aucune mise en page
+   n'est recalculée, et rien ne tourne quand le pointeur est ailleurs. */
+.card-lift {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.card-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-lift { transition: none; }
+  .card-lift:hover { transform: none; }
+}
+
+/* Le hero se révèle en cascade : ses enfants directs sont les cibles. */
+.hero-copy > * { will-change: auto; }

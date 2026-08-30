@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileSpreadsheet, MoreVertical, Pencil, Plus, Search, Shield, ShieldOff, Trash2, UserCheck, UserX } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { useReveal } from "@/hooks/useReveal";
 import { Avatar, getInitials } from "@/components/Avatar";
 import { ImportStudentsModal } from "@/components/ImportStudentsModal";
 import { Modal } from "@/components/Modal";
@@ -19,6 +20,9 @@ import { usePendingStudents, useActivateStudent } from "@/lib/queries/admin";
 import type { UserRole } from "@/types/api";
 
 export default function StudentsPage() {
+  // Écran d'administration : les blocs se posent de haut en bas, sans
+  // retarder la lecture d'un tableau qu'on vient consulter.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", rise: 12 });
   const [activeTab, setActiveTab] = useState<"all" | "pending">("all");
   const [classFilter, setClassFilter] = useState<string>("");
   const [search, setSearch] = useState("");
@@ -50,7 +54,7 @@ export default function StudentsPage() {
   };
 
   return (
-    <div style={{ padding: "40px 40px 80px" }} onClick={() => setOpenMenuId(null)}>
+    <div ref={pageRef} style={{ padding: "40px 40px 80px" }} onClick={() => setOpenMenuId(null)}>
       <div className="row items-center justify-between" style={{ marginBottom: 28 }}>
         <div>
           <div className="h-eyebrow">Administration</div>

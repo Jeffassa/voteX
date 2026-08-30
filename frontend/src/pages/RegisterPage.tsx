@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { AlertCircle, ArrowLeft, ArrowRight, Eye, EyeOff, Lock, User, UserPlus, Mail, KeyRound, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { useReveal } from "@/hooks/useReveal";
 import { Brand } from "@/components/Brand";
 import { api } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
@@ -10,6 +11,8 @@ import { extractErrorMessage, extractStatus } from "@/lib/errors";
 import { isValidMatricule, MATRICULE_FORMAT_HUMAN, normalizeMatricule } from "@/lib/matricule";
 
 export default function RegisterPage() {
+  // Deux panneaux révélés l'un après l'autre, comme sur la page de connexion.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", rise: 12 });
   const [matricule, setMatricule] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -141,6 +144,7 @@ export default function RegisterPage() {
 
   return (
     <div
+      ref={pageRef}
       className="scene sv-auth-split"
       style={{
         minHeight: "100vh",

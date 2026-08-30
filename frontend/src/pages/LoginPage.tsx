@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, QrCode, User, X, AlertCircle,
 import toast from "react-hot-toast";
 
 import { Brand } from "@/components/Brand";
+import { useReveal } from "@/hooks/useReveal";
 import { Modal } from "@/components/Modal";
 import { trackEvent } from "@/lib/analytics";
 import { extractErrorMessage, extractStatus } from "@/lib/errors";
@@ -14,6 +15,10 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const prefilledMatricule =
     (location.state as { prefilledMatricule?: string } | null)?.prefilledMatricule || "";
+
+  // Révèle les deux panneaux l'un après l'autre : le regard suit la page de
+  // gauche à droite, jusqu'au champ de saisie qui reçoit le focus.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", rise: 12 });
 
   const [matricule, setMatricule] = useState(prefilledMatricule);
   const [password, setPassword] = useState("");
@@ -77,6 +82,7 @@ export default function LoginPage() {
 
   return (
     <div
+      ref={pageRef}
       className="scene sv-auth-split"
       style={{
         minHeight: "100vh",

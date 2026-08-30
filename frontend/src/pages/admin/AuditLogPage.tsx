@@ -1,6 +1,7 @@
 import { Activity, Filter } from "lucide-react";
 import { useState } from "react";
 
+import { useReveal } from "@/hooks/useReveal";
 import { useAuditLog, useStudents } from "@/lib/queries";
 
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
@@ -26,6 +27,9 @@ const ACTION_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function AuditLogPage() {
+  // Écran d'administration : les blocs se posent de haut en bas, sans
+  // retarder la lecture d'un tableau qu'on vient consulter.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", rise: 12 });
   const [filter, setFilter] = useState("");
   const { data: events, isLoading } = useAuditLog(200);
   const { data: students } = useStudents();
@@ -45,7 +49,7 @@ export default function AuditLogPage() {
   });
 
   return (
-    <div style={{ padding: "40px 40px 80px" }}>
+    <div ref={pageRef} style={{ padding: "40px 40px 80px" }}>
       <div className="row items-center justify-between" style={{ marginBottom: 28 }}>
         <div>
           <div className="h-eyebrow">Administration</div>

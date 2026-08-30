@@ -3,18 +3,21 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Lock, Save, User } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { useReveal } from "@/hooks/useReveal";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar, getInitials } from "@/components/Avatar";
 import { useChangePassword, useMe, useUpdateMyProfile } from "@/lib/queries";
 
 export default function ProfilePage() {
+  // Fiche de profil : cartes révélées de haut en bas.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *" });
   const { data: me } = useMe();
   const navigate = useNavigate();
 
   return (
     <div>
       <AppHeader />
-      <div className="container container-narrow scene" style={{ padding: "40px 32px 80px" }}>
+      <div ref={pageRef} className="container container-narrow scene" style={{ padding: "40px 32px 80px" }}>
         <button
           className="btn btn-ghost btn-sm"
           onClick={() => navigate(-1)}

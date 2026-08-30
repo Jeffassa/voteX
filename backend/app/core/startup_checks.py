@@ -87,6 +87,31 @@ def _check_database_connection() -> None:
         _fail(f"Connexion à la base de données impossible : {exc}")
 
 
+def _check_cors_origins() -> None:
+    """Une origine « * » vide la protection CORS de tout son sens.
+
+    Starlette, avec allow_credentials=True, renvoie alors l'origine appelante :
+    n'importe quel site peut faire des requêtes authentifiées au nom d'un
+    électeur connecté. Le CSRF double-submit reste, mais on ne veut pas que la
+    seule barrière tienne à lui.
+    """
+    origins = settings.cors_origins
+    if not _is_production():
+        return
+    for origin in origins:
+        if origin.strip() in {"*", "null"}:
+            _fail(
+                f"SÉCURITÉ : origine CORS {origin!r} interdite en production. "
+                "Listez explicitement les domaines du frontend."
+            )
+        if origin.startswith("http://") and "localhost" not in origin:
+            logger.warning(
+                "CORS : origine en clair %s autorisée en production — les cookies "
+                "Secure ne seront pas envoyés dessus.",
+                origin,
+            )
+
+
 def _check_resend_in_production() -> None:
     """En production, l'envoi d'emails doit être configuré."""
     if _is_production() and not settings.RESEND_API_KEY:
@@ -112,6 +137,7 @@ def run_startup_checks() -> None:
     logger.info("Démarrage des vérifications de sécurité...")
     _check_jwt_secret()
     _check_cookie_security()
+    _check_cors_origins()
     _check_database_not_test()
     _check_database_connection()
     _check_resend_in_production()

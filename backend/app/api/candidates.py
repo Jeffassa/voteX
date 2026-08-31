@@ -18,8 +18,9 @@ router = APIRouter()
 def list_candidates(
     election_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(get_current_user)],
+    user: Annotated[Student, Depends(get_current_user)],
 ):
+    election_service.get_for_user(db, election_id, user)  # garde d'accès
     return election_service.list_candidates(db, election_id)
 
 
@@ -36,15 +37,15 @@ def get_candidate(
 def create_candidate(
     payload: CandidateCreate,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(require_admin)],
+    current: Annotated[Student, Depends(require_admin)],
 ):
-    return candidate_service.create(db, payload)
+    return candidate_service.create(db, payload, actor_id=current.id)
 
 
 @router.delete("/{candidate_id}", status_code=204)
 def delete_candidate(
     candidate_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(require_admin)],
+    current: Annotated[Student, Depends(require_admin)],
 ):
-    candidate_service.delete(db, candidate_id)
+    candidate_service.delete(db, candidate_id, actor_id=current.id)

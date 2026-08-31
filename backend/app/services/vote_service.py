@@ -1,7 +1,9 @@
+import logging
 import secrets
 from datetime import datetime, timezone
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
@@ -13,6 +15,9 @@ from app.services import audit_service
 from app.services.blockchain import compute_vote_hash, record_vote_on_chain
 
 
+logger = logging.getLogger(__name__)
+
+
 def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UUID | None = None) -> Vote:
     election = db.query(Election).filter(Election.id == election_id).first()
     if not election:
@@ -21,8 +26,12 @@ def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UU
     if election.status != ElectionStatus.OPEN:
         raise ValidationError("L'élection n'est pas ouverte au vote")
 
+    starts_at = election.starts_at.replace(tzinfo=timezone.utc) if election.starts_at and election.starts_at.tzinfo is None else election.starts_at
+    ends_at = election.ends_at.replace(tzinfo=timezone.utc) if election.ends_at and election.ends_at.tzinfo is None else election.ends_at
     now = datetime.now(timezone.utc)
-    if now < election.starts_at or now > election.ends_at:
+    if starts_at and now < starts_at:
+        raise ValidationError("L'élection n'est pas dans sa période active")
+    if ends_at and now > ends_at:
         raise ValidationError("L'élection n'est pas dans sa période active")
 
     if user.class_id is None or user.class_id != election.class_id:
@@ -49,23 +58,37 @@ def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UU
     vote_hash = compute_vote_hash(str(user.id), str(election_id), str(candidate_id), nonce)
     chain = record_vote_on_chain(vote_hash, election.blockchain_id)
 
-    # 1. Enregistre la participation (découplée de l'opinion exprimée)
-    voter_record = VoterRecord(
-        election_id=election_id,
-        student_id=user.id,
-    )
-    db.add(voter_record)
+    # Transaction atomique : VoterRecord + Vote créés ensemble ou rien du tout
+    try:
+        with db.begin_nested():
+            # 1. Enregistre la participation (découplée de l'opinion exprimée)
+            voter_record = VoterRecord(
+                election_id=election_id,
+                student_id=user.id,
+            )
+            db.add(voter_record)
 
-    # 2. Enregistre le bulletin anonyme
-    vote = Vote(
-        election_id=election_id,
-        candidate_id=candidate_id,
-        vote_hash=vote_hash,
-        tx_hash=chain.get("tx_hash"),
-        block_number=chain.get("block_number"),
-    )
-    db.add(vote)
-    db.commit()
+            # 2. Enregistre le bulletin anonyme
+            vote = Vote(
+                election_id=election_id,
+                candidate_id=candidate_id,
+                vote_hash=vote_hash,
+                tx_hash=chain.get("tx_hash"),
+                block_number=chain.get("block_number"),
+            )
+            db.add(vote)
+
+        db.commit()
+    except IntegrityError as exc:
+        # Deux requêtes simultanées du même électeur : le contrôle `existing`
+        # plus haut peut passer deux fois, seule la contrainte unique arbitre.
+        # Sans ce filet, le second vote sortait en 500 au lieu d'un 409 clair.
+        db.rollback()
+        logger.warning(
+            "vote refusé pour user=%s election=%s : %s", user.id, election_id, exc.orig
+        )
+        raise ConflictError("Vous avez déjà voté pour cette élection")
+
     db.refresh(vote)
 
     # Audit (best-effort, ne révèle PAS le candidat — on ne trace que le fait du vote)

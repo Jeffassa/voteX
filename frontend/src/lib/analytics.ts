@@ -10,6 +10,8 @@ export type EventName =
   | "activation_code_failed"
   | "account_activated"
   | "account_activation_failed"
+  // Revendication mise en attente d'une vérification d'identité.
+  | "account_pending_review"
   | "login_success"
   | "login_failed"
   | "vote_submitted"

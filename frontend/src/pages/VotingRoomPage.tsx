@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AlertCircle, ArrowLeft, Check, ChevronRight, Lock } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { useReveal } from "@/hooks/useReveal";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar } from "@/components/Avatar";
 import { CandidateProfileModal } from "@/components/CandidateProfileModal";
@@ -20,6 +21,9 @@ const RULES = [
 type ColoredCandidate = Candidate & { color: string };
 
 export default function VotingRoomPage() {
+  // Salle de vote : entrée volontairement discrète et rapide. Le geste à
+  // accomplir prime, l'animation ne doit ni retarder ni distraire.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", rise: 10 });
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -47,6 +51,7 @@ export default function VotingRoomPage() {
     <div>
       <AppHeader />
       <div
+        ref={pageRef}
         className="container container-narrow scene"
         style={{ padding: "32px 32px 120px" }}
       >

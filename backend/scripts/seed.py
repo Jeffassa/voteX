@@ -175,6 +175,22 @@ def main():
             gender=Gender.MALE,
         )
 
+        # Étudiant d'une AUTRE classe — indispensable pour éprouver le
+        # cloisonnement : sans lui, aucun compte utilisable n'existe hors de la
+        # promotion de l'élection, et la règle « on ne voit que le scrutin de sa
+        # classe » ne peut être vérifiée que dans le sens positif.
+        upsert_student(
+            db,
+            matricule="24-ESATIC0755KD",
+            first_name="Fatoumata",
+            last_name="Koné",
+            email="fatoumata.kone@esatic.ci",
+            password="student12345",
+            role=UserRole.STUDENT,
+            class_id=classes["Cybersécurité"].id,
+            gender=Gender.FEMALE,
+        )
+
         candidate_students = [
             upsert_student(
                 db,
@@ -222,23 +238,49 @@ def main():
                 )
 
         db.commit()
+        # Les mots de passe ne sont PAS imprimés : la sortie d'un conteneur finit
+        # dans `docker logs`, puis dans une collecte centralisée. Des identifiants
+        # y restent lisibles longtemps après la démonstration. Ils sont
+        # documentés dans README.md, à côté du reste.
         print("Seed OK :")
-        print(f"  super-admin : matricule=SUPERADMIN       password=admin12345")
-        print(
-            f"  voter démo  : matricule=24-ESATIC0398SB  password=student12345  "
-            f"({voter.first_name} {voter.last_name})"
-        )
-        print(f"  candidats   :")
+        print("  super-admin : matricule=SUPERADMIN")
+        print(f"  voter démo  : matricule=24-ESATIC0398SB  ({voter.first_name} {voter.last_name})")
+        print("  autre classe : matricule=24-ESATIC0755KD  (Fatoumata Koné, L3 Cybersécurité)")
+        print("  candidats   :")
         for c in CANDIDATES_GL:
-            print(
-                f"    - matricule={c['matricule']}  password=student12345  "
-                f"({c['first_name']} {c['last_name']})"
-            )
+            print(f"    - matricule={c['matricule']}  ({c['first_name']} {c['last_name']})")
         print(f"  élection    : {election.title} ({election.status.value})")
         print(f"  classes     : {', '.join(c.level + ' ' + c.name for c in classes.values())}")
+        print("  mots de passe de démonstration : voir README.md")
     finally:
         db.close()
 
 
+def _guard_environment() -> None:
+    """Le seed crée un super-admin au mot de passe public (admin12345).
+
+    Le laisser s'exécuter en production installerait une porte d'entrée connue
+    de quiconque a lu ce dépôt. On exige donc un opt-in explicite.
+    """
+    import os
+    import sys
+
+    from app.core.config import settings
+
+    if not settings.is_production:
+        return
+    if os.environ.get("SEED_ALLOW_PRODUCTION") == "yes-i-know":
+        print("ATTENTION : seed de démo exécuté en production (opt-in explicite).")
+        return
+    print(
+        "Refus : ENVIRONMENT=production. Ce seed installe des comptes de "
+        "démonstration avec des mots de passe publics. "
+        "Pour créer un vrai administrateur, utilisez : python -m scripts.create_admin",
+        file=sys.stderr,
+    )
+    sys.exit(1)
+
+
 if __name__ == "__main__":
+    _guard_environment()
     main()

@@ -1,8 +1,10 @@
+import { Suspense, lazy, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Shield, Check, ChevronRight, ExternalLink } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
 
 import { Brand } from "@/components/Brand";
+import { Reveal, RevealGroup } from "@/components/Reveal";
+import { grow } from "@/lib/motion";
 import {
   AnimatedGradientText,
   DotPattern,
@@ -14,21 +16,16 @@ import {
 import { Lordicon } from "@/components/icons/Lordicon";
 import { LORDICONS, LORDICON_COLORS } from "@/lib/lordicons";
 
+/**
+ * Décor 3D du hero, chargé à la demande.
+ *
+ * `lazy` n'est pas un détail de confort : Three.js pèse une centaine de
+ * kilo-octets compressés. La salle de vote et l'espace d'administration ne
+ * doivent pas les télécharger pour un décor qu'ils n'affichent jamais.
+ */
+const BallotScene = lazy(() => import("@/components/three/BallotScene"));
+
 /* ─── Animation helpers ─── */
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 36 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] },
-  },
-};
-
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.11 } },
-};
 
 function FadeSection({
   children,
@@ -41,25 +38,12 @@ function FadeSection({
   style?: React.CSSProperties;
   delay?: number;
 }) {
-  const reduced = useReducedMotion();
+  // Conservé pour ne pas réécrire les quinze points d'appel de la page ;
+  // c'est désormais une simple façade au-dessus de Reveal.
   return (
-    <motion.div
-      initial={reduced ? false : "hidden"}
-      whileInView="visible"
-      viewport={{ once: true, margin: "-80px" }}
-      variants={{
-        hidden: { opacity: 0, y: 36 },
-        visible: {
-          opacity: 1,
-          y: 0,
-          transition: { duration: 0.65, delay, ease: [0.22, 1, 0.36, 1] },
-        },
-      }}
-      className={className}
-      style={style}
-    >
+    <Reveal onScroll delay={delay} rise={28} className={className} style={style}>
       {children}
-    </motion.div>
+    </Reveal>
   );
 }
 
@@ -125,6 +109,29 @@ const TRUST_TAGS = [
   "Open source",
 ];
 
+/**
+ * Barre de résultat qui s'étire jusqu'à son pourcentage.
+ *
+ * La largeur finale est posée d'emblée quand les animations sont réduites : un
+ * score partiellement dessiné serait une information fausse.
+ */
+function VoteBar({ percent, delay, highlight }: { percent: number; delay: number; highlight: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => grow(ref.current, percent, delay), [percent, delay]);
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        height: "100%",
+        width: 0,
+        background: highlight ? "var(--orange-500)" : "var(--navy-400, #4a77b0)",
+        borderRadius: 99,
+      }}
+    />
+  );
+}
+
 /* ─── Mock voting card (hero visual) ─── */
 
 function MockVotingCard() {
@@ -146,7 +153,7 @@ function MockVotingCard() {
         overflow: "hidden",
       }}
     >
-      <BorderBeam size={280} duration={10} />
+      <BorderBeam size={110} duration={10} radius={20} />
 
       {/* header */}
       <div className="row items-center justify-between" style={{ marginBottom: 20 }}>
@@ -167,11 +174,10 @@ function MockVotingCard() {
       {/* candidates */}
       <div className="col gap-3">
         {candidates.map((c, i) => (
-          <motion.div
+          <Reveal
             key={c.name}
-            initial={{ opacity: 0, x: 16 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4 + i * 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            slide={16}
+            delay={0.12 + i * 0.07}
             style={{
               display: "flex",
               alignItems: "center",
@@ -201,16 +207,7 @@ function MockVotingCard() {
               </div>
               <div style={{ marginTop: 5 }}>
                 <div style={{ height: 4, borderRadius: 99, background: "var(--border)", overflow: "hidden" }}>
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${c.votes}%` }}
-                    transition={{ delay: 0.7 + i * 0.1, duration: 0.8, ease: "easeOut" }}
-                    style={{
-                      height: "100%",
-                      background: i === 0 ? "var(--orange-500)" : "var(--navy-400, #4a77b0)",
-                      borderRadius: 99,
-                    }}
-                  />
+                  <VoteBar percent={c.votes} delay={0.3 + i * 0.06} highlight={i === 0} />
                 </div>
               </div>
             </div>
@@ -222,7 +219,7 @@ function MockVotingCard() {
                 <Check size={11} color="white" strokeWidth={3} />
               </div>
             )}
-          </motion.div>
+          </Reveal>
         ))}
       </div>
 
@@ -309,6 +306,14 @@ export default function LandingPage() {
           <DotPattern fill="rgba(10,37,64,0.07)" />
         </div>
 
+        {/* Maillage de bulletins reliés — évoque le registre distribué dont
+            parle la page. Purement décoratif : aucun contenu n'en dépend. */}
+        <Suspense fallback={null}>
+          <BallotScene
+            className="hero-scene"
+          />
+        </Suspense>
+
         <div
           className="container"
           style={{
@@ -322,12 +327,12 @@ export default function LandingPage() {
           }}
         >
           {/* Left: text */}
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={stagger}
+          <RevealGroup
+            selector=":scope > *"
+            onScroll={false}
+            className="hero-copy"
           >
-            <motion.div variants={fadeUp} className="row items-center gap-2" style={{ marginBottom: 28 }}>
+            <div className="row items-center gap-2" style={{ marginBottom: 28 }}>
               <span className="badge badge-orange">
                 <Lordicon src={LORDICONS.activity} size={13} colors={LORDICON_COLORS.orangeNavy} />
                 Élection 2026 — ouverte
@@ -335,10 +340,9 @@ export default function LandingPage() {
               <span className="muted" style={{ fontSize: 13 }}>
                 · Promotion L3 Génie Logiciel · ESATIC
               </span>
-            </motion.div>
+            </div>
 
-            <motion.h1
-              variants={fadeUp}
+            <h1
               style={{
                 fontSize: "clamp(44px, 6.5vw, 88px)",
                 fontWeight: 600,
@@ -357,10 +361,9 @@ export default function LandingPage() {
               >
                 réinventé.
               </AnimatedGradientText>
-            </motion.h1>
+            </h1>
 
-            <motion.p
-              variants={fadeUp}
+            <p
               style={{
                 fontSize: 18,
                 color: "var(--ink-700)",
@@ -372,9 +375,9 @@ export default function LandingPage() {
             >
               Une plateforme de vote en ligne pour l'École Supérieure Africaine des TIC.
               Sécurisée par blockchain, vérifiable par chaque étudiant, conçue à Abidjan.
-            </motion.p>
+            </p>
 
-            <motion.div variants={fadeUp} className="row gap-3" style={{ marginTop: 40 }}>
+            <div className="row gap-3" style={{ marginTop: 40 }}>
               <ShimmerButton onClick={() => navigate("/login")}>
                 Voter maintenant <ArrowRight size={17} />
               </ShimmerButton>
@@ -384,10 +387,9 @@ export default function LandingPage() {
               >
                 <Shield size={17} /> Vérifier un vote
               </button>
-            </motion.div>
+            </div>
 
-            <motion.div
-              variants={fadeUp}
+            <div
               className="row items-center gap-3"
               style={{ marginTop: 40 }}
             >
@@ -401,18 +403,13 @@ export default function LandingPage() {
                   {tag}
                 </div>
               ))}
-            </motion.div>
-          </motion.div>
+            </div>
+          </RevealGroup>
 
           {/* Right: mock card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            style={{ flexShrink: 0 }}
-          >
+          <Reveal delay={0.2} rise={20} style={{ flexShrink: 0 }}>
             <MockVotingCard />
-          </motion.div>
+          </Reveal>
         </div>
       </section>
 
@@ -453,11 +450,8 @@ export default function LandingPage() {
             </p>
           </FadeSection>
 
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-60px" }}
-            variants={stagger}
+          <RevealGroup
+            selector=":scope > .card"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(3, 1fr)",
@@ -465,19 +459,17 @@ export default function LandingPage() {
             }}
           >
             {PILLARS.map((p, i) => (
-              <motion.div
+              <div
                 key={p.title}
-                variants={fadeUp}
-                className="card"
+                className="card card-lift"
                 style={{
                   padding: 28,
                   position: "relative",
                   overflow: "hidden",
                   transition: "box-shadow 200ms ease, transform 200ms ease",
                 }}
-                whileHover={{ y: -4, boxShadow: "var(--shadow-lg)" }}
               >
-                {i === 0 && <BorderBeam size={200} duration={14} delay={0} />}
+                {i === 0 && <BorderBeam size={90} duration={14} delay={0} radius={16} />}
                 <div
                   style={{
                     width: 52, height: 52, borderRadius: 14,
@@ -494,9 +486,9 @@ export default function LandingPage() {
                 <div style={{ fontSize: 14, color: "var(--ink-500)", lineHeight: 1.6 }}>
                   {p.desc}
                 </div>
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
+          </RevealGroup>
         </div>
       </section>
 
@@ -520,11 +512,8 @@ export default function LandingPage() {
             </p>
           </FadeSection>
 
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-60px" }}
-            variants={stagger}
+          <RevealGroup
+            selector=".step"
             style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32, position: "relative" }}
           >
             {/* connector line */}
@@ -539,9 +528,9 @@ export default function LandingPage() {
             />
 
             {STEPS.map((s, i) => (
-              <motion.div
+              <div
                 key={s.n}
-                variants={fadeUp}
+                className="step"
                 style={{ position: "relative", zIndex: 1 }}
               >
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
@@ -580,9 +569,9 @@ export default function LandingPage() {
                     {s.desc}
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
-          </motion.div>
+          </RevealGroup>
         </div>
       </section>
 

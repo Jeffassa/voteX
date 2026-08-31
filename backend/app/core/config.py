@@ -28,6 +28,11 @@ class Settings(BaseSettings):
         return v
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
+    # Environnement de déploiement : "development" | "staging" | "production".
+    # Sert de source de vérité pour les gardes de démarrage et pour Sentry —
+    # avant, la production était devinée à partir de COOKIE_SECURE.
+    ENVIRONMENT: str = "development"
+
     DATABASE_URL: str
 
     # Supabase — optionnel pour le backend (utilisé par le frontend pour Realtime).
@@ -74,8 +79,30 @@ class Settings(BaseSettings):
     EXTRA_CORS_ORIGINS: str = ""
 
     # Rate limiting
-    RATE_LIMIT_VOTE: str = "5/minute"
-    RATE_LIMIT_LOGIN: str = "10/minute"
+    #
+    # Ces limites sont par ADRESSE IP. Sur un campus, une promotion entière sort
+    # par la même IP publique : une limite serrée y bloquerait les étudiants les
+    # uns après les autres un jour de scrutin, sans gêner un attaquant opérant
+    # depuis chez lui. Elles servent donc à protéger l'infrastructure d'un
+    # afflux anormal, pas à protéger les comptes.
+    #
+    # Contre les essais de mots de passe, la défense est le verrouillage
+    # progressif du COMPTE visé — voir auth_service.LOCKOUT_STEPS.
+    RATE_LIMIT_VOTE: str = "30/minute"
+    RATE_LIMIT_LOGIN: str = "60/minute"
+
+    # Monitoring — si vide, Sentry n'est pas initialisé.
+    SENTRY_DSN: str = ""
+
+    # Métriques Prometheus — voir app/core/metrics.py. Fermé par défaut :
+    # /metrics décrit toute la surface de l'API et le rythme des votes.
+    METRICS_ENABLED: bool = False
+    METRICS_TOKEN: str = ""
+
+    # Cache Redis — optionnel. Si vide, le cache est désactivé (mode passthrough).
+    REDIS_URL: str = ""
+    # Durée de vie des résultats d'élections fermées en cache (en secondes). 5 minutes par défaut.
+    CACHE_TTL_SECONDS: int = 300
 
     @field_validator("JWT_SECRET")
     @classmethod
@@ -94,6 +121,10 @@ class Settings(BaseSettings):
                 "Utilise un secret aléatoire en production."
             )
         return v
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT.strip().lower() in {"production", "prod"}
 
     @property
     def cors_origins(self) -> list[str]:

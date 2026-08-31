@@ -10,8 +10,13 @@
     <meta name="title" content="ESATIC SmartVote — Plateforme de vote étudiant sécurisée & transparente" />
     <meta name="description" content="Plateforme officielle de vote en ligne pour l'élection des chefs de classe de l'ESATIC. Authentification sécurisée, résultats en temps réel et scellement des votes sur la blockchain." />
     <meta name="keywords" content="ESATIC, SmartVote, vote en ligne, élection chef de classe, blockchain, Sepolia, Côte d'Ivoire, sécurité" />
-    <meta name="author" content="ESATIC SmartVote Team" />
     <meta name="theme-color" content="#0A2540" />
+
+    <!-- PWA & Mobile Web App -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SmartVote" />
 
     <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
     <meta property="og:type" content="website" />
@@ -54,7 +59,12 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <script src="https://cdn.lordicon.com/lordicon.js" defer></script>
+    <!-- Lecteur d'animations servi par l'application, non par un CDN tiers.
+         Un <script> distant sur une plateforme de vote peut lire et modifier
+         la page à volonté : il verrait le bulletin choisi et pourrait altérer
+         l'interface au moment du vote. L'héberger fige aussi la version — le
+         CDN ne peut plus la changer sans que personne s'en aperçoive. -->
+    <script src="/vendor/lordicon/lordicon.js" defer></script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Plus } from "lucide-react";
 
+import { useReveal } from "@/hooks/useReveal";
 import { useClasses, useElections } from "@/lib/queries";
 import type { Election } from "@/types/api";
 
@@ -19,13 +20,16 @@ const STATUS_BADGE: Record<Election["status"], string> = {
 };
 
 export default function ElectionsListPage() {
+  // Écran d'administration : les blocs se posent de haut en bas, sans
+  // retarder la lecture d'un tableau qu'on vient consulter.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", rise: 12 });
   const { data: elections, isLoading } = useElections();
   const { data: classes } = useClasses();
 
   const classMap = new Map(classes?.map((c) => [c.id, `${c.level} ${c.name}`]) || []);
 
   return (
-    <div style={{ padding: "40px 40px 80px" }}>
+    <div ref={pageRef} style={{ padding: "40px 40px 80px" }}>
       <div className="row items-center justify-between" style={{ marginBottom: 28 }}>
         <div>
           <div className="h-eyebrow">Administration</div>

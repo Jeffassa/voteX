@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ChevronDown, Lock, Pencil, Plus, Search, Trash2, Unlock, Users } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { useReveal } from "@/hooks/useReveal";
 import { Avatar } from "@/components/Avatar";
 import { Modal } from "@/components/Modal";
 import {
@@ -21,6 +22,9 @@ import { colorFor, fullNameOf, initialsOf } from "@/lib/palette";
 import type { Candidate, Election } from "@/types/api";
 
 export default function ElectionDetailPage() {
+  // Écran d'administration : les blocs se posent de haut en bas, sans
+  // retarder la lecture d'un tableau qu'on vient consulter.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", rise: 12 });
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -79,7 +83,7 @@ export default function ElectionDetailPage() {
   }
 
   return (
-    <div style={{ padding: "40px 40px 80px" }}>
+    <div ref={pageRef} style={{ padding: "40px 40px 80px" }}>
       <button
         className="btn btn-ghost btn-sm"
         onClick={() => navigate("/admin/elections")}

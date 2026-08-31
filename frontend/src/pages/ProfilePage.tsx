@@ -3,18 +3,21 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Lock, Save, User } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { useReveal } from "@/hooks/useReveal";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar, getInitials } from "@/components/Avatar";
 import { useChangePassword, useMe, useUpdateMyProfile } from "@/lib/queries";
 
 export default function ProfilePage() {
+  // Fiche de profil : cartes révélées de haut en bas.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *" });
   const { data: me } = useMe();
   const navigate = useNavigate();
 
   return (
     <div>
       <AppHeader />
-      <div className="container container-narrow scene" style={{ padding: "40px 32px 80px" }}>
+      <div ref={pageRef} className="container container-narrow scene" style={{ padding: "40px 32px 80px" }}>
         <button
           className="btn btn-ghost btn-sm"
           onClick={() => navigate(-1)}
@@ -71,11 +74,10 @@ function ProfileForm() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     try {
+      // Matricule, nom et prénom viennent de l'import administratif : le
+      // serveur les refuse ici (schemas/student.py). On ne les envoie pas.
       await update.mutateAsync({
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
         email: email.trim(),
-        matricule: matricule.trim(),
         photo_url: photoUrl.trim() || undefined,
       });
       toast.success("Profil mis à jour");
@@ -97,32 +99,21 @@ function ProfileForm() {
         <div className="row gap-3">
           <div style={{ flex: 1 }}>
             <label className="label">Prénom</label>
-            <input
-              required
-              className="input"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-            />
+            <input className="input" value={firstName} readOnly disabled />
           </div>
           <div style={{ flex: 1 }}>
             <label className="label">Nom</label>
-            <input
-              required
-              className="input"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-            />
+            <input className="input" value={lastName} readOnly disabled />
           </div>
         </div>
 
         <div>
           <label className="label">Matricule (Identifiant de connexion)</label>
-          <input
-            required
-            className="input mono"
-            value={matricule}
-            onChange={(e) => setMatricule(e.target.value)}
-          />
+          <input className="input mono" value={matricule} readOnly disabled />
+          <div className="hint" style={{ marginTop: 6 }}>
+            Matricule, nom et prénom proviennent du fichier de l'école. Pour une
+            correction, contacte l'administration.
+          </div>
         </div>
 
         <div>

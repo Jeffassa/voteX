@@ -1,0 +1,64 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    stack: esatic-smartvote
+
+rule_files:
+  - "alerts.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - votex-alertmanager:9093
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # API SmartVote. Le backend n'expose /metrics que si METRICS_ENABLED=true.
+  # Si METRICS_TOKEN est défini côté backend, décommenter le bloc authorization
+  # et monter le fichier de jeton dans le conteneur Prometheus.
+  - job_name: 'backend'
+    static_configs:
+      - targets: ['smartvote-backend:8000']
+    metrics_path: '/metrics'
+    # authorization:
+    #   type: Bearer
+    #   credentials_file: /etc/prometheus/metrics_token
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['votex-node-exporter:9100']
+
+  - job_name: 'postgres-exporter'
+    static_configs:
+      - targets: ['votex-postgres-exporter:9187']
+
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['votex-loki:3100']
+
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['votex-alertmanager:9093']
+
+  # Sonde HTTP du frontend. C'est ce job qui produit `probe_success`, sur
+  # lequel repose l'alerte FrontendDown — sans blackbox exporter, la règle
+  # portait sur une série qui n'existait pas et ne se déclenchait jamais.
+  - job_name: 'frontend'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://smartvote-frontend:5173/
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: votex-blackbox-exporter:9115

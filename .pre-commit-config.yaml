@@ -1,0 +1,47 @@
+# Garde-fous exécutés avant chaque commit.
+#
+#   pip install pre-commit && pre-commit install
+#
+# L'objectif est étroit : empêcher qu'un secret ou un fichier de configuration
+# local entre dans l'historique. Un secret poussé une fois reste exploitable
+# même après suppression — le retirer d'un commit coûte une réécriture
+# d'historique, l'empêcher coûte deux secondes.
+
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: [--maxkb=2048]
+      - id: check-yaml
+        # Les templates Compose et les manifestes multi-documents passent mal
+        # le parseur strict.
+        args: [--allow-multiple-documents]
+        exclude: ^monitoring/grafana/provisioning/
+      - id: check-json
+        exclude: ^(frontend|contracts)/package-lock\.json$
+      - id: end-of-file-fixer
+        exclude: ^(frontend|contracts)/package-lock\.json$
+      - id: trailing-whitespace
+        exclude: ^(frontend|contracts)/package-lock\.json$
+      - id: check-merge-conflict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0
+    hooks:
+      - id: ruff
+        files: ^backend/
+        args: [--fix]
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.0
+    hooks:
+      - id: bandit
+        files: ^backend/(app|scripts)/
+        args: [-ll]

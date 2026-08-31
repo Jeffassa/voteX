@@ -47,6 +47,11 @@ export function Lordicon({
     ce.whenDefined("lord-icon").catch(() => {});
   }, []);
 
+  // src vide = icône volontairement désactivée (voir lib/lordicons.ts).
+  // Rendre <lord-icon src=""> déclenchait un fetch vers une URL absente : le
+  // CDN répond une page HTML 404 que le lecteur tente de parser en JSON.
+  if (!src) return null;
+
   return (
     <lord-icon
       ref={ref as React.Ref<HTMLElement>}

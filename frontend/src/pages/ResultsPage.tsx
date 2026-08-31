@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Activity, TrendingUp } from "lucide-react";
 
+import { useReveal } from "@/hooks/useReveal";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar } from "@/components/Avatar";
 import { electionKeys, useElection, useElectionResults } from "@/lib/queries";
@@ -19,6 +20,10 @@ export default function ResultsPage() {
 
   const { data: results } = useElectionResults(id);
   const { data: election } = useElection(id);
+
+  // Les résultats arrivent après le chargement : la révélation est rejouée
+  // quand ils changent, sinon les blocs apparaîtraient déjà en place.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", deps: [results] });
 
   useEffect(() => {
     if (!id) return;
@@ -68,7 +73,7 @@ export default function ResultsPage() {
   return (
     <div>
       <AppHeader />
-      <div className="container scene" style={{ padding: "32px 32px 80px" }}>
+      <div ref={pageRef} className="container scene" style={{ padding: "32px 32px 80px" }}>
         <div className="row items-center justify-between sv-results-stats" style={{ marginBottom: 28 }}>
           <div>
             <div className="h-eyebrow">En direct</div>

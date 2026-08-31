@@ -40,18 +40,18 @@ def get_active(
 def get_election(
     election_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(get_current_user)],
+    user: Annotated[Student, Depends(get_current_user)],
 ):
-    return election_service.get_or_404(db, election_id)
+    return election_service.get_for_user(db, election_id, user)
 
 
 @router.post("/", response_model=ElectionOut, status_code=201)
 def create_election(
     payload: ElectionCreate,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(require_admin)],
+    current: Annotated[Student, Depends(require_admin)],
 ):
-    return election_service.create(db, payload)
+    return election_service.create(db, payload, actor_id=current.id)
 
 
 @router.patch("/{election_id}", response_model=ElectionOut)
@@ -59,44 +59,49 @@ def update_election(
     election_id: UUID,
     payload: ElectionUpdate,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(require_admin)],
+    current: Annotated[Student, Depends(require_admin)],
 ):
-    return election_service.update(db, election_id, payload)
+    return election_service.update(db, election_id, payload, actor_id=current.id)
 
 
 @router.delete("/{election_id}", status_code=204)
 def delete_election(
     election_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(require_admin)],
+    current: Annotated[Student, Depends(require_admin)],
 ):
-    election_service.delete(db, election_id)
+    election_service.delete(db, election_id, actor_id=current.id)
 
 
 @router.post("/{election_id}/open", response_model=ElectionOut)
 def open_election(
     election_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(require_admin)],
+    current: Annotated[Student, Depends(require_admin)],
 ):
-    return election_service.set_status(db, election_id, ElectionStatus.OPEN)
+    return election_service.set_status(
+        db, election_id, ElectionStatus.OPEN, actor_id=current.id
+    )
 
 
 @router.post("/{election_id}/close", response_model=ElectionOut)
 def close_election(
     election_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(require_admin)],
+    current: Annotated[Student, Depends(require_admin)],
 ):
-    return election_service.set_status(db, election_id, ElectionStatus.CLOSED)
+    return election_service.set_status(
+        db, election_id, ElectionStatus.CLOSED, actor_id=current.id
+    )
 
 
 @router.get("/{election_id}/results", response_model=ElectionResults)
 def get_results(
     election_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(get_current_user)],
+    user: Annotated[Student, Depends(get_current_user)],
 ):
+    election_service.get_for_user(db, election_id, user)  # garde d'accès
     return election_service.compute_results(db, election_id)
 
 

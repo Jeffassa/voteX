@@ -13,37 +13,29 @@ Couvre :
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.cookies import ACCESS_COOKIE, CSRF_COOKIE, REFRESH_COOKIE
-from app.core.database import Base, get_db
+from app.core.cookies import ACCESS_COOKIE, CSRF_HEADER, REFRESH_COOKIE
+
+
+def _csrf(client) -> str:
+    """Récupère le jeton CSRF comme le fait le vrai client : par l'en-tête.
+
+    Aucun cookie ne le porte plus — il est scellé dans l'access token httpOnly
+    et republié sur /me, que le SPA appelle au chargement.
+    """
+    r = client.get("/api/auth/me")
+    token = r.headers.get(CSRF_HEADER)
+    assert token, "le serveur doit republier le jeton CSRF sur /me"
+    return token
+from app.core.database import get_db
 from app.main import app
 from app.models import RefreshToken
-
-
-@pytest.fixture()
-def client(db):
-    """TestClient câblé à la DB du test (override get_db)."""
-    Base.metadata.create_all(bind=db.get_bind())
-    app.dependency_overrides[get_db] = lambda: db
-    with TestClient(app) as c:
-        yield c
-    app.dependency_overrides.clear()
-
-
-@pytest.fixture()
-def auth_client(client, voter):
-    """Client déjà connecté avec voter."""
-    r = client.post(
-        "/api/auth/login",
-        data={"username": voter.matricule, "password": "student12345"},
-    )
-    assert r.status_code == 200
-    return client
 
 
 # ─────────────────────────── login → cookies ───────────────────────────
 
 
-def test_login_sets_three_cookies(client, voter):
+def test_login_sets_only_httponly_cookies(client, voter):
+    """Deux cookies, tous deux httpOnly : rien n'est laissé au script."""
     r = client.post(
         "/api/auth/login",
         data={"username": voter.matricule, "password": "student12345"},
@@ -52,7 +44,10 @@ def test_login_sets_three_cookies(client, voter):
     cookies = {c.name: c for c in client.cookies.jar}
     assert ACCESS_COOKIE in cookies
     assert REFRESH_COOKIE in cookies
-    assert CSRF_COOKIE in cookies
+    assert "sv_csrf" not in cookies, "le cookie CSRF lisible par le JS ne doit plus exister"
+
+    # Le jeton CSRF arrive par l'en-tête, pas par un cookie.
+    assert r.headers.get(CSRF_HEADER)
 
 
 def test_login_access_cookie_is_httponly(client, voter):
@@ -66,20 +61,30 @@ def test_login_access_cookie_is_httponly(client, voter):
     assert "httponly" in raw  # au moins un cookie httpOnly
 
 
-def test_login_csrf_cookie_is_NOT_httponly(client, voter):
-    """Le CSRF cookie doit être lisible par le JS pour le pattern double-submit."""
-    client.post(
+def test_no_cookie_is_readable_by_scripts(client, voter):
+    """Chaque cookie posé doit être httpOnly.
+
+    Un cookie lisible par le script est exposé à toute extension et à tout XSS,
+    et survit à la fermeture de l'onglet sur une machine partagée. Le jeton CSRF
+    passait par là ; il voyage désormais dans l'en-tête X-CSRF-Token.
+    """
+    r = client.post(
         "/api/auth/login",
         data={"username": voter.matricule, "password": "student12345"},
     )
-    csrf_cookie = None
-    for c in client.cookies.jar:
-        if c.name == CSRF_COOKIE:
-            csrf_cookie = c
-    assert csrf_cookie is not None
-    # httpx stocke `_rest` avec "httponly" si présent — on vérifie qu'il n'est pas là
-    rest = getattr(csrf_cookie, "_rest", {}) or {}
-    assert "httponly" not in {k.lower() for k in rest.keys()}
+    assert r.status_code == 200
+
+    set_cookies = r.headers.get_list("set-cookie")
+    posed = [h for h in set_cookies if not _is_deletion(h)]
+    assert posed, "le login doit poser des cookies"
+    for header in posed:
+        assert "httponly" in header.lower(), f"cookie lisible par le JS : {header}"
+
+
+def _is_deletion(set_cookie_header: str) -> bool:
+    """Un cookie supprimé est réémis vide avec une expiration passée."""
+    lowered = set_cookie_header.lower()
+    return 'max-age=0' in lowered or '=""' in lowered or "expires=thu, 01 jan 1970" in lowered
 
 
 def test_login_rejects_wrong_password(client, voter):
@@ -193,7 +198,7 @@ def test_refresh_reuse_revokes_all_sessions(auth_client, db, voter):
 def test_logout_revokes_refresh_and_clears_cookies(auth_client, db, voter):
     r = auth_client.post(
         "/api/auth/logout",
-        headers={"X-CSRF-Token": auth_client.cookies.get(CSRF_COOKIE)},
+        headers={CSRF_HEADER: _csrf(auth_client)},
     )
     assert r.status_code == 204
 
@@ -242,7 +247,7 @@ def test_post_with_valid_csrf_passes_csrf_check(auth_client, open_election):
     """Avec le bon header, la requête passe le check CSRF (échouera plus loin pour
     d'autres raisons mais pas pour CSRF)."""
     cand = open_election.candidates[0]
-    csrf = auth_client.cookies.get(CSRF_COOKIE)
+    csrf = _csrf(auth_client)
     r = auth_client.post(
         "/api/votes/",
         json={"election_id": str(open_election.id), "candidate_id": str(cand.id)},
@@ -262,7 +267,7 @@ def test_get_does_not_need_csrf(auth_client):
 
 
 def test_change_password_revokes_all_sessions(auth_client, db, voter):
-    csrf = auth_client.cookies.get(CSRF_COOKIE)
+    csrf = _csrf(auth_client)
     r = auth_client.post(
         "/api/auth/me/change-password",
         json={"token": "student12345", "new_password": "new-secure-password-123"},
@@ -299,7 +304,7 @@ def test_revoke_all_sessions_kills_other_devices(client, voter):
     assert r.status_code == 200
 
     # Depuis A : panic button
-    csrf_a = client_a.cookies.get(CSRF_COOKIE)
+    csrf_a = _csrf(client_a)
     r = client_a.post(
         "/api/auth/sessions/revoke-all",
         headers={"X-CSRF-Token": csrf_a},

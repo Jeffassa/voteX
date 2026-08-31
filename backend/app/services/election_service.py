@@ -4,8 +4,17 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.cache import (
+    cache_delete,
+    cache_delete_pattern,
+    cache_get,
+    cache_set,
+    key_election_list_class,
+    key_election_results,
+)
+from app.core.config import settings
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
-from app.models import Candidate, Election, Student, Vote
+from app.models import Candidate, Election, Student, Vote, VoterRecord
 from app.models.election import ElectionStatus
 from app.models.student import UserRole
 from app.models.audit import AuditAction
@@ -49,6 +58,30 @@ def get_or_404(db: Session, election_id: UUID) -> Election:
     return election
 
 
+def can_access(user: Student, election: Election) -> bool:
+    """Un étudiant ne voit que les élections de SA classe.
+
+    Les admins voient tout. Sans cette barrière, n'importe quel compte
+    authentifié pouvait lire le détail et les résultats en direct de
+    n'importe quelle classe en devinant/collectant un UUID d'élection.
+    """
+    if user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
+        return True
+    return user.class_id is not None and user.class_id == election.class_id
+
+
+def get_for_user(db: Session, election_id: UUID, user: Student) -> Election:
+    """Comme get_or_404, mais renvoie « introuvable » si l'accès est refusé.
+
+    On ne distingue pas 403 et 404 volontairement : confirmer l'existence
+    d'une élection d'une autre classe est déjà une fuite.
+    """
+    election = get_or_404(db, election_id)
+    if not can_access(user, election):
+        raise NotFoundError("Élection introuvable")
+    return election
+
+
 def create(db: Session, payload: ElectionCreate, *, actor_id: UUID | None = None) -> Election:
     if payload.ends_at <= payload.starts_at:
         raise ValidationError("La date de fin doit être après la date de début")
@@ -68,7 +101,9 @@ def create(db: Session, payload: ElectionCreate, *, actor_id: UUID | None = None
     return election
 
 
-def update(db: Session, election_id: UUID, payload: ElectionUpdate) -> Election:
+def update(
+    db: Session, election_id: UUID, payload: ElectionUpdate, *, actor_id: UUID | None = None
+) -> Election:
     election = get_or_404(db, election_id)
     if election.status != ElectionStatus.DRAFT:
         raise ValidationError(
@@ -86,10 +121,19 @@ def update(db: Session, election_id: UUID, payload: ElectionUpdate) -> Election:
 
     db.commit()
     db.refresh(election)
+
+    audit_service.record(
+        db,
+        action=AuditAction.ELECTION_UPDATED,
+        actor_id=actor_id,
+        target_type="election",
+        target_id=election.id,
+        details=f"champs={sorted(data)}",
+    )
     return election
 
 
-def delete(db: Session, election_id: UUID) -> None:
+def delete(db: Session, election_id: UUID, *, actor_id: UUID | None = None) -> None:
     election = get_or_404(db, election_id)
     if election.status not in (ElectionStatus.DRAFT, ElectionStatus.CLOSED):
         raise ConflictError(
@@ -102,11 +146,32 @@ def delete(db: Session, election_id: UUID) -> None:
         raise ConflictError(
             "Impossible de supprimer une élection avec des votes enregistrés"
         )
+    title = election.title
+    class_id = election.class_id
     db.delete(election)
     db.commit()
+    # Invalide le cache des résultats et de la liste pour cette élection
+    cache_delete(key_election_results(str(election_id)))
+    if class_id:
+        cache_delete(key_election_list_class(str(class_id)))
+
+    audit_service.record(
+        db,
+        action=AuditAction.ELECTION_DELETED,
+        actor_id=actor_id,
+        target_type="election",
+        target_id=election_id,
+        details=f"title={title!r}",
+    )
 
 
-def set_status(db: Session, election_id: UUID, status: ElectionStatus) -> Election:
+def set_status(
+    db: Session,
+    election_id: UUID,
+    status: ElectionStatus,
+    *,
+    actor_id: UUID | None = None,
+) -> Election:
     """Met à jour le statut + propage sur la blockchain (best-effort).
 
     Quand on passe à OPEN, on crée l'élection on-chain si pas encore fait,
@@ -137,6 +202,11 @@ def set_status(db: Session, election_id: UUID, status: ElectionStatus) -> Electi
     db.commit()
     db.refresh(election)
 
+    # Invalide le cache à chaque changement de statut (ouverture, clôture, publication)
+    cache_delete(key_election_results(str(election_id)))
+    if election.class_id:
+        cache_delete(key_election_list_class(str(election.class_id)))
+
     if previous != status:
         audit_action = (
             AuditAction.ELECTION_OPENED if status == ElectionStatus.OPEN
@@ -146,6 +216,7 @@ def set_status(db: Session, election_id: UUID, status: ElectionStatus) -> Electi
         audit_service.record(
             db,
             action=audit_action,
+            actor_id=actor_id,
             target_type="election",
             target_id=election.id,
             details=f"{previous.value} → {status.value}",
@@ -154,6 +225,23 @@ def set_status(db: Session, election_id: UUID, status: ElectionStatus) -> Electi
 
 
 def compute_results(db: Session, election_id: UUID) -> ElectionResults:
+    """Calcule les résultats d'une élection avec mise en cache Redis.
+
+    - Cache-Hit  : retour immédiat depuis Redis (<1 ms, 0 requête SQL).
+    - Cache-Miss : calcul complet en SQL puis stockage en cache.
+    - Les résultats des élections OUVERTES sont cachés 30 secondes (données vivantes).
+    - Les résultats des élections FERMÉES/PUBLIÉES sont cachés CACHE_TTL_SECONDS (5 min par défaut).
+    """
+    cache_key = key_election_results(str(election_id))
+
+    # ── Cache-Hit ──────────────────────────────────────────────────────────────
+    cached = cache_get(cache_key)
+    if cached is not None:
+        logger.debug("Cache HIT pour les résultats de l'élection %s", election_id)
+        return ElectionResults(**cached)
+
+    # ── Cache-Miss : calcul SQL complet ───────────────────────────────────────
+    logger.debug("Cache MISS pour les résultats de l'élection %s", election_id)
     election = get_or_404(db, election_id)
 
     total_eligible = (
@@ -165,7 +253,7 @@ def compute_results(db: Session, election_id: UUID) -> ElectionResults:
     total_votes = (
         db.query(func.count(Vote.id)).filter(Vote.election_id == election_id).scalar() or 0
     )
-    
+
     blank_votes = (
         db.query(func.count(Vote.id))
         .filter(Vote.election_id == election_id, Vote.candidate_id == None)
@@ -201,7 +289,7 @@ def compute_results(db: Session, election_id: UUID) -> ElectionResults:
     ]
     candidates.sort(key=lambda c: c.votes, reverse=True)
 
-    return ElectionResults(
+    result = ElectionResults(
         election_id=election_id,
         total_eligible=total_eligible,
         total_votes=total_votes,
@@ -211,6 +299,14 @@ def compute_results(db: Session, election_id: UUID) -> ElectionResults:
         ),
         candidates=candidates,
     )
+
+    # ── Mise en cache ──────────────────────────────────────────────────────────
+    # Elections ouvertes : TTL court (30s) car les votes arrivent en temps réel.
+    # Elections fermées ou publiées : TTL long (CACHE_TTL_SECONDS = 5 min par défaut).
+    ttl = 30 if election.status == ElectionStatus.OPEN else settings.CACHE_TTL_SECONDS
+    cache_set(cache_key, result.model_dump(), ttl=ttl)
+
+    return result
 
 
 def list_candidates(db: Session, election_id: UUID) -> list[Candidate]:
@@ -227,10 +323,12 @@ def list_non_voters(db: Session, election_id: UUID) -> list[Student]:
     """Retourne les étudiants de la classe de l'élection qui n'ont pas encore voté."""
     election = get_or_404(db, election_id)
 
-    # Sous-requête : IDs des étudiants qui ont déjà voté dans cette élection
+    # Sous-requête : IDs des étudiants qui ont déjà voté dans cette élection.
+    # La participation vit dans VoterRecord — Vote est anonyme et ne porte
+    # AUCUN lien vers l'électeur (c'est tout l'intérêt du découplage).
     voted_subq = (
-        db.query(Vote.student_id)
-        .filter(Vote.election_id == election_id)
+        db.query(VoterRecord.student_id)
+        .filter(VoterRecord.election_id == election_id)
         .subquery()
     )
 

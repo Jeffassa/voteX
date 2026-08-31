@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Query, UploadFile
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -18,7 +18,8 @@ from app.schemas.student import (
     StudentUpdate,
 )
 from app.schemas.student_import import ImportReport
-from app.services import student_import_service, student_service
+from app.models.audit import AuditAction
+from app.services import audit_service, student_import_service, student_service
 
 
 router = APIRouter()
@@ -62,9 +63,9 @@ def update_student(
     student_id: UUID,
     payload: StudentUpdate,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(require_admin)],
+    current: Annotated[Student, Depends(require_admin)],
 ):
-    return student_service.update(db, student_id, payload)
+    return student_service.update(db, student_id, payload, actor_id=current.id)
 
 
 @router.delete("/{student_id}", status_code=204)
@@ -103,7 +104,8 @@ def update_my_profile(
 async def import_students_from_xlsx(
     file: Annotated[UploadFile, File(description="Fichier .xlsx ESATIC (multi-feuilles)")],
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(require_admin)],
+    current: Annotated[Student, Depends(require_admin)],
+    background_tasks: BackgroundTasks,
     dry_run: bool = Query(default=False),
     auto_create_classes: bool = Query(
         default=False,
@@ -132,10 +134,26 @@ async def import_students_from_xlsx(
             "default_level requis quand auto_create_classes=true (ex: L1, L2, M1...)"
         )
 
-    return await student_import_service.import_students(
+    report = student_import_service.import_students(
         db,
         file_bytes=contents,
         dry_run=dry_run,
         auto_create_classes=auto_create_classes,
         default_level=default_level,
+        background_tasks=background_tasks,
     )
+
+    if not dry_run:
+        # Un import écrit le corps électoral : sans trace, personne ne peut dire
+        # plus tard qui a ajouté les 300 comptes d'une promotion.
+        audit_service.record(
+            db,
+            action=AuditAction.STUDENT_CREATED,
+            actor_id=current.id,
+            target_type="import",
+            details=(
+                f"fichier={file.filename!r} lignes={report.total} "
+                f"créés={report.created} ignorés={report.skipped} erreurs={report.errors}"
+            ),
+        )
+    return report

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { GraduationCap, Pencil, Plus, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { useReveal } from "@/hooks/useReveal";
 import { Modal } from "@/components/Modal";
 import {
   useClasses,
@@ -12,12 +13,15 @@ import {
 import type { ClassRoom } from "@/types/api";
 
 export default function ClassesPage() {
+  // Écran d'administration : les blocs se posent de haut en bas, sans
+  // retarder la lecture d'un tableau qu'on vient consulter.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", rise: 12 });
   const { data: classes, isLoading } = useClasses();
   const [editing, setEditing] = useState<ClassRoom | null>(null);
   const [creating, setCreating] = useState(false);
 
   return (
-    <div style={{ padding: "40px 40px 80px" }}>
+    <div ref={pageRef} style={{ padding: "40px 40px 80px" }}>
       <div className="row items-center justify-between" style={{ marginBottom: 28 }}>
         <div>
           <div className="h-eyebrow">Administration</div>

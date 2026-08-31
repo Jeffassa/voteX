@@ -3,11 +3,16 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 
+// `import.meta.dirname` plutôt que `__dirname` : Vite 8 avertit que le
+// chargeur natif de configuration, appelé à devenir le défaut, ne fournit pas
+// les variables CommonJS.
+const projectRoot = import.meta.dirname;
+
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "src"),
+      "@": path.resolve(projectRoot, "src"),
     },
   },
   test: {
@@ -16,6 +21,9 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     css: false,
+    // Le pool "forks" (défaut de Vitest 4) n'arrive pas à démarrer ses workers
+    // sur cette machine : « Timeout waiting for worker to respond ».
+    pool: "threads",
   },
   server: {
     host: true,
@@ -26,6 +34,11 @@ export default defineConfig({
     allowedHosts: [
       "localhost",
       "127.0.0.1",
+      // Nom du service dans le réseau Docker : c'est par là que la sonde
+      // blackbox interroge le frontend. Sans cette entrée, Vite répond 403
+      // (protection anti-DNS-rebinding) et l'alerte FrontendDown tire en
+      // permanence — une supervision qui crie au loup ne sert plus à rien.
+      "smartvote-frontend",
       ".ngrok-free.app",
       ".ngrok.io",
       ".ngrok.app",

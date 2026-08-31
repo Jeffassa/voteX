@@ -27,13 +27,11 @@ export function useCastVote() {
     mutationFn: async (payload) =>
       (await api.post("/api/votes/", payload)).data,
     onSuccess: (data) => {
-      if (data && data.election_id) {
-        try {
-          localStorage.setItem(`vote_receipt_${data.election_id}`, JSON.stringify(data));
-        } catch {
-          // Fallback silencieux si localStorage indisponible
-        }
-      }
+      // Le reçu N'EST PAS persisté : il contient `candidate_id`, donc le choix
+      // de l'électeur. L'écrire dans localStorage laissait le secret du vote
+      // sur la machine — souvent une machine partagée de salle info — à la
+      // portée d'un XSS, d'une extension ou de l'utilisateur suivant. Aucun
+      // écran ne le relisait : la copie ne servait qu'à fuiter.
       qc.invalidateQueries({ queryKey: voteKeys.mine });
       qc.invalidateQueries({ queryKey: electionKeys.results(data.election_id) });
     },

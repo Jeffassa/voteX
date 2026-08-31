@@ -38,7 +38,10 @@ Le seed s'exécute automatiquement au démarrage. Tu peux te connecter immédiat
 | Rôle | Matricule | Mot de passe |
 |---|---|---|
 | Super-admin | `SUPERADMIN` | `admin12345` |
-| Étudiant | `20240398` | `student12345` |
+| Étudiant | `24-ESATIC0398SB` | `student12345` |
+
+Ces comptes sont **strictement de démonstration**. Le seed refuse de s'exécuter
+avec `ENVIRONMENT=production`.
 
 Voir [TESTING.md](TESTING.md) pour le protocole de test complet.
 
@@ -130,6 +133,7 @@ docker compose exec backend python -m scripts.seed
 |---|---|---|---|
 | `DATABASE_URL` | ✅ | — | non |
 | `JWT_SECRET` | ✅ | — | non |
+| `ENVIRONMENT` | ✅ | — | défaut `development` |
 | `FRONTEND_URL` | ✅ | — | défaut OK |
 | `SUPABASE_*` | — | ✅ | oui (Realtime) |
 | `WEB3_RPC_URL` / `CONTRACT_ADDRESS` / `ADMIN_PRIVATE_KEY` | ✅ | — | oui (blockchain) |
@@ -137,3 +141,30 @@ docker compose exec backend python -m scripts.seed
 | `VITE_CHAIN_EXPLORER_BASE` | — | ✅ | défaut Sepolia |
 
 Sans les optionnels : pas de realtime (polling 5s), pas de hash on-chain, pas d'email envoyé. Le reste fonctionne.
+
+## Supervision (optionnelle)
+
+```bash
+docker compose up -d                                  # l'app crée le réseau votex-network
+docker compose -f docker-compose.monitoring.yml up -d  # s'y raccroche
+```
+
+- Prometheus : http://localhost:9090 — Grafana : http://localhost:3000
+- Le backend n'expose `/metrics` que si `METRICS_ENABLED=true` (déjà positionné
+  dans `docker-compose.yml`). En production, protégez-le avec `METRICS_TOKEN` et
+  renseignez le bloc `authorization` du job `backend` dans
+  `monitoring/prometheus/prometheus.yml`.
+- Les deux stacks sont des projets Compose distincts : démarrez l'application en
+  premier, sinon le réseau `votex-network` n'existe pas encore.
+
+## Mise en production
+
+`ENVIRONMENT=production` durcit le démarrage : le backend refuse de démarrer si
+`JWT_SECRET` est un des secrets de développement publiés dans ce dépôt, si
+`COOKIE_SECURE` n'est pas activé, ou si `DATABASE_URL` pointe vers SQLite.
+
+```bash
+export ENVIRONMENT=production
+export JWT_SECRET=$(openssl rand -hex 32)
+export COOKIE_SECURE=true
+```

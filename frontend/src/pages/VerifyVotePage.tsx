@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { AlertCircle, CheckCircle2, Hash } from "lucide-react";
 
+import { useReveal } from "@/hooks/useReveal";
 import { AppHeader } from "@/components/AppHeader";
 import { verifyVoteHash } from "@/lib/queries";
 import type { VoteVerification } from "@/types/api";
 
 export default function VerifyVotePage() {
+  // Page publique : l'entrée doit être immédiate, un vérificateur arrive
+  // souvent d'un lien externe avec une question précise.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", rise: 12 });
   const [hash, setHash] = useState("");
   const [state, setState] = useState<"idle" | "loading" | "found" | "notfound">("idle");
   const [result, setResult] = useState<VoteVerification | null>(null);
@@ -27,6 +31,7 @@ export default function VerifyVotePage() {
     <div>
       <AppHeader />
       <div
+        ref={pageRef}
         className="container container-narrow scene"
         style={{ padding: "64px 32px 120px" }}
       >

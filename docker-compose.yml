@@ -6,8 +6,8 @@
 #   → Backend FastAPI sur http://localhost:8000  (docs: /docs)
 #   → Frontend Vite sur   http://localhost:5173
 #
-# Le backend crée les tables au démarrage (Base.metadata.create_all)
-# puis exécute scripts/seed.py pour générer les données de démo (idempotent).
+# Le backend met le schéma à jour avec Alembic au démarrage
+# (scripts/migrate.py), puis exécute scripts/seed.py (idempotent).
 #
 # Pour activer Realtime + Email + Blockchain, ajoute les variables d'env
 # correspondantes dans un fichier `.env` à la racine (chargé automatiquement
@@ -37,8 +37,11 @@ services:
     container_name: smartvote-backend
     environment:
       DATABASE_URL: postgresql://smartvote:smartvote@postgres:5432/smartvote
-      # Dev only — en prod, générer avec : openssl rand -hex 32
-      JWT_SECRET: "Z9k4vPq8rMnL3jH7sB2dX5cF1gW6tY0aQiE4uN8RsoVbPyDmCkJfAhXgZrTwLnQp"
+      ENVIRONMENT: development
+      # Secret de DÉVELOPPEMENT. Il est publié dans ce dépôt : le backend refuse
+      # de démarrer avec cette valeur si ENVIRONMENT=production. Pour un vrai
+      # déploiement, exportez JWT_SECRET=$(openssl rand -hex 32) avant `up`.
+      JWT_SECRET: ${JWT_SECRET:-Z9k4vPq8rMnL3jH7sB2dX5cF1gW6tY0aQiE4uN8RsoVbPyDmCkJfAhXgZrTwLnQpDEV}
       ACCESS_TOKEN_EXPIRE_MINUTES: "15"
       REFRESH_TOKEN_EXPIRE_DAYS: "7"
       FRONTEND_URL: http://localhost:5173
@@ -58,6 +61,10 @@ services:
       MAIL_SERVER: ${MAIL_SERVER:-""}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_FROM: ${MAIL_FROM:-"noreply@esatic-smartvote.ci"}
+      # Supervision : /metrics reste fermé par défaut, on l'ouvre ici pour que
+      # la stack docker-compose.monitoring.yml ait quelque chose à scraper.
+      METRICS_ENABLED: "true"
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
     ports:
       - "8000:8000"
     depends_on:
@@ -69,12 +76,12 @@ services:
       - ./backend/scripts:/app/scripts
     command: >
       sh -c "
-        echo '> Création des tables...' &&
-        python -c 'from app.models import ClassRoom, Student, Election, Candidate, Vote; from app.core.database import Base, engine; Base.metadata.create_all(engine); print(\"tables OK\")' &&
-        # echo '> Seed des données de démo...' &&
-        # python -m scripts.seed &&
+        echo '> Mise à jour du schéma (Alembic)...' &&
+        python -m scripts.migrate &&
+        echo '> Seed des données de démo...' &&
+        python -m scripts.seed &&
         echo '> Démarrage de l API FastAPI...' &&
-        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-server-header --reload --reload-exclude '*.pyc' --reload-exclude '__pycache__/*' 
       "
 
   frontend:
@@ -101,3 +108,10 @@ services:
 
 volumes:
   pgdata:
+
+networks:
+  # Le réseau du projet est nommé explicitement : la stack de supervision
+  # (docker-compose.monitoring.yml) s'y raccroche en `external`, sinon
+  # Prometheus ne peut joindre ni le backend ni le frontend.
+  default:
+    name: votex-network

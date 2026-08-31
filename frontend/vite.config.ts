@@ -34,6 +34,11 @@ export default defineConfig({
     allowedHosts: [
       "localhost",
       "127.0.0.1",
+      // Nom du service dans le réseau Docker : c'est par là que la sonde
+      // blackbox interroge le frontend. Sans cette entrée, Vite répond 403
+      // (protection anti-DNS-rebinding) et l'alerte FrontendDown tire en
+      // permanence — une supervision qui crie au loup ne sert plus à rien.
+      "smartvote-frontend",
       ".ngrok-free.app",
       ".ngrok.io",
       ".ngrok.app",

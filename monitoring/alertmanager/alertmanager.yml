@@ -1,21 +1,48 @@
+# Acheminement des alertes.
+#
+# La configuration précédente ne notifiait personne : son unique récepteur
+# était un webhook vers http://localhost:5001/webhook — c'est-à-dire, depuis
+# l'intérieur du conteneur Alertmanager, lui-même, où rien n'écoute. Chaque
+# alerte échouait après huit tentatives et disparaissait dans le journal. Une
+# supervision dont les alertes n'arrivent nulle part donne l'illusion d'une
+# surveillance sans en offrir aucune.
 global:
   resolve_timeout: 5m
+  smtp_smarthost: 'smtp.resend.com:587'
+  # ⚠️ Resend n'accepte un expéditeur que sur un domaine vérifié chez lui.
+  # Tant qu'aucun domaine ESATIC ne l'est, seule l'adresse bac à sable
+  # `onboarding@resend.dev` passe — et uniquement vers l'adresse du titulaire
+  # du compte. À remplacer par no-reply@<domaine vérifié> avant la mise en
+  # production, faute de quoi les alertes seront refusées en 550.
+  smtp_from: 'ESATIC SmartVote <onboarding@resend.dev>'
+  smtp_auth_username: 'resend'
+  # La clé vit dans un fichier hors dépôt (voir .gitignore), pas dans ce YAML.
+  smtp_auth_password_file: /etc/alertmanager/smtp_password
+  smtp_require_tls: true
 
 route:
   group_by: ['alertname']
   group_wait: 10s
-  group_interval: 10s
-  repeat_interval: 1h
-  receiver: 'default-receiver'
+  group_interval: 5m
+  # Une alerte non résolue se rappelle au souvenir toutes les quatre heures.
+  # Toutes les heures, on apprend surtout à ignorer ses notifications.
+  repeat_interval: 4h
+  receiver: 'equipe-technique'
 
 receivers:
-  - name: 'default-receiver'
-    # Configuration pour logs uniquement (pas d'email pour l'instant)
-    webhook_configs:
-      - url: 'http://localhost:5001/webhook'
+  - name: 'equipe-technique'
+    email_configs:
+      # Adresse nue, sans nom d'affichage : en mode bac à sable, Resend
+      # compare le destinataire à l'adresse du compte et refuse
+      # « Nom <adresse> » en 550.
+      - to: 'assalendahjeanfrancois@gmail.com'
         send_resolved: true
+        headers:
+          Subject: '[SmartVote] {{ .Status | toUpper }} — {{ .CommonLabels.alertname }}'
 
 inhibit_rules:
+  # Un incident critique masque les avertissements qu'il provoque : inutile de
+  # signaler un taux d'erreur élevé quand le backend est déjà annoncé à terre.
   - source_match:
       severity: 'critical'
     target_match:

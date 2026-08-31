@@ -64,6 +64,31 @@ sécurité, pas une évolution.
    réinitialisation de mot de passe lève le verrou — le message qui la propose
    doit dire vrai.
 
+## Acheminement des emails — à vérifier avant toute campagne
+
+Les codes d'activation, les liens de réinitialisation, les reçus de vote et les
+avis d'activation passent tous par SMTP (Resend). **Constaté le 31/08/2026:
+aucun de ces messages ne partait.** Le fournisseur refusait la totalité des
+envois en `550 — The associated domain with your API key is not verified`,
+tandis que l'application se contentait d'une ligne de journal et que
+l'interface affichait « Code envoyé ! Vérifie ta boîte mail. »
+
+Deux conditions, dans cet ordre :
+
+1. **Vérifier un domaine chez Resend** (resend.com/domains) et fixer
+   `MAIL_FROM=no-reply@<ce domaine>`. Tant que ce n'est pas fait, seule
+   l'adresse bac à sable `onboarding@resend.dev` est acceptée, et uniquement
+   vers l'adresse du titulaire du compte : aucun étudiant ne recevra rien.
+2. **Ne pas laisser un échec passer inaperçu.** Le compteur
+   `smartvote_emails_total{outcome="failed"}` et les alertes
+   `EmailDeliveryFailing` / `EmailNotConfigured` existent pour cela. Un code
+   d'activation qui n'arrive pas ferme l'accès au scrutin aussi sûrement
+   qu'une panne de serveur.
+
+Note : `fastapi-mail` ajoute au destinataire un nom d'affichage dérivé de
+l'adresse (`nom <nom@exemple.ci>`). En mode bac à sable, Resend refuse cette
+forme. Le problème disparaît avec un domaine vérifié.
+
 ## Configuration attendue en production
 
 ```bash

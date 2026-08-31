@@ -86,6 +86,8 @@ services:
     container_name: votex-alertmanager
     volumes:
       - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      # Clé SMTP tenue hors du dépôt et hors du YAML de configuration.
+      - ./monitoring/alertmanager/smtp_password:/etc/alertmanager/smtp_password:ro
       - alertmanager_data:/alertmanager
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'

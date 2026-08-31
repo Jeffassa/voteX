@@ -13,7 +13,7 @@ from app.models.audit import AuditAction
 from app.schemas.audit import AuditEventOut
 from app.schemas.student import StudentOut
 from app.services import audit_service
-from app.services.resend_email_service import send_account_activated_email
+from app.services.email_service import send_account_activated_email
 
 
 router = APIRouter()
@@ -102,7 +102,7 @@ def activate_student(
         background.add_task(
             send_account_activated_email,
             to_email=student.email,
-            student_name=f"{student.first_name} {student.last_name}"
+            student_name=f"{student.first_name} {student.last_name}",
         )
 
     return {"detail": f"Étudiant {student.matricule} activé avec succès."}

@@ -11,6 +11,7 @@ from datetime import datetime
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
 
 from app.core.config import settings
+from app.core.metrics import EMAILS_TOTAL
 
 
 logger = logging.getLogger(__name__)
@@ -129,6 +130,7 @@ async def send_password_reset_email(
 ) -> None:
     config = _config()
     if not config:
+        EMAILS_TOTAL.labels(kind="password_reset", outcome="not_configured").inc()
         logger.info("email: SMTP not configured — reset link for %s : %s", to_email, reset_url)
         return
 
@@ -170,8 +172,10 @@ async def send_password_reset_email(
     )
     try:
         await FastMail(config).send_message(message)
+        EMAILS_TOTAL.labels(kind="password_reset", outcome="sent").inc()
         logger.info("email: password reset link sent to %s", to_email)
     except Exception as exc:
+        EMAILS_TOTAL.labels(kind="password_reset", outcome="failed").inc()
         logger.warning("email: failed to send reset link to %s: %s", to_email, exc)
 
 
@@ -188,6 +192,7 @@ async def send_vote_receipt_email(
 ) -> None:
     config = _config()
     if not config:
+        EMAILS_TOTAL.labels(kind="vote_receipt", outcome="not_configured").inc()
         logger.info("email: SMTP not configured — skipping receipt to %s", to_email)
         return
 
@@ -215,8 +220,10 @@ async def send_vote_receipt_email(
 
     try:
         await FastMail(config).send_message(message)
+        EMAILS_TOTAL.labels(kind="vote_receipt", outcome="sent").inc()
         logger.info("email: receipt sent to %s for vote %s", to_email, vote_hash[:10])
     except Exception as exc:
+        EMAILS_TOTAL.labels(kind="vote_receipt", outcome="failed").inc()
         logger.warning("email: failed to send receipt to %s: %s", to_email, exc)
 
 
@@ -228,6 +235,7 @@ async def send_activation_code_email(
 ) -> None:
     config = _config()
     if not config:
+        EMAILS_TOTAL.labels(kind="activation_code", outcome="not_configured").inc()
         logger.info("email: SMTP not configured — activation code for %s : %s", to_email, activation_code)
         return
 
@@ -270,6 +278,65 @@ async def send_activation_code_email(
     )
     try:
         await FastMail(config).send_message(message)
+        EMAILS_TOTAL.labels(kind="activation_code", outcome="sent").inc()
         logger.info("email: activation code sent to %s", to_email)
     except Exception as exc:
+        EMAILS_TOTAL.labels(kind="activation_code", outcome="failed").inc()
         logger.warning("email: failed to send activation code to %s: %s", to_email, exc)
+
+
+async def send_account_activated_email(*, to_email: str, student_name: str) -> None:
+    """Prévient un étudiant que l'administration a validé sa demande.
+
+    Ce message existait, mais passait par l'API Resend — dont la clé n'est pas
+    fournie au conteneur. Il était donc écrit, jamais envoyé : la fonction
+    journalisait un avertissement et retournait. Depuis que les revendications
+    non prouvées attendent une validation humaine, cet email est le seul signal
+    que l'étudiant reçoit ; il emprunte désormais le chemin SMTP effectivement
+    configuré, comme les autres messages de la plateforme.
+    """
+    config = _config()
+    if not config:
+        EMAILS_TOTAL.labels(kind="account_activated", outcome="not_configured").inc()
+        logger.info("email: SMTP not configured — activation notice for %s not sent", to_email)
+        return
+
+    html = f"""
+    <div style="font-family:-apple-system,Inter,sans-serif;max-width:520px;margin:0 auto;
+                color:#0F172A;background:#F7F8FA;padding:32px">
+      <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
+        <div style="background:#0A2540;color:white;padding:16px 20px;border-radius:12px;
+                    margin:-32px -32px 24px;font-weight:600;font-size:16px">
+          ESATIC SmartVote — Compte autorisé
+        </div>
+        <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(student_name)},</h1>
+        <p style="color:#334155;line-height:1.6;font-size:14px">
+          Ton identité a été vérifiée par l'administration : ton compte SmartVote est ouvert.
+        </p>
+        <p style="color:#334155;line-height:1.6;font-size:14px">
+          Connecte-toi avec ton matricule et le mot de passe que tu as choisi lors de ta demande.
+        </p>
+        <p style="margin-top:20px">
+          <a href="{settings.FRONTEND_URL}/login"
+             style="display:inline-block;padding:12px 22px;background:#FF7A00;color:white;
+                    text-decoration:none;border-radius:10px;font-weight:500">
+            Se connecter à SmartVote
+          </a>
+        </p>
+      </div>
+    </div>
+    """
+
+    message = MessageSchema(
+        subject="[ESATIC SmartVote] Ton compte est activé",
+        recipients=[to_email],
+        body=html,
+        subtype=MessageType.html,
+    )
+    try:
+        await FastMail(config).send_message(message)
+        EMAILS_TOTAL.labels(kind="account_activated", outcome="sent").inc()
+        logger.info("email: account activation notice sent to %s", to_email)
+    except Exception as exc:
+        EMAILS_TOTAL.labels(kind="account_activated", outcome="failed").inc()
+        logger.warning("email: failed to send activation notice to %s: %s", to_email, exc)

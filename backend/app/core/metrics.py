@@ -18,6 +18,7 @@ import logging
 
 from fastapi import FastAPI, Request, Response, status
 from prometheus_client import (
+    Counter,
     CONTENT_TYPE_LATEST,
     CollectorRegistry,
     generate_latest,
@@ -37,6 +38,29 @@ METRICS_PATH = "/metrics"
 
 def _unauthorized() -> Response:
     return Response(status_code=status.HTTP_401_UNAUTHORIZED, content="")
+
+
+# Compteur d'acheminement des emails.
+#
+# Un envoi qui échoue ne laissait qu'une ligne de journal : l'application
+# continuait, l'interface annonçait « Code envoyé », et personne ne savait que
+# rien n'était parti. Vérifié le 31/08/2026 — le fournisseur refusait TOUS les
+# messages en 550 (domaine expéditeur non vérifié) sans que la supervision ne
+# s'en aperçoive. Un code d'activation ou une réinitialisation qui n'arrive pas
+# ferme l'accès au scrutin aussi sûrement qu'une panne.
+EMAILS_TOTAL = Counter(
+    "smartvote_emails_total",
+    "Tentatives d'envoi d'email, par type de message et issue.",
+    ["kind", "outcome"],
+    # Pas d'auto-enregistrement sur le registre global : il n'est pas exposé,
+    # et une seconde instanciation de l'application y lèverait un doublon.
+    registry=None,
+)
+
+
+def _register_application_metrics(registry: CollectorRegistry) -> None:
+    """Rattache les métriques applicatives au registre exposé."""
+    registry.register(EMAILS_TOTAL)
 
 
 def _token_is_valid(request: Request) -> bool:
@@ -71,6 +95,11 @@ def init_metrics(app: FastAPI) -> None:
     registry = CollectorRegistry()
     for collector in (ProcessCollector, PlatformCollector, GCCollector):
         collector(registry=registry)
+
+    # Les métriques applicatives rejoignent ce registre. Sans cela, un compteur
+    # déclaré ailleurs atterrirait sur le registre global, que `/metrics`
+    # n'expose pas : la mesure existerait sans jamais être lue.
+    _register_application_metrics(registry)
 
     instrumentator = Instrumentator(
         # Les chemins portent des UUID (élections, candidats, étudiants) :

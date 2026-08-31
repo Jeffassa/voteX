@@ -88,3 +88,29 @@ groups:
         annotations:
           summary: "Utilisation mémoire élevée"
           description: "Plus de 90% de la mémoire système est utilisée."
+      - alert: EmailDeliveryFailing
+        expr: >
+          sum(rate(smartvote_emails_total{outcome="failed"}[10m])) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Les emails de la plateforme ne partent plus"
+          description: >
+            Au moins un envoi échoue de façon répétée. Constaté le 31/08/2026 :
+            le fournisseur refusait la totalité des messages en 550 sans que
+            rien ne le signale. Un code d'activation ou un lien de
+            réinitialisation qui n'arrive pas ferme l'accès au scrutin.
+
+      - alert: EmailNotConfigured
+        expr: >
+          sum(rate(smartvote_emails_total{outcome="not_configured"}[15m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Des emails sont abandonnés faute de configuration SMTP"
+          description: >
+            L'application renonce à envoyer : aucun serveur SMTP n'est
+            configuré. Acceptable en développement, jamais pendant une
+            campagne électorale.

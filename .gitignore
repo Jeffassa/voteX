@@ -54,3 +54,4 @@ npm-debug.log*
 # Playwright : rapports et artefacts d'exécution
 /frontend/playwright-report/
 /frontend/test-results/
+monitoring/alertmanager/smtp_password

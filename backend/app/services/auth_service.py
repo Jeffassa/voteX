@@ -176,12 +176,16 @@ async def send_activation_code(db: Session, payload: ActivationCodeRequest, back
 
     db.commit()
 
-    # Envoi de l'email
-    from app.services import resend_email_service
+    # Envoi par le chemin SMTP — le même que pour les codes distribués à
+    # l'import, les reçus de vote et les réinitialisations. L'API Resend
+    # attendait une clé `RESEND_API_KEY` qui n'est pas fournie au conteneur :
+    # le code était composé puis abandonné, tandis que l'interface affichait
+    # « Code envoyé ! Vérifie ta boîte mail. »
+    from app.services import email_service
     background_tasks.add_task(
-        resend_email_service.send_activation_code_email,
+        email_service.send_activation_code_email,
         to_email=destination,
-        student_name=f"{user.first_name} {user.last_name}",
+        voter_name=f"{user.first_name} {user.last_name}",
         activation_code=activation_code,
     )
 

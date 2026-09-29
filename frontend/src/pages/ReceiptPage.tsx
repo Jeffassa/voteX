@@ -1,3 +1,5 @@
+import { useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowRight, Box, Download, ExternalLink } from "lucide-react";
 import toast from "react-hot-toast";
@@ -6,10 +8,13 @@ import { useReveal } from "@/hooks/useReveal";
 import { AppHeader } from "@/components/AppHeader";
 import { HashChip } from "@/components/HashChip";
 import { useElection, useMe } from "@/lib/queries";
+import { verifyVoteHash } from "@/lib/queries/votes";
 import { etherscanTxUrl, explorerName } from "@/lib/blockchain";
 import { fullNameOf } from "@/lib/palette";
 import { downloadVoteReceiptPdf } from "@/lib/pdfReceipt";
 import type { Candidate, VoteReceipt } from "@/types/api";
+
+const ANCHOR_WAIT_MS = 2 * 60 * 1000;
 
 export default function ReceiptPage() {
   // Le reçu est une confirmation : on le laisse s'installer posément.
@@ -25,6 +30,21 @@ export default function ReceiptPage() {
 
   const receipt = state?.receipt;
   const candidate = state?.candidate;
+
+  // Le bulletin est enregistré tout de suite ; son inscription sur la chaîne se
+  // fait en arrière-plan. On interroge la vérification publique jusqu'à ce
+  // qu'elle aboutisse (ou pendant ~2 minutes au plus).
+  const startedAt = useRef(Date.now());
+  const anchor = useQuery({
+    queryKey: ["anchor", receipt?.vote_hash],
+    queryFn: () => verifyVoteHash(receipt!.vote_hash),
+    enabled: !!receipt && !receipt.tx_hash,
+    refetchInterval: (q) =>
+      q.state.data?.anchored || Date.now() - startedAt.current > ANCHOR_WAIT_MS ? false : 4000,
+  });
+  const txHash = receipt?.tx_hash ?? anchor.data?.tx_hash ?? null;
+  const blockNumber = receipt?.block_number ?? anchor.data?.block_number ?? null;
+  const anchoring = !txHash && Date.now() - startedAt.current <= ANCHOR_WAIT_MS;
 
   if (!receipt) {
     return (
@@ -112,7 +132,7 @@ export default function ReceiptPage() {
               </strong>
             </>
           )}
-          {" "}est désormais scellé sur la blockchain.
+          {" "}est enregistré{txHash ? " et scellé sur la blockchain" : ""}.
         </p>
 
         <div
@@ -131,7 +151,7 @@ export default function ReceiptPage() {
               <span style={{ fontWeight: 600, fontSize: 14 }}>Reçu de transaction</span>
             </div>
             <span className="badge badge-open">
-              <span className="dot" /> Confirmé
+              <span className="dot" /> {txHash ? "Ancré sur la chaîne" : "Enregistré"}
             </span>
           </div>
           <div
@@ -147,18 +167,18 @@ export default function ReceiptPage() {
 
             <div className="muted">Hash transaction</div>
             <div>
-              {receipt.tx_hash ? (
-                <HashChip value={receipt.tx_hash} />
+              {txHash ? (
+                <HashChip value={txHash} />
               ) : (
-                <span className="muted">— hors chaîne —</span>
+                <span className="muted">
+                  {anchoring ? "ancrage en cours…" : "— hors chaîne —"}
+                </span>
               )}
             </div>
 
             <div className="muted">Bloc</div>
             <div className="mono" style={{ color: "var(--navy-900)" }}>
-              {receipt.block_number
-                ? `#${receipt.block_number.toLocaleString("fr-FR")}`
-                : "—"}
+              {blockNumber ? `#${blockNumber.toLocaleString("fr-FR")}` : "—"}
             </div>
 
             <div className="muted">Horodatage</div>
@@ -177,9 +197,9 @@ export default function ReceiptPage() {
               display: "flex", gap: 10, justifyContent: "flex-end",
             }}
           >
-            {receipt.tx_hash ? (
+            {txHash ? (
               <a
-                href={etherscanTxUrl(receipt.tx_hash)}
+                href={etherscanTxUrl(txHash)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-outline btn-sm"

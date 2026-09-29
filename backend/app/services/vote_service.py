@@ -12,7 +12,7 @@ from app.models.election import ElectionStatus
 from app.models.audit import AuditAction
 from app.schemas.vote import VoteVerification
 from app.services import audit_service
-from app.services.blockchain import compute_vote_hash, record_vote_on_chain
+from app.services.blockchain import compute_vote_hash
 
 
 logger = logging.getLogger(__name__)
@@ -55,8 +55,11 @@ def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UU
         raise ConflictError("Vous avez déjà voté pour cette élection")
 
     nonce = secrets.token_hex(16)
+    # Le bulletin est validé en base D'ABORD. L'ancrage on-chain (jusqu'à 90 s
+    # d'attente d'un bloc, et irréversible) se fait ensuite, hors requête, par
+    # anchoring_service : une panne ou une lenteur du RPC ne bloque plus un vote
+    # et ne laisse plus de hachage sans bulletin.
     vote_hash = compute_vote_hash(str(user.id), str(election_id), str(candidate_id), nonce)
-    chain = record_vote_on_chain(vote_hash, election.blockchain_id)
 
     # Transaction atomique : VoterRecord + Vote créés ensemble ou rien du tout
     try:
@@ -73,8 +76,6 @@ def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UU
                 election_id=election_id,
                 candidate_id=candidate_id,
                 vote_hash=vote_hash,
-                tx_hash=chain.get("tx_hash"),
-                block_number=chain.get("block_number"),
             )
             db.add(vote)
 
@@ -151,6 +152,8 @@ def verify_vote_by_hash(db: Session, *, vote_hash: str) -> VoteVerification:
         valid=True,
         vote_hash=vote_hash,
         election_title=vote.election.title if vote.election else None,
+        anchored=vote.tx_hash is not None,
+        tx_hash=vote.tx_hash,
         block_number=vote.block_number,
         message="Vote authentique et enregistré",
     )

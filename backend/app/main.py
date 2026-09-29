@@ -1,3 +1,6 @@
+import asyncio
+import contextlib
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -15,13 +18,34 @@ from app.core.rate_limit import limiter
 from app.core.metrics import init_metrics
 from app.core.monitoring import init_monitoring
 from app.core.startup_checks import run_startup_checks
+from app.services import anchoring_service
+
+
+_log = logging.getLogger(__name__)
+
+
+async def _anchoring_loop() -> None:
+    """Rejoue périodiquement l'ancrage des bulletins restés en attente."""
+    while True:
+        try:
+            await asyncio.to_thread(anchoring_service.sweep)
+        except Exception:
+            _log.exception("balayage d'ancrage en échec")
+        await asyncio.sleep(settings.ANCHOR_INTERVAL_SECONDS)
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     run_startup_checks()   # Vérifications de sécurité avant toute requête
     init_monitoring()      # Sentry APM
+    sweeper = None
+    if anchoring_service.chain_configured():
+        sweeper = asyncio.create_task(_anchoring_loop())
     yield
+    if sweeper:
+        sweeper.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await sweeper
 
 
 # Désactive /docs et /redoc en production : l'OpenAPI complet est une carte de

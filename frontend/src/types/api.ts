@@ -87,6 +87,8 @@ export interface VoteVerification {
   valid: boolean;
   vote_hash: string;
   election_title: string | null;
+  anchored?: boolean;
+  tx_hash?: string | null;
   block_number: number | null;
   message: string;
 }

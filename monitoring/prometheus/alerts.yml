@@ -121,3 +121,16 @@ groups:
             L'application renonce à envoyer : aucun serveur SMTP n'est
             configuré. Acceptable en développement, jamais pendant une
             campagne électorale.
+
+      # Un bulletin en attente d'ancrage n'est pas perdu (il est en base), mais
+      # il n'est pas vérifiable sur la chaîne. Une file qui ne se vide pas
+      # signale un RPC injoignable, un compte sans fonds ou un contrat qui
+      # refuse les hachages (élection hors période).
+      - alert: VoteAnchoringStuck
+        expr: smartvote_votes_pending_anchor > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Des bulletins n'arrivent pas à être ancrés sur la chaîne"
+          description: "{{ $value }} bulletin(s) en attente d'ancrage depuis plus de 10 minutes."

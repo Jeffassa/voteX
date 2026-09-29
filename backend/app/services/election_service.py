@@ -19,7 +19,7 @@ from app.models.election import ElectionStatus
 from app.models.student import UserRole
 from app.models.audit import AuditAction
 from app.schemas.election import CandidateResult, ElectionCreate, ElectionResults, ElectionUpdate
-from app.services import audit_service, blockchain
+from app.services import anchoring_service, audit_service, blockchain
 
 
 logger = logging.getLogger(__name__)
@@ -179,6 +179,15 @@ def set_status(
     """
     election = get_or_404(db, election_id)
     previous = election.status
+
+    # Après `closeElection`, le contrat refuse tout nouveau hachage : on ancre
+    # d'abord les bulletins encore en attente.
+    if (
+        status == ElectionStatus.CLOSED
+        and previous != ElectionStatus.CLOSED
+        and election.blockchain_id is not None
+    ):
+        anchoring_service.flush_election(db, election.id)
 
     election.status = status
 

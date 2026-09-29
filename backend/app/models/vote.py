@@ -40,6 +40,9 @@ class Vote(Base):
     vote_hash: Mapped[str] = mapped_column(String(66), unique=True, nullable=False, index=True)
     tx_hash: Mapped[str | None] = mapped_column(String(66), nullable=True)
     block_number: Mapped[int | None] = mapped_column(nullable=True)
+    # Tentatives d'ancrage on-chain déjà faites. Sert à ne pas rejouer sans fin
+    # un bulletin que le contrat refuse (voir anchoring_service).
+    anchor_attempts: Mapped[int] = mapped_column(nullable=False, default=0, server_default="0")
 
     # Pas de `created_at` ici, volontairement : PostgreSQL fige now() au début de
     # la transaction, donc VoterRecord et Vote portaient la MÊME heure à la

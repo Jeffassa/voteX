@@ -138,6 +138,7 @@ docker compose exec backend python -m scripts.seed
 | `SUPABASE_*` | — | ✅ | oui (Realtime) |
 | `WEB3_RPC_URL` / `CONTRACT_ADDRESS` / `ADMIN_PRIVATE_KEY` | ✅ | — | oui (blockchain) |
 | `MAIL_*` | ✅ | — | oui (email reçu) |
+| `ANCHOR_INTERVAL_SECONDS` | ✅ | — | défaut 15 (rejeu de l'ancrage on-chain) |
 | `VITE_CHAIN_EXPLORER_BASE` | — | ✅ | défaut Sepolia |
 
 Sans les optionnels : pas de realtime (polling 5s), pas de hash on-chain, pas d'email envoyé. Le reste fonctionne.

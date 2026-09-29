@@ -10,7 +10,7 @@ from app.core.database import get_db
 from app.core.rate_limit import limiter
 from app.models import Election, Student
 from app.schemas.vote import VoteReceipt, VoteRequest, VoteVerification
-from app.services import email_service, vote_service
+from app.services import anchoring_service, email_service, vote_service
 
 
 router = APIRouter()
@@ -46,6 +46,10 @@ def cast(
         block_number=vote.block_number,
         created_at=voted_at,
     )
+
+    # Ancrage sans attendre le prochain balayage ; sans effet si la chaîne n'est
+    # pas configurée.
+    background_tasks.add_task(anchoring_service.sweep)
 
     return VoteReceipt(
         id=vote.id,

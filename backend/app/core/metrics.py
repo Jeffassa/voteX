@@ -19,6 +19,7 @@ import logging
 from fastapi import FastAPI, Request, Response, status
 from prometheus_client import (
     Counter,
+    Gauge,
     CONTENT_TYPE_LATEST,
     CollectorRegistry,
     generate_latest,
@@ -58,9 +59,27 @@ EMAILS_TOTAL = Counter(
 )
 
 
+# Ancrage on-chain des bulletins. Un bulletin en attente n'est pas perdu (il est
+# en base), mais sans ancrage il n'est pas vérifiable sur la chaîne : un compte
+# qui ne redescend pas à zéro signale un RPC ou un contrat en panne.
+ANCHORED_TOTAL = Counter(
+    "smartvote_vote_anchoring_total",
+    "Tentatives d'ancrage de bulletins, par issue (anchored, retry, rejected).",
+    ["outcome"],
+    registry=None,
+)
+ANCHOR_PENDING = Gauge(
+    "smartvote_votes_pending_anchor",
+    "Bulletins enregistrés en base mais pas encore ancrés sur la chaîne.",
+    registry=None,
+)
+
+
 def _register_application_metrics(registry: CollectorRegistry) -> None:
     """Rattache les métriques applicatives au registre exposé."""
     registry.register(EMAILS_TOTAL)
+    registry.register(ANCHORED_TOTAL)
+    registry.register(ANCHOR_PENDING)
 
 
 def _token_is_valid(request: Request) -> bool:

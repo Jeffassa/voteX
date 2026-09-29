@@ -91,6 +91,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_VOTE: str = "30/minute"
     RATE_LIMIT_LOGIN: str = "60/minute"
 
+    # Ancrage on-chain des bulletins : période du balayage qui rejoue les échecs.
+    ANCHOR_INTERVAL_SECONDS: int = 15
+
     # Monitoring — si vide, Sentry n'est pas initialisé.
     SENTRY_DSN: str = ""
 

@@ -97,7 +97,9 @@ def _build_receipt_html(
         </h1>
         <p style="color:#334155;line-height:1.6;font-size:14px">
           Bonjour {_esc(voter_name)}, votre bulletin dans l'élection
-          « {_esc(election_title)} » est désormais scellé sur la blockchain.
+          « {_esc(election_title)} » est enregistré.
+          {"Il est scellé sur la blockchain." if tx_hash else
+           "Son inscription sur la blockchain est en cours : vous pourrez la vérifier avec le hash ci-dessous."}
         </p>
 
         <table style="width:100%;border-collapse:collapse;margin-top:20px;font-size:13px">

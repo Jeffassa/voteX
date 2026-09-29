@@ -179,6 +179,7 @@ def set_status(
     """
     election = get_or_404(db, election_id)
     previous = election.status
+
     election.status = status
 
     if status == ElectionStatus.OPEN and previous != ElectionStatus.OPEN:
@@ -307,6 +308,24 @@ def compute_results(db: Session, election_id: UUID) -> ElectionResults:
     cache_set(cache_key, result.model_dump(), ttl=ttl)
 
     return result
+
+
+def results_for_user(db: Session, election_id: UUID, user: Student) -> ElectionResults:
+    """Résultats visibles par `user`.
+
+    Tant que le scrutin n'est pas clos, un électeur ne voit que la
+    participation. Les scores en direct pèsent sur ceux qui n'ont pas encore
+    voté (effet de meute, vote « utile », pression sur un candidat en retard).
+    Les administrateurs gardent la vue complète pour superviser.
+    """
+    election = get_for_user(db, election_id, user)
+    results = compute_results(db, election_id)
+
+    is_admin = user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN)
+    if is_admin or election.status in (ElectionStatus.CLOSED, ElectionStatus.PUBLISHED):
+        return results
+
+    return results.model_copy(update={"candidates": [], "blank_votes": 0, "scores_hidden": True})
 
 
 def list_candidates(db: Session, election_id: UUID) -> list[Candidate]:

@@ -62,16 +62,12 @@ def _build_receipt_html(
     *,
     voter_name: str,
     election_title: str,
-    candidate_name: str | None,
     vote_hash: str,
     tx_hash: str | None,
     block_number: int | None,
     created_at: datetime,
     explorer_base: str,
 ) -> str:
-    candidate_line = (
-        f"<strong>{_esc(candidate_name)}</strong>" if candidate_name else "votre candidat"
-    )
     chain_block = ""
     if tx_hash:
         chain_block = f"""
@@ -100,7 +96,7 @@ def _build_receipt_html(
           Votre vote a été enregistré.
         </h1>
         <p style="color:#334155;line-height:1.6;font-size:14px">
-          Bonjour {_esc(voter_name)}, votre bulletin pour {candidate_line} dans l'élection
+          Bonjour {_esc(voter_name)}, votre bulletin dans l'élection
           « {_esc(election_title)} » est désormais scellé sur la blockchain.
         </p>
 
@@ -184,7 +180,6 @@ async def send_vote_receipt_email(
     to_email: str,
     voter_name: str,
     election_title: str,
-    candidate_name: str | None,
     vote_hash: str,
     tx_hash: str | None,
     block_number: int | None,
@@ -200,7 +195,6 @@ async def send_vote_receipt_email(
     html = _build_receipt_html(
         voter_name=voter_name,
         election_title=election_title,
-        candidate_name=candidate_name,
         vote_hash=vote_hash,
         tx_hash=tx_hash,
         block_number=block_number,

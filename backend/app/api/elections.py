@@ -101,8 +101,7 @@ def get_results(
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[Student, Depends(get_current_user)],
 ):
-    election_service.get_for_user(db, election_id, user)  # garde d'accès
-    return election_service.compute_results(db, election_id)
+    return election_service.results_for_user(db, election_id, user)
 
 
 @router.get("/{election_id}/non-voters", response_model=list[NonVoterOut])

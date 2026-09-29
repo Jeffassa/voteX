@@ -108,8 +108,6 @@ export default function VerifyVotePage() {
                   </div>
                   <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
                     {result.election_title && <>{result.election_title} · </>}
-                    {result.created_at &&
-                      `enregistré le ${new Date(result.created_at).toLocaleString("fr-FR")}`}
                     {result.block_number && (
                       <>
                         , bloc{" "}

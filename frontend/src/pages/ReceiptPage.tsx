@@ -200,7 +200,6 @@ export default function ReceiptPage() {
                 }
                 downloadVoteReceiptPdf({
                   receipt,
-                  candidate,
                   electionTitle: election?.title || "Élection",
                   voterFullName: `${me.first_name} ${me.last_name}`,
                   voterMatricule: me.matricule,

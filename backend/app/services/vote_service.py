@@ -91,14 +91,17 @@ def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UU
 
     db.refresh(vote)
 
-    # Audit (best-effort, ne révèle PAS le candidat — on ne trace que le fait du vote)
+    # Audit (best-effort — on ne trace que le fait de voter, rien qui identifie le bulletin)
     audit_service.record(
         db,
         action=AuditAction.VOTE_CAST,
         actor_id=user.id,
         target_type="election",
         target_id=election_id,
-        details=f"vote_hash={vote_hash[:8]}…",
+        # Ni hachage, ni fragment de hachage : le journal désigne l'acteur, et
+        # le hachage désigne un bulletin — les réunir dans une ligne relierait
+        # l'électeur à son choix.
+        details=None,
     )
     return vote
 
@@ -129,7 +132,6 @@ def list_for_user(db: Session, user: Student) -> list[dict]:
         {
             "id": r.id,
             "election_id": r.election_id,
-            "candidate_id": None,
             "vote_hash": "anonymisé",
             "tx_hash": None,
             "block_number": None,
@@ -149,7 +151,6 @@ def verify_vote_by_hash(db: Session, *, vote_hash: str) -> VoteVerification:
         valid=True,
         vote_hash=vote_hash,
         election_title=vote.election.title if vote.election else None,
-        created_at=vote.created_at,
         block_number=vote.block_number,
         message="Vote authentique et enregistré",
     )

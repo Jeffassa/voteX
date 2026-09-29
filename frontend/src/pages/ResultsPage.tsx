@@ -142,7 +142,7 @@ export default function ResultsPage() {
                   fontSize: 13, fontWeight: 500,
                 }}
               >
-                <TrendingUp size={14} /> Mise à jour temps réel
+                <TrendingUp size={14} /> {results?.scores_hidden ? "Participation en direct" : "Mise à jour temps réel"}
               </div>
             </div>
           </div>
@@ -157,7 +157,14 @@ export default function ResultsPage() {
               </div>
             </div>
             <div className="col gap-4">
-              {colored.length === 0 && (
+              {results?.scores_hidden && (
+                <div className="muted" style={{ fontSize: 13 }}>
+                  Les scores sont masqués tant que le scrutin est ouvert, pour ne
+                  pas influencer ceux qui n'ont pas encore voté. Ils seront
+                  publiés à la clôture.
+                </div>
+              )}
+              {!results?.scores_hidden && colored.length === 0 && (
                 <div className="muted" style={{ fontSize: 13 }}>
                   Aucun candidat enregistré.
                 </div>
@@ -171,7 +178,7 @@ export default function ResultsPage() {
                 />
               ))}
               
-              {results?.blank_votes !== undefined && results.blank_votes > 0 && (
+              {!results?.scores_hidden && results?.blank_votes !== undefined && results.blank_votes > 0 && (
                 <div style={{ marginTop: 12, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
                   <div className="row items-center justify-between" style={{ marginBottom: 8 }}>
                     <div className="row items-center gap-3">

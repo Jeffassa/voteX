@@ -1,11 +1,10 @@
 import { jsPDF } from "jspdf";
 
 import { etherscanTxUrl } from "@/lib/blockchain";
-import type { Candidate, VoteReceipt } from "@/types/api";
+import type { VoteReceipt } from "@/types/api";
 
 interface BuildPdfArgs {
   receipt: VoteReceipt;
-  candidate?: Candidate | null;
   electionTitle: string;
   voterFullName: string;
   voterMatricule: string;
@@ -18,7 +17,6 @@ const INK_700: [number, number, number] = [51, 65, 85];
 
 export function buildVoteReceiptPdf({
   receipt,
-  candidate,
   electionTitle,
   voterFullName,
   voterMatricule,
@@ -53,10 +51,9 @@ export function buildVoteReceiptPdf({
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor(...INK_700);
-  const intro = candidate
-    ? `Bulletin pour ${candidate.student.first_name} ${candidate.student.last_name} scellé sur la blockchain.`
-    : "Bulletin scellé sur la blockchain.";
-  doc.text(intro, margin, y);
+  // Le document ne nomme jamais le candidat : un PDF est copiable, transmissible
+  // et archivable, il deviendrait une preuve de vote monnayable ou exigible.
+  doc.text("Bulletin scellé sur la blockchain.", margin, y);
 
   y += 36;
 

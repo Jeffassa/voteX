@@ -70,12 +70,13 @@ export interface ElectionResults {
   blank_votes?: number;
   participation_rate: number;
   candidates: CandidateResult[];
+  /** Vrai tant que le scrutin est ouvert : seule la participation est publique. */
+  scores_hidden?: boolean;
 }
 
 export interface VoteReceipt {
   id: string;
   election_id: string;
-  candidate_id: string;
   vote_hash: string;
   tx_hash: string | null;
   block_number: number | null;
@@ -86,7 +87,6 @@ export interface VoteVerification {
   valid: boolean;
   vote_hash: string;
   election_title: string | null;
-  created_at: string | null;
   block_number: number | null;
   message: string;
 }

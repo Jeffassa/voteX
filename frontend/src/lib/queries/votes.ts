@@ -27,8 +27,8 @@ export function useCastVote() {
     mutationFn: async (payload) =>
       (await api.post("/api/votes/", payload)).data,
     onSuccess: (data) => {
-      // Le reçu N'EST PAS persisté : il contient `candidate_id`, donc le choix
-      // de l'électeur. L'écrire dans localStorage laissait le secret du vote
+      // Le reçu N'EST PAS persisté : rapproché du choix affiché à l'écran, il
+      // le désignerait. L'écrire dans localStorage laissait le secret du vote
       // sur la machine — souvent une machine partagée de salle info — à la
       // portée d'un XSS, d'une extension ou de l'utilisateur suivant. Aucun
       // écran ne le relisait : la copie ne servait qu'à fuiter.

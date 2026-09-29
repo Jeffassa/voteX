@@ -36,7 +36,12 @@ sécurité, pas une évolution.
 
 1. **Secret du vote.** Aucune colonne ne relie un bulletin à son auteur.
    `voter_records` dit *qui a voté*, `votes` dit *ce qui a été voté*, et rien ne
-   permet de recoller les deux. Vérifié par `tests/test_schema_migrations.py`.
+   permet de recoller les deux : pas de colonne commune, pas d'horodatage sur
+   le bulletin (PostgreSQL fige `now()` par transaction, une jointure sur l'heure
+   suffisait), pas de hachage dans le journal d'audit, pas de candidat dans le
+   reçu ni dans l'e-mail, et scores masqués aux électeurs tant que le scrutin est
+   ouvert. Vérifié par `tests/test_schema_migrations.py` et
+   `tests/test_ballot_secrecy.py`.
 2. **Unicité du vote.** Un électeur ne peut déposer qu'un bulletin par scrutin,
    garanti par une contrainte d'unicité en base — pas seulement par un contrôle
    applicatif.

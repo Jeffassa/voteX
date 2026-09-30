@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request, Response, status
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session, joinedload
 
@@ -30,7 +31,12 @@ from app.schemas.auth import (
 )
 from app.schemas.student import MeResponse, StudentOut
 from app.models.audit import AuditAction
-from app.services import audit_service, auth_service, refresh_token_service
+from app.services import (
+    audit_service,
+    auth_service,
+    google_oauth,
+    refresh_token_service,
+)
 
 
 router = APIRouter()
@@ -296,3 +302,91 @@ def revoke_all_sessions(
     """Force la déconnexion de tous les appareils (panic button)."""
     refresh_token_service.revoke_all_for_user(db, user_id=current.id)
     clear_auth_cookies(response)
+
+
+# ───────────────────── connexion avec Google ─────────────────────
+
+
+@router.get("/providers")
+def providers():
+    """Fournisseurs d'identité disponibles, pour afficher (ou non) leurs boutons."""
+    return {"google": google_oauth.is_enabled()}
+
+
+@router.get("/google/start")
+@limiter.limit("20/minute")
+def google_start(request: Request):
+    if not google_oauth.is_enabled():
+        raise HTTPException(status_code=404, detail="Connexion Google non configurée")
+    auth = google_oauth.start()
+    response = RedirectResponse(auth.url, status_code=302)
+    # SameSite=Lax et non Strict : le retour de Google est une navigation
+    # venue d'un autre site, sur laquelle un cookie Strict ne serait pas envoyé.
+    response.set_cookie(
+        google_oauth.STATE_COOKIE,
+        auth.state_cookie,
+        max_age=int(google_oauth.STATE_TTL.total_seconds()),
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite="lax",
+        path=google_oauth.STATE_COOKIE_PATH,
+        domain=settings.COOKIE_DOMAIN or None,
+    )
+    return response
+
+
+@router.get("/google/callback")
+@limiter.limit("20/minute")
+def google_callback(
+    request: Request,
+    db: Annotated[Session, Depends(get_db)],
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+):
+    frontend = settings.FRONTEND_URL.rstrip("/")
+    client_ip = request.client.host if request.client else None
+
+    try:
+        if error:
+            raise google_oauth.GoogleLoginError("annule", f"Google a renvoyé {error!r}")
+        user = google_oauth.complete(
+            db,
+            code=code,
+            state=state,
+            state_cookie=request.cookies.get(google_oauth.STATE_COOKIE),
+        )
+    except google_oauth.GoogleLoginError as exc:
+        audit_service.record(
+            db,
+            action=AuditAction.LOGIN_FAILED,
+            target_type="google",
+            details=exc.code,
+            ip_address=client_ip,
+        )
+        response = RedirectResponse(f"{frontend}/login?erreur=google_{exc.code}", status_code=302)
+        response.delete_cookie(google_oauth.STATE_COOKIE, path=google_oauth.STATE_COOKIE_PATH)
+        return response
+
+    raw_refresh, _ = refresh_token_service.issue(
+        db,
+        user=user,
+        user_agent=request.headers.get("user-agent"),
+        ip_address=client_ip,
+    )
+    response = RedirectResponse(f"{frontend}/connexion/google", status_code=302)
+    _set_session_cookies(response, user=user, refresh_token=raw_refresh)
+    response.delete_cookie(google_oauth.STATE_COOKIE, path=google_oauth.STATE_COOKIE_PATH)
+    # Le jeton CSRF ne doit pas fuiter dans une redirection : le frontend le
+    # récupère par /api/auth/me, comme après un rechargement de page.
+    del response.headers[CSRF_HEADER]
+    audit_service.record(
+        db,
+        action=AuditAction.LOGIN,
+        actor_id=user.id,
+        target_type="student",
+        target_id=user.id,
+        details="google",
+        ip_address=client_ip,
+    )
+    return response

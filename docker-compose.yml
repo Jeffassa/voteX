@@ -63,6 +63,11 @@ services:
       MAIL_FROM: ${MAIL_FROM:-"noreply@esatic-smartvote.ci"}
       # Supervision : /metrics reste fermé par défaut, on l'ouvre ici pour que
       # la stack docker-compose.monitoring.yml ait quelque chose à scraper.
+      # Connexion Google (optionnelle) : identifiants OAuth de la console
+      # Google Cloud. Sans eux, le bouton « Continuer avec Google » n'apparaît pas.
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8000/api/auth/google/callback}
       METRICS_ENABLED: "true"
       METRICS_TOKEN: ${METRICS_TOKEN:-}
     ports:

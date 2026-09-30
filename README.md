@@ -8,7 +8,7 @@ Plateforme de vote en ligne pour l'élection des chefs de classe à l'ESATIC.
 - **Frontend** : React + Vite + TypeScript + Tailwind v4, Kokonut UI, bklit UI (graphiques), Three.js
 - **Realtime** (optionnel) : Supabase Realtime
 - **Blockchain** (optionnel) : Solidity + Hardhat + ethers.js + Sepolia testnet
-- **Auth** : JWT + matricule ESATIC
+- **Auth** : JWT en cookies httpOnly, matricule ESATIC ou compte Google
 
 ## Structure
 
@@ -191,6 +191,21 @@ vers `https` (308) et publient HSTS.
   `frontend/src/pages/legal/PrivacyPage.tsx` (responsable du traitement,
   contact, hébergeur, durées de conservation) et `TermsPage.tsx`.
 - Vérifier le domaine d'envoi des emails (voir `SECURITY.md`).
+
+### Connexion avec Google
+
+1. Console Google Cloud > API et services > Identifiants > **Créer un ID client
+   OAuth**, type « Application Web ».
+2. URI de redirection autorisée : `https://api.<domaine>/api/auth/google/callback`
+   (en local : `http://localhost:8000/api/auth/google/callback`).
+3. Renseigner `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` et
+   `GOOGLE_REDIRECT_URI` côté backend. Le bouton apparaît alors sur la page de
+   connexion.
+
+Google ne crée jamais de compte : la connexion n'aboutit que si un compte
+existant, actif et déjà activé porte exactement l'adresse Google vérifiée.
+Tout le protocole (code d'autorisation + PKCE) se déroule côté serveur ; la page
+ne charge aucun script Google.
 
 ### Mesure d'audience
 

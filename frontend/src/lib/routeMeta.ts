@@ -25,6 +25,7 @@ const ROUTES: Array<[string, RouteMeta]> = [
   ["/register", { page: "register", title: "Activer mon compte", description: "Activez votre compte étudiant ESATIC SmartVote à partir de votre matricule." }],
   ["/forgot-password", { page: "forgot_password", title: "Mot de passe oublié", noindex: true }],
   ["/reset-password", { page: "reset_password", title: "Nouveau mot de passe", noindex: true }],
+  ["/connexion/google", { page: "login", title: "Connexion", noindex: true }],
   ["/verify", { page: "verify", title: "Vérifier un vote", description: "Vérifiez qu'un bulletin a bien été enregistré, à partir du hash de votre reçu de vote." }],
   ["/confidentialite", { page: "privacy", title: "Politique de confidentialité", description: "Comment ESATIC SmartVote traite vos données personnelles et garantit le secret du vote." }],
   ["/cgu", { page: "terms", title: "Conditions générales d'utilisation", description: "Conditions générales d'utilisation de la plateforme de vote ESATIC SmartVote." }],

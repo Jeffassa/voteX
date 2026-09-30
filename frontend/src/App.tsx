@@ -21,6 +21,7 @@ const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
 const PrivacyPage = lazy(() => import("@/pages/legal/PrivacyPage"));
 const TermsPage = lazy(() => import("@/pages/legal/TermsPage"));
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
+const GoogleCallbackPage = lazy(() => import("@/pages/GoogleCallbackPage"));
 
 const AdminDashboardPage = lazy(() => import("@/pages/AdminDashboardPage"));
 const ElectionsListPage = lazy(() => import("@/pages/admin/ElectionsListPage"));
@@ -84,6 +85,7 @@ export default function App() {
         <Route path="/verify" element={<VerifyVotePage />} />
         <Route path="/confidentialite" element={<PrivacyPage />} />
         <Route path="/cgu" element={<TermsPage />} />
+        <Route path="/connexion/google" element={<GoogleCallbackPage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="/elections/:id/vote" element={<VotingRoomPage />} />

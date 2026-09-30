@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { Brand } from "@/components/Brand";
 import { useReveal } from "@/hooks/useReveal";
 import { Honeypot } from "@/components/Honeypot";
+import { GOOGLE_ERRORS, GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { trackEvent } from "@/lib/analytics";
 import { extractErrorMessage, extractStatus } from "@/lib/errors";
 import { useLogin } from "@/lib/queries";
@@ -23,7 +24,9 @@ export default function LoginPage() {
   const [matricule, setMatricule] = useState(prefilledMatricule);
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
-  const [err, setErr] = useState("");
+  // Retour d'une connexion Google refusée : /login?erreur=google_…
+  const googleError = new URLSearchParams(location.search).get("erreur");
+  const [err, setErr] = useState(googleError ? GOOGLE_ERRORS[googleError] ?? "" : "");
   const [website, setWebsite] = useState("");
   // Champ en faute, pour y placer le focus et l'annoncer aux lecteurs d'écran.
   const [errField, setErrField] = useState<"matricule" | "password" | null>(null);
@@ -277,6 +280,8 @@ export default function LoginPage() {
                 Activer mon compte étudiant
               </Link>
             </div>
+
+            <GoogleSignInButton />
           </form>
         </div>
       </div>

@@ -81,6 +81,13 @@ class Settings(BaseSettings):
     FORCE_HTTPS: bool | None = None
     HSTS_MAX_AGE: int = 31536000
 
+    # Connexion avec Google (OpenID Connect) : active si l'identifiant et le
+    # secret du client OAuth sont renseignés. L'URI de redirection doit figurer
+    # telle quelle dans la console Google Cloud (identifiants OAuth).
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
+
     # CORS
     FRONTEND_URL: str = "http://localhost:5173"
     EXTRA_CORS_ORIGINS: str = ""

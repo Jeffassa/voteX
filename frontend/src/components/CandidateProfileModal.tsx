@@ -30,7 +30,7 @@ export function CandidateProfileModal({ candidate, classLabel, onClose, onSelect
 
         <div className="row items-center gap-4">
           <Avatar
-            initials={initialsOf(candidate.student.first_name, candidate.student.last_name)}
+            initials={initialsOf(candidate.student.first_name, candidate.student.last_name)} name={`${candidate.student.first_name ?? ""} ${candidate.student.last_name ?? ""}`}
             size={88}
             color={candidate.color}
             src={candidate.photo_url || candidate.student.photo_url || undefined}

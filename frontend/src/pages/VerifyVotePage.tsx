@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { AlertCircle, CheckCircle2, Hash } from "lucide-react";
 
+import { useReveal } from "@/hooks/useReveal";
 import { AppHeader } from "@/components/AppHeader";
 import { verifyVoteHash } from "@/lib/queries";
 import type { VoteVerification } from "@/types/api";
 
 export default function VerifyVotePage() {
+  // Page publique : l'entrée doit être immédiate, un vérificateur arrive
+  // souvent d'un lien externe avec une question précise.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", rise: 12 });
   const [hash, setHash] = useState("");
   const [state, setState] = useState<"idle" | "loading" | "found" | "notfound">("idle");
   const [result, setResult] = useState<VoteVerification | null>(null);
@@ -27,11 +31,12 @@ export default function VerifyVotePage() {
     <div>
       <AppHeader />
       <div
+        ref={pageRef}
         className="container container-narrow scene"
         style={{ padding: "64px 32px 120px" }}
       >
         <div className="text-center">
-          <div className="h-eyebrow">Vérification on-chain</div>
+          <div className="h-eyebrow">Vérification</div>
           <h1 className="h-title" style={{ fontSize: 40, marginTop: 12 }}>
             Vérifier un vote
           </h1>
@@ -43,16 +48,16 @@ export default function VerifyVotePage() {
             }}
           >
             Collez le hash de votre reçu pour vérifier que votre bulletin a bien
-            été enregistré sur la blockchain — sans révéler pour qui vous avez voté.
+            été enregistré sur la blockchain, sans révéler pour qui vous avez voté.
           </p>
         </div>
 
         <div className="card" style={{ marginTop: 40, padding: 28 }}>
-          <label className="label">Hash de vote</label>
+          <label className="label" htmlFor="verify-vote-f1">Hash de vote</label>
           <div className="row gap-3">
             <div className="input-wrap" style={{ flex: 1 }}>
               <span className="input-icon"><Hash size={16} /></span>
-              <input
+              <input id="verify-vote-f1"
                 className="input has-icon mono"
                 value={hash}
                 onChange={(e) => {
@@ -103,8 +108,6 @@ export default function VerifyVotePage() {
                   </div>
                   <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
                     {result.election_title && <>{result.election_title} · </>}
-                    {result.created_at &&
-                      `enregistré le ${new Date(result.created_at).toLocaleString("fr-FR")}`}
                     {result.block_number && (
                       <>
                         , bloc{" "}

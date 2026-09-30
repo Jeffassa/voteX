@@ -1,899 +1,286 @@
-import { useNavigate } from "react-router-dom";
-import { ArrowRight, Shield, Check, ChevronRight, ExternalLink } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
+import { Suspense, lazy } from "react";
+import { Link } from "react-router-dom";
+import {
+  ArrowRight,
+  BarChart3,
+  Check,
+  FileCheck2,
+  Link2,
+  Lock,
+  ShieldCheck,
+  Smartphone,
+} from "lucide-react";
 
 import { Brand } from "@/components/Brand";
-import {
-  AnimatedGradientText,
-  DotPattern,
-  NumberTicker,
-  ShimmerButton,
-  BorderBeam,
-  Marquee,
-} from "@/components/magic";
-import { Lordicon } from "@/components/icons/Lordicon";
-import { LORDICONS, LORDICON_COLORS } from "@/lib/lordicons";
+import { Reveal } from "@/components/Reveal";
+import SpotlightCards, { type SpotlightItem } from "@/components/kokonutui/spotlight-cards";
+import { useConsentStore } from "@/lib/consent";
 
-/* ─── Animation helpers ─── */
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 36 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] },
-  },
-};
-
-const stagger = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.11 } },
-};
-
-function FadeSection({
-  children,
-  className,
-  style,
-  delay = 0,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  style?: React.CSSProperties;
-  delay?: number;
-}) {
-  const reduced = useReducedMotion();
-  return (
-    <motion.div
-      initial={reduced ? false : "hidden"}
-      whileInView="visible"
-      viewport={{ once: true, margin: "-80px" }}
-      variants={{
-        hidden: { opacity: 0, y: 36 },
-        visible: {
-          opacity: 1,
-          y: 0,
-          transition: { duration: 0.65, delay, ease: [0.22, 1, 0.36, 1] },
-        },
-      }}
-      className={className}
-      style={style}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-/* ─── Data ─── */
-
-const PILLARS = [
-  {
-    lord: LORDICONS.shield,
-    colors: LORDICON_COLORS.orangeNavy,
-    title: "Sécurisé",
-    desc: "Authentification par matricule ESATIC, chiffrement de bout en bout. Ton identité reste protégée, ton vote reste secret.",
-  },
-  {
-    lord: LORDICONS.activity,
-    colors: LORDICON_COLORS.orangeNavy,
-    title: "Temps réel",
-    desc: "Les résultats sont publiés en direct dès la clôture. Le taux de participation est visible en continu.",
-  },
-  {
-    lord: LORDICONS.blockchain,
-    colors: LORDICON_COLORS.orangeNavy,
-    title: "Blockchain",
-    desc: "Chaque vote est scellé sur la chaîne Sepolia — auditable par n'importe qui, sans jamais révéler l'identité.",
-  },
-];
+/**
+ * Scène 3D chargée à la demande : Three.js n'est téléchargé que par la page
+ * d'accueil, jamais par la salle de vote ni par l'administration.
+ */
+const BallotBoxScene = lazy(() => import("@/components/three/BallotBoxScene"));
 
 const STEPS = [
   {
-    n: "01",
-    lord: LORDICONS.vote,
-    title: "Connecte-toi",
-    desc: "Saisis ton matricule étudiant ESATIC. Aucun mot de passe à retenir — ton identifiant suffit.",
+    title: "Connectez-vous",
+    text: "Avec votre matricule ESATIC et votre mot de passe, ou avec l'adresse Google enregistrée par l'école.",
   },
   {
-    n: "02",
-    lord: LORDICONS.check,
-    title: "Choisis ton candidat",
-    desc: "Consulte les profils des candidats déclarés pour ta promotion, puis effectue ton choix.",
+    title: "Choisissez",
+    text: "Consultez les candidats de votre classe, puis maintenez le bouton de vote pour confirmer. Le vote blanc est possible.",
   },
   {
-    n: "03",
-    lord: LORDICONS.hash,
-    title: "Ton vote est scellé",
-    desc: "Une empreinte cryptographique est enregistrée sur la blockchain. Tu peux la vérifier à tout moment.",
+    title: "Vérifiez",
+    text: "Vous recevez un reçu avec une empreinte unique. Elle prouve que votre bulletin est compté, sans révéler votre choix.",
   },
 ];
 
-const STATS: Array<{ value: number; suffix: string; label: string }> = [
-  { value: 312, suffix: "+", label: "étudiants éligibles" },
-  { value: 4, suffix: "", label: "candidats déclarés" },
-  { value: 100, suffix: "%", label: "votes vérifiables on-chain" },
-  { value: 0, suffix: "", label: "registre modifiable" },
+const FEATURES: SpotlightItem[] = [
+  {
+    icon: Lock,
+    title: "Vote secret",
+    description: "Le bulletin est enregistré sans votre identité ni l'heure du vote. Rien ne relie un électeur à son choix.",
+    color: "#1e4172",
+  },
+  {
+    icon: FileCheck2,
+    title: "Reçu vérifiable",
+    description: "Chaque bulletin reçoit une empreinte SHA-256, que vous pouvez contrôler sur ce site à tout moment.",
+    color: "#15803d",
+  },
+  {
+    icon: BarChart3,
+    title: "Résultats à la clôture",
+    description: "Pendant le scrutin, seule la participation est visible, pour ne pas influencer les derniers votants.",
+    color: "#b55600",
+  },
+  {
+    icon: Link2,
+    title: "Empreintes sur blockchain",
+    description: "Les empreintes sont inscrites sur Ethereum (réseau de test Sepolia), où personne ne peut les effacer.",
+    color: "#6d28d9",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Une voix par étudiant",
+    description: "Un bulletin par électeur et par scrutin, garanti par la base de données elle-même.",
+    color: "#0369a1",
+  },
+  {
+    icon: Smartphone,
+    title: "Sur votre téléphone",
+    description: "Aucune application à installer : le site fonctionne sur mobile, tablette et ordinateur.",
+    color: "#be123c",
+  },
 ];
 
-const TRUST_TAGS = [
-  "Vote anonyme",
-  "Résultats publics",
-  "Audit blockchain",
-  "ESATIC 2026",
-  "FastAPI + PostgreSQL",
-  "Sepolia Testnet",
-  "Vérification on-chain",
-  "Open source",
+const GUARANTEES = [
+  "Votre choix n'est visible par personne, administration comprise.",
+  "Un compte Google ne peut ouvrir que le compte que l'école vous a attribué.",
+  "Le code source est public et peut être audité.",
+  "Les scores ne sont publiés qu'à la fermeture du scrutin.",
 ];
-
-/* ─── Mock voting card (hero visual) ─── */
-
-function MockVotingCard() {
-  const candidates = [
-    { initials: "KB", name: "Konan Brice", votes: 68 },
-    { initials: "TD", name: "Touré Djibril", votes: 42 },
-    { initials: "AK", name: "Assou Koffi", votes: 31 },
-  ];
-  return (
-    <div
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        borderRadius: 20,
-        boxShadow: "var(--shadow-xl)",
-        padding: 24,
-        width: 340,
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      <BorderBeam size={280} duration={10} />
-
-      {/* header */}
-      <div className="row items-center justify-between" style={{ marginBottom: 20 }}>
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 600, color: "var(--orange-600)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 4 }}>
-            Élection ouverte
-          </div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--navy-900)", letterSpacing: "-0.02em" }}>
-            Chef de classe · L3 GL
-          </div>
-        </div>
-        <span className="badge badge-open">
-          <span className="dot" />
-          Live
-        </span>
-      </div>
-
-      {/* candidates */}
-      <div className="col gap-3">
-        {candidates.map((c, i) => (
-          <motion.div
-            key={c.name}
-            initial={{ opacity: 0, x: 16 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4 + i * 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              padding: "10px 12px",
-              borderRadius: 12,
-              border: `1px solid ${i === 0 ? "var(--orange-500)" : "var(--border)"}`,
-              background: i === 0 ? "var(--orange-50)" : "var(--surface-2)",
-              cursor: "pointer",
-              transition: "all 160ms ease",
-            }}
-          >
-            <div
-              style={{
-                width: 36, height: 36, borderRadius: 10,
-                background: i === 0 ? "var(--orange-500)" : "var(--navy-100)",
-                color: i === 0 ? "white" : "var(--navy-700)",
-                display: "grid", placeItems: "center",
-                fontSize: 12, fontWeight: 700, flexShrink: 0,
-              }}
-            >
-              {c.initials}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--navy-900)", letterSpacing: "-0.01em" }}>
-                {c.name}
-              </div>
-              <div style={{ marginTop: 5 }}>
-                <div style={{ height: 4, borderRadius: 99, background: "var(--border)", overflow: "hidden" }}>
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${c.votes}%` }}
-                    transition={{ delay: 0.7 + i * 0.1, duration: 0.8, ease: "easeOut" }}
-                    style={{
-                      height: "100%",
-                      background: i === 0 ? "var(--orange-500)" : "var(--navy-400, #4a77b0)",
-                      borderRadius: 99,
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: i === 0 ? "var(--orange-600)" : "var(--ink-500)", minWidth: 28, textAlign: "right" }}>
-              {c.votes}%
-            </div>
-            {i === 0 && (
-              <div style={{ width: 18, height: 18, borderRadius: 99, background: "var(--orange-500)", display: "grid", placeItems: "center", flexShrink: 0 }}>
-                <Check size={11} color="white" strokeWidth={3} />
-              </div>
-            )}
-          </motion.div>
-        ))}
-      </div>
-
-      {/* footer */}
-      <div
-        style={{
-          marginTop: 16, paddingTop: 16,
-          borderTop: "1px solid var(--border)",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-        }}
-      >
-        <div style={{ fontSize: 11, color: "var(--ink-500)" }}>
-          <span style={{ fontWeight: 600, color: "var(--navy-900)" }}>141</span> votes · participation{" "}
-          <span style={{ fontWeight: 600, color: "var(--success-600)" }}>87%</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: "var(--ink-400)" }}>
-          <div style={{ width: 6, height: 6, borderRadius: 99, background: "var(--success-500)", animation: "sv-pulse 2s infinite" }} />
-          on-chain
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Section divider ─── */
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-      <div style={{ width: 3, height: 20, borderRadius: 99, background: "var(--orange-500)" }} />
-      <span className="h-eyebrow">{children}</span>
-    </div>
-  );
-}
-
-/* ─── Page ─── */
 
 export default function LandingPage() {
-  const navigate = useNavigate();
+  const reopenConsent = useConsentStore((s) => s.reopen);
 
   return (
-    <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
-      {/* ── NAVBAR ───────────────────────────────────────── */}
-      <header
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          background: "rgba(247,248,250,0.82)",
-          backdropFilter: "saturate(180%) blur(16px)",
-          WebkitBackdropFilter: "saturate(180%) blur(16px)",
-          borderBottom: "1px solid var(--border)",
-        }}
-      >
-        <div
-          className="container row items-center justify-between"
-          style={{ padding: "16px 32px" }}
-        >
-          <Brand />
-          <nav className="row items-center gap-2" style={{ fontSize: 13, fontWeight: 500 }}>
-            <a className="btn btn-ghost btn-sm" href="#fonctionnement">Comment ça marche</a>
-            <a className="btn btn-ghost btn-sm" href="#securite">Sécurité</a>
-            <div style={{ width: 1, height: 18, background: "var(--border-strong)", margin: "0 4px" }} />
-            <button className="btn btn-navy btn-sm" onClick={() => navigate("/login")}>
+    <div className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          <Link to="/" aria-label="ESATIC SmartVote, accueil">
+            <Brand />
+          </Link>
+          <nav aria-label="Navigation principale" className="flex items-center gap-1 text-sm">
+            <a href="#fonctionnement" className="hidden rounded-lg px-3 py-2 text-[var(--ink-700)] hover:bg-muted sm:inline-block">
+              Fonctionnement
+            </a>
+            <a href="#securite" className="hidden rounded-lg px-3 py-2 text-[var(--ink-700)] hover:bg-muted sm:inline-block">
+              Sécurité
+            </a>
+            <Link to="/verify" className="hidden rounded-lg px-3 py-2 text-[var(--ink-700)] hover:bg-muted md:inline-block">
+              Vérifier un vote
+            </Link>
+            <Link to="/login" className="btn btn-primary btn-sm ml-2">
               Se connecter
-            </button>
+            </Link>
           </nav>
         </div>
       </header>
 
-      {/* ── HERO ─────────────────────────────────────────── */}
-      <section
-        style={{ position: "relative", overflow: "hidden", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}
-      >
-        {/* background dot pattern */}
+      {/* Héros */}
+      <section className="relative overflow-hidden border-b border-border bg-white">
         <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
           style={{
-            position: "absolute",
-            inset: 0,
-            maskImage: "radial-gradient(ellipse at 20% 40%, black 20%, transparent 65%)",
-            WebkitMaskImage: "radial-gradient(ellipse at 20% 40%, black 20%, transparent 65%)",
-            pointerEvents: "none",
+            backgroundImage: "radial-gradient(circle, rgba(24,24,27,0.07) 1px, transparent 1px)",
+            backgroundSize: "22px 22px",
+            maskImage: "radial-gradient(ellipse at 30% 40%, black 10%, transparent 70%)",
           }}
-        >
-          <DotPattern fill="rgba(10,37,64,0.07)" />
-        </div>
-
-        <div
-          className="container"
-          style={{
-            padding: "80px 32px 88px",
-            display: "grid",
-            gridTemplateColumns: "1fr auto",
-            gap: 64,
-            alignItems: "center",
-            position: "relative",
-            zIndex: 1,
-          }}
-        >
-          {/* Left: text */}
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={stagger}
-          >
-            <motion.div variants={fadeUp} className="row items-center gap-2" style={{ marginBottom: 28 }}>
-              <span className="badge badge-orange">
-                <Lordicon src={LORDICONS.activity} size={13} colors={LORDICON_COLORS.orangeNavy} />
-                Élection 2026 — ouverte
-              </span>
-              <span className="muted" style={{ fontSize: 13 }}>
-                · Promotion L3 Génie Logiciel · ESATIC
-              </span>
-            </motion.div>
-
-            <motion.h1
-              variants={fadeUp}
-              style={{
-                fontSize: "clamp(44px, 6.5vw, 88px)",
-                fontWeight: 600,
-                letterSpacing: "-0.045em",
-                lineHeight: 0.97,
-                margin: 0,
-                color: "var(--navy-900)",
-                maxWidth: 900,
-              }}
-            >
-              Le vote des chefs
-              <br />
-              de classe,{" "}
-              <AnimatedGradientText
-                style={{ fontStyle: "italic", fontFamily: "Georgia, serif", fontWeight: 500 }}
-              >
-                réinventé.
-              </AnimatedGradientText>
-            </motion.h1>
-
-            <motion.p
-              variants={fadeUp}
-              style={{
-                fontSize: 18,
-                color: "var(--ink-700)",
-                maxWidth: 580,
-                marginTop: 28,
-                lineHeight: 1.6,
-                letterSpacing: "-0.005em",
-              }}
-            >
-              Une plateforme de vote en ligne pour l'École Supérieure Africaine des TIC.
-              Sécurisée par blockchain, vérifiable par chaque étudiant, conçue à Abidjan.
-            </motion.p>
-
-            <motion.div variants={fadeUp} className="row gap-3" style={{ marginTop: 40 }}>
-              <ShimmerButton onClick={() => navigate("/login")}>
-                Voter maintenant <ArrowRight size={17} />
-              </ShimmerButton>
-              <button
-                className="btn btn-outline btn-xl"
-                onClick={() => navigate("/verify")}
-              >
-                <Shield size={17} /> Vérifier un vote
-              </button>
-            </motion.div>
-
-            <motion.div
-              variants={fadeUp}
-              className="row items-center gap-3"
-              style={{ marginTop: 40 }}
-            >
-              {["Anonyme", "Blockchain Sepolia", "Open source"].map((tag) => (
-                <div
-                  key={tag}
-                  className="row items-center gap-2"
-                  style={{ fontSize: 12, color: "var(--ink-500)" }}
-                >
-                  <Check size={13} color="var(--success-500)" strokeWidth={2.5} />
-                  {tag}
-                </div>
-              ))}
-            </motion.div>
-          </motion.div>
-
-          {/* Right: mock card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            style={{ flexShrink: 0 }}
-          >
-            <MockVotingCard />
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── TRUST BAR ─────────────────────────────────────── */}
-      <section
-        style={{ borderBottom: "1px solid var(--border)", padding: "18px 0", overflow: "hidden" }}
-      >
-        <Marquee gap="24px" duration="28s" style={{ maskImage: "linear-gradient(to right, transparent, black 10%, black 90%, transparent)" }}>
-          {TRUST_TAGS.map((t) => (
-            <div
-              key={t}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "6px 16px", borderRadius: 99,
-                border: "1px solid var(--border-strong)",
-                background: "var(--surface)",
-                fontSize: 12, fontWeight: 500, color: "var(--ink-600, #475569)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <div style={{ width: 6, height: 6, borderRadius: 99, background: "var(--orange-500)" }} />
-              {t}
+        />
+        <div className="relative mx-auto grid max-w-6xl items-center gap-6 px-4 pb-10 pt-12 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:pb-20 lg:pt-20">
+          <Reveal>
+            <p className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-3 py-1 text-[13px] font-medium text-[var(--ink-700)] shadow-sm">
+              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[var(--orange-500)]" />
+              Élections des chefs de classe 2026
+            </p>
+            <h1 className="mt-6 text-[40px] font-semibold leading-[1.05] tracking-[-0.035em] text-[var(--ink-900)] sm:text-[56px] lg:text-[64px]">
+              Le vote des chefs de classe, en ligne.
+            </h1>
+            <p className="mt-5 max-w-xl text-[17px] leading-relaxed text-[var(--ink-700)]">
+              Votez en une minute depuis votre téléphone, puis vérifiez vous-même que votre
+              bulletin a été compté. Personne ne voit votre choix, pas même l'administration.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link to="/login" className="btn btn-primary btn-lg">
+                Voter maintenant <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+              <Link to="/verify" className="btn btn-outline btn-lg">
+                Vérifier un vote
+              </Link>
             </div>
-          ))}
-        </Marquee>
-      </section>
+            <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--ink-500)]">
+              {["Vote secret", "Reçu vérifiable", "Résultats à la clôture"].map((t) => (
+                <li key={t} className="flex items-center gap-2">
+                  <Check size={15} aria-hidden="true" className="text-[#15803d]" />
+                  {t}
+                </li>
+              ))}
+            </ul>
+          </Reveal>
 
-      {/* ── FEATURES / PILLARS ────────────────────────────── */}
-      <section id="fonctionnement" style={{ padding: "104px 0 80px" }}>
-        <div className="container" style={{ padding: "0 32px" }}>
-          <FadeSection style={{ maxWidth: 580, marginBottom: 60 }}>
-            <SectionLabel>Fonctionnalités</SectionLabel>
-            <h2 className="h-title" style={{ fontSize: "clamp(28px, 4vw, 44px)", maxWidth: 560 }}>
-              Tout ce dont une élection équitable a besoin
-            </h2>
-            <p style={{ fontSize: 16, color: "var(--ink-500)", marginTop: 14, lineHeight: 1.6 }}>
-              Conçu pour les étudiants ESATIC, SmartVote garantit que chaque voix compte — et peut être prouvée.
-            </p>
-          </FadeSection>
-
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-60px" }}
-            variants={stagger}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 20,
-            }}
-          >
-            {PILLARS.map((p, i) => (
-              <motion.div
-                key={p.title}
-                variants={fadeUp}
-                className="card"
-                style={{
-                  padding: 28,
-                  position: "relative",
-                  overflow: "hidden",
-                  transition: "box-shadow 200ms ease, transform 200ms ease",
-                }}
-                whileHover={{ y: -4, boxShadow: "var(--shadow-lg)" }}
-              >
-                {i === 0 && <BorderBeam size={200} duration={14} delay={0} />}
-                <div
-                  style={{
-                    width: 52, height: 52, borderRadius: 14,
-                    background: "var(--orange-50)",
-                    display: "grid", placeItems: "center", marginBottom: 20,
-                    flexShrink: 0,
-                  }}
-                >
-                  <Lordicon src={p.lord} size={34} trigger="loop" colors={p.colors} />
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--navy-900)", marginBottom: 10 }}>
-                  {p.title}
-                </div>
-                <div style={{ fontSize: 14, color: "var(--ink-500)", lineHeight: 1.6 }}>
-                  {p.desc}
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── HOW IT WORKS ──────────────────────────────────── */}
-      <section
-        style={{
-          background: "var(--surface)",
-          borderTop: "1px solid var(--border)",
-          borderBottom: "1px solid var(--border)",
-          padding: "104px 0",
-        }}
-      >
-        <div className="container" style={{ padding: "0 32px" }}>
-          <FadeSection style={{ textAlign: "center", maxWidth: 560, margin: "0 auto 72px" }}>
-            <SectionLabel>Comment ça marche</SectionLabel>
-            <h2 className="h-title" style={{ fontSize: "clamp(28px, 4vw, 44px)" }}>
-              Voter en trois étapes
-            </h2>
-            <p style={{ fontSize: 16, color: "var(--ink-500)", marginTop: 14, lineHeight: 1.6 }}>
-              Simple pour l'étudiant, inviolable sous le capot.
-            </p>
-          </FadeSection>
-
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-60px" }}
-            variants={stagger}
-            style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 32, position: "relative" }}
-          >
-            {/* connector line */}
+          <div className="relative h-[300px] sm:h-[380px] lg:h-[460px]">
             <div
-              style={{
-                position: "absolute",
-                top: 44, left: "16.5%", right: "16.5%",
-                height: 1,
-                background: "linear-gradient(to right, var(--orange-100), var(--orange-500), var(--orange-100))",
-                zIndex: 0,
-              }}
+              aria-hidden="true"
+              className="absolute inset-6 rounded-full opacity-60 blur-3xl"
+              style={{ background: "radial-gradient(circle, rgba(74,119,176,0.18), transparent 70%)" }}
             />
-
-            {STEPS.map((s, i) => (
-              <motion.div
-                key={s.n}
-                variants={fadeUp}
-                style={{ position: "relative", zIndex: 1 }}
-              >
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-                  <div
-                    style={{
-                      width: 88, height: 88, borderRadius: 24,
-                      background: i === 1 ? "var(--navy-900)" : "var(--surface)",
-                      border: `1px solid ${i === 1 ? "var(--navy-900)" : "var(--border-strong)"}`,
-                      boxShadow: i === 1 ? "var(--shadow-orange)" : "var(--shadow-md)",
-                      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                      gap: 4, marginBottom: 24, flexShrink: 0,
-                      position: "relative",
-                    }}
-                  >
-                    <Lordicon
-                      src={s.lord}
-                      size={36}
-                      trigger="loop"
-                      colors={i === 1 ? LORDICON_COLORS.whiteOrange : LORDICON_COLORS.navyOrange}
-                    />
-                  </div>
-
-                  <div
-                    style={{
-                      fontSize: 11, fontWeight: 700, letterSpacing: "0.06em",
-                      color: "var(--orange-600)", marginBottom: 8,
-                      fontFamily: "var(--font-mono)",
-                    }}
-                  >
-                    ÉTAPE {s.n}
-                  </div>
-                  <div style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--navy-900)", marginBottom: 10 }}>
-                    {s.title}
-                  </div>
-                  <div style={{ fontSize: 14, color: "var(--ink-500)", lineHeight: 1.6, maxWidth: 260 }}>
-                    {s.desc}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
+            <Suspense fallback={null}>
+              <BallotBoxScene className="absolute inset-0" />
+            </Suspense>
+          </div>
         </div>
       </section>
 
-      {/* ── STATS ─────────────────────────────────────────── */}
-      <section style={{ padding: "104px 0" }}>
-        <div className="container" style={{ padding: "0 32px" }}>
-          <FadeSection>
-            <div
-              className="card"
-              style={{
-                background: "var(--navy-900)",
-                borderColor: "var(--navy-900)",
-                padding: "56px 48px",
-                position: "relative",
-                overflow: "hidden",
-              }}
-            >
-              {/* radial glow */}
-              <div
-                style={{
-                  position: "absolute", inset: 0, pointerEvents: "none",
-                  background: "radial-gradient(circle at 85% 50%, rgba(255,122,0,0.20), transparent 55%)",
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute", inset: 0, pointerEvents: "none",
-                  background: "radial-gradient(circle at 15% 50%, rgba(78,116,175,0.18), transparent 55%)",
-                }}
-              />
-              <DotPattern fill="rgba(255,255,255,0.03)" />
-
-              <div style={{ position: "relative", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 32, alignItems: "center" }}>
-                {STATS.map((s, i) => (
-                  <div key={s.label} style={{ textAlign: i === 0 ? "left" : "left" }}>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 2 }}>
-                      <NumberTicker
-                        value={s.value}
-                        suffix={s.suffix}
-                        delay={0.08 * i}
-                        className="stat-num"
-                      />
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 11, marginTop: 8,
-                        color: "rgba(255,255,255,0.55)",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.07em",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {s.label}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </FadeSection>
-        </div>
-      </section>
-
-      {/* ── SECURITY DEEP DIVE ────────────────────────────── */}
-      <section
-        id="securite"
-        style={{
-          background: "var(--surface)",
-          borderTop: "1px solid var(--border)",
-          borderBottom: "1px solid var(--border)",
-          padding: "104px 0",
-        }}
-      >
-        <div
-          className="container"
-          style={{
-            padding: "0 32px",
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 80,
-            alignItems: "center",
-          }}
-        >
-          {/* Left: text */}
-          <FadeSection>
-            <SectionLabel>Transparence & Confiance</SectionLabel>
-            <h2 className="h-title" style={{ fontSize: "clamp(28px, 4vw, 42px)", marginBottom: 20 }}>
-              Chaque vote laisse une empreinte que tu peux vérifier
+      {/* Fonctionnement */}
+      <section id="fonctionnement" className="scroll-mt-20 py-16 sm:py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <Reveal onScroll>
+            <p className="h-eyebrow">Fonctionnement</p>
+            <h2 className="mt-2 max-w-xl text-3xl font-semibold tracking-[-0.025em] text-[var(--ink-900)] sm:text-4xl">
+              Trois étapes, une minute.
             </h2>
-            <p style={{ fontSize: 15, color: "var(--ink-500)", lineHeight: 1.65, marginBottom: 32 }}>
-              Après ton vote, un hash SHA-256 unique est généré et enregistré sur la blockchain Sepolia.
-              Saisis-le sur la page de vérification — tu verras le bloc, la transaction, et la confirmation que ton vote existe.
-            </p>
+          </Reveal>
+          <ol className="mt-10 grid gap-4 sm:grid-cols-3">
+            {STEPS.map((s, i) => (
+              <Reveal as="li" onScroll delay={i * 0.08} key={s.title} className="rounded-2xl border border-border bg-white p-6 shadow-sm">
+                <span className="font-mono text-sm text-[var(--ink-500)]">{i + 1}</span>
+                <h3 className="mt-3 text-lg font-semibold tracking-tight text-[var(--ink-900)]">{s.title}</h3>
+                <p className="mt-2 text-[15px] leading-relaxed text-[var(--ink-700)]">{s.text}</p>
+              </Reveal>
+            ))}
+          </ol>
+        </div>
+      </section>
 
-            <div className="col gap-4">
-              {[
-                { lord: LORDICONS.shield, text: "Aucun serveur ne peut modifier un vote publié on-chain" },
-                { lord: LORDICONS.hash, text: "Ton identité n'est jamais liée à ton choix de candidat" },
-                { lord: LORDICONS.check, text: "Le code source est auditable — rien n'est caché" },
-              ].map((item) => (
-                <div key={item.text} className="row items-start gap-3">
-                  <div
-                    style={{
-                      width: 36, height: 36, borderRadius: 10,
-                      background: "var(--orange-50)",
-                      display: "grid", placeItems: "center",
-                      flexShrink: 0, marginTop: 2,
-                    }}
-                  >
-                    <Lordicon src={item.lord} size={20} colors={LORDICON_COLORS.orangeNavy} />
-                  </div>
-                  <p style={{ fontSize: 14, color: "var(--ink-700)", lineHeight: 1.55, margin: 0 }}>
-                    {item.text}
-                  </p>
-                </div>
+      {/* Garanties */}
+      <section className="border-y border-border bg-white py-16 sm:py-24">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <Reveal onScroll>
+            <p className="h-eyebrow">Ce que la plateforme garantit</p>
+            <h2 className="mt-2 max-w-2xl text-3xl font-semibold tracking-[-0.025em] text-[var(--ink-900)] sm:text-4xl">
+              Conçue pour qu'un vote en ligne mérite la même confiance qu'une urne.
+            </h2>
+          </Reveal>
+          <SpotlightCards items={FEATURES} showHeader={false} className="mt-8 bg-transparent px-0 pt-0 pb-0" />
+        </div>
+      </section>
+
+      {/* Sécurité et vérification */}
+      <section id="securite" className="scroll-mt-20 py-16 sm:py-24">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2">
+          <Reveal onScroll>
+            <p className="h-eyebrow">Sécurité</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.025em] text-[var(--ink-900)] sm:text-4xl">
+              Vous pouvez vérifier, sans avoir à nous croire sur parole.
+            </h2>
+            <ul className="mt-6 space-y-3">
+              {GUARANTEES.map((g) => (
+                <li key={g} className="flex gap-3 text-[15px] leading-relaxed text-[var(--ink-700)]">
+                  <Check size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-[#15803d]" />
+                  {g}
+                </li>
               ))}
-            </div>
+            </ul>
+            <Link to="/verify" className="btn btn-outline mt-8">
+              Vérifier un reçu <ArrowRight size={15} aria-hidden="true" />
+            </Link>
+          </Reveal>
 
-            <div style={{ marginTop: 36 }}>
-              <button
-                className="btn btn-outline"
-                onClick={() => navigate("/verify")}
-                style={{ fontSize: 13 }}
-              >
-                Vérifier un vote <ExternalLink size={14} />
-              </button>
-            </div>
-          </FadeSection>
-
-          {/* Right: hash chip visual */}
-          <FadeSection delay={0.15}>
-            <div
-              className="card"
-              style={{
-                padding: 32, position: "relative", overflow: "hidden",
-                background: "linear-gradient(145deg, var(--navy-50) 0%, var(--surface) 100%)",
-              }}
-            >
-              <BorderBeam size={260} duration={16} delay={6} />
-
-              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ink-500)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 20 }}>
-                Preuve cryptographique
-              </div>
-
-              <div
-                style={{
-                  background: "var(--navy-900)",
-                  borderRadius: 12,
-                  padding: "14px 16px",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 11,
-                  color: "rgba(255,255,255,0.5)",
-                  lineHeight: 1.8,
-                  marginBottom: 20,
-                }}
-              >
-                <span style={{ color: "var(--orange-400)" }}>vote_hash</span>
-                {" = sha256("}
-                <br />
-                <span style={{ paddingLeft: 16 }}>
-                  <span style={{ color: "var(--navy-500)" }}>student_id</span>
-                  {" | "}
-                  <span style={{ color: "var(--navy-500)" }}>election_id</span>
-                </span>
-                <br />
-                <span style={{ paddingLeft: 16 }}>
-                  <span style={{ color: "var(--navy-500)" }}>candidate_id</span>
-                  {" | "}
-                  <span style={{ color: "var(--navy-500)" }}>nonce</span>
-                </span>
-                <br />
-                {")"}
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {[
-                  { label: "TX Hash", value: "0x4f8e…c3a1", ok: true },
-                  { label: "Block", value: "#7 842 091", ok: true },
-                  { label: "Status", value: "Confirmé", ok: true },
-                ].map((row) => (
-                  <div
-                    key={row.label}
-                    style={{
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      padding: "10px 14px",
-                      background: "var(--surface)",
-                      border: "1px solid var(--border)",
-                      borderRadius: 10,
-                    }}
-                  >
-                    <span style={{ fontSize: 12, color: "var(--ink-500)" }}>{row.label}</span>
-                    <span
-                      style={{
-                        fontSize: 12, fontWeight: 600,
-                        color: row.label === "Status" ? "var(--success-600)" : "var(--navy-900)",
-                        fontFamily: row.label !== "Status" ? "var(--font-mono)" : undefined,
-                        display: "flex", alignItems: "center", gap: 5,
-                      }}
-                    >
-                      {row.label === "Status" && (
-                        <Check size={12} color="var(--success-500)" strokeWidth={3} />
-                      )}
-                      {row.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </FadeSection>
-        </div>
-      </section>
-
-      {/* ── CTA ───────────────────────────────────────────── */}
-      <section style={{ padding: "104px 0" }}>
-        <div className="container" style={{ padding: "0 32px" }}>
-          <FadeSection>
-            <div
-              className="card"
-              style={{
-                padding: "64px 48px",
-                textAlign: "center",
-                background: "var(--surface)",
-                position: "relative",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  position: "absolute", inset: 0, pointerEvents: "none",
-                  background: "radial-gradient(ellipse at 50% 0%, rgba(255,122,0,0.07), transparent 60%)",
-                }}
-              />
-              <BorderBeam size={340} duration={18} />
-
-              <div style={{ position: "relative" }}>
-                <div className="h-eyebrow" style={{ marginBottom: 20 }}>ESATIC SmartVote · 2026</div>
-                <h2
-                  style={{
-                    fontSize: "clamp(32px, 5vw, 56px)",
-                    fontWeight: 600, letterSpacing: "-0.04em",
-                    color: "var(--navy-900)", margin: "0 auto 20px",
-                    maxWidth: 640, lineHeight: 1.05,
-                  }}
-                >
-                  Prêt à faire entendre ta voix ?
-                </h2>
-                <p style={{ fontSize: 17, color: "var(--ink-500)", maxWidth: 480, margin: "0 auto 40px", lineHeight: 1.6 }}>
-                  Connecte-toi avec ton matricule ESATIC et vote pour le chef de classe de ta promotion.
-                </p>
-                <div className="row justify-center gap-3">
-                  <ShimmerButton onClick={() => navigate("/login")}>
-                    Se connecter <ChevronRight size={18} />
-                  </ShimmerButton>
+          <Reveal onScroll delay={0.1}>
+            <figure className="rounded-2xl border border-border bg-white p-5 shadow-sm sm:p-6">
+              <figcaption className="text-sm font-medium text-[var(--ink-700)]">Exemple de reçu</figcaption>
+              <dl className="mt-4 space-y-3 text-sm">
+                <div>
+                  <dt className="text-[var(--ink-500)]">Empreinte du bulletin</dt>
+                  <dd className="mt-1 break-all rounded-lg bg-muted px-3 py-2 font-mono text-[13px] text-[var(--ink-900)]">
+                    0x8f3a51c0e9d7b4a2f6e1c3d5b7a9e0f2c4d6b8a0e2f4c6d8b0a2e4f6c8d0c21e
+                  </dd>
                 </div>
-              </div>
-            </div>
-          </FadeSection>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-[var(--ink-500)]">Élection</dt>
+                  <dd className="text-right text-[var(--ink-900)]">Chef de classe, L3 Génie Logiciel</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-[var(--ink-500)]">Statut</dt>
+                  <dd className="flex items-center gap-1.5 text-[#15803d]">
+                    <Check size={14} aria-hidden="true" /> Bulletin compté
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-[var(--ink-500)]">Candidat choisi</dt>
+                  <dd className="text-[var(--ink-900)]">Jamais affiché</dd>
+                </div>
+              </dl>
+            </figure>
+          </Reveal>
         </div>
       </section>
 
-      {/* ── FOOTER ────────────────────────────────────────── */}
-      <footer
-        style={{
-          borderTop: "1px solid var(--border)",
-          background: "var(--surface)",
-          padding: "40px 0",
-        }}
-      >
-        <div
-          className="container row items-center justify-between"
-          style={{ padding: "0 32px" }}
-        >
-          <div className="col gap-2">
-            <Brand />
-            <span style={{ fontSize: 12, color: "var(--ink-400)", marginTop: 4 }}>
-              Projet de soutenance L3 Génie Logiciel · ESATIC Abidjan · 2026
-            </span>
-          </div>
+      {/* Appel à l'action */}
+      <section className="px-4 pb-16 sm:px-6 sm:pb-24">
+        <Reveal onScroll className="mx-auto max-w-6xl rounded-3xl bg-[var(--navy-900)] px-6 py-12 text-center text-white sm:px-12 sm:py-16">
+          <h2 className="text-3xl font-semibold tracking-[-0.025em] sm:text-4xl">Le scrutin de votre classe est ouvert ?</h2>
+          <p className="mx-auto mt-3 max-w-md text-[16px] text-white/80">
+            Connectez-vous pour voter. Cela prend moins d'une minute.
+          </p>
+          <Link to="/login" className="btn btn-accent btn-lg mt-8">
+            Se connecter <ArrowRight size={16} aria-hidden="true" />
+          </Link>
+        </Reveal>
+      </section>
 
-          <div className="row items-center gap-6">
-            <a
-              href="#fonctionnement"
-              style={{ fontSize: 13, color: "var(--ink-500)" }}
-            >
-              Fonctionnement
-            </a>
-            <a
-              href="#securite"
-              style={{ fontSize: 13, color: "var(--ink-500)" }}
-            >
-              Sécurité
-            </a>
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => navigate("/verify")}
-            >
-              Vérifier un vote
-            </button>
+      <footer className="border-t border-border bg-white">
+        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <Brand />
+            <p className="mt-2 text-[13px] text-[var(--ink-500)]">
+              Projet de soutenance, L3 Génie Logiciel, ESATIC Abidjan, 2026.
+            </p>
           </div>
+          <nav aria-label="Liens du pied de page" className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-[var(--ink-500)]">
+            <Link to="/verify" className="hover:text-[var(--ink-900)]">Vérifier un vote</Link>
+            <Link to="/confidentialite" className="hover:text-[var(--ink-900)]">Confidentialité</Link>
+            <Link to="/cgu" className="hover:text-[var(--ink-900)]">CGU</Link>
+            <button type="button" className="sv-link-button" onClick={reopenConsent}>
+              Gérer les cookies
+            </button>
+          </nav>
         </div>
       </footer>
-
-      <style>{`
-        .stat-num {
-          font-family: var(--font-mono);
-          font-size: 42px;
-          font-weight: 700;
-          letter-spacing: -0.04em;
-          color: white;
-          display: inline-block;
-        }
-      `}</style>
     </div>
   );
 }

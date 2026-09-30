@@ -1,13 +1,47 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Lock } from "lucide-react";
 
+import { useReveal } from "@/hooks/useReveal";
 import { Brand } from "@/components/Brand";
 import { useConfirmPasswordReset } from "@/lib/queries";
 
+/**
+ * Récupère le jeton du lien reçu par e-mail, puis l'efface de l'URL.
+ *
+ * Il arrive dans le FRAGMENT (`#token=…`) : un fragment n'est pas transmis au
+ * serveur, il ne se retrouve donc ni dans les journaux d'accès ni dans un
+ * en-tête Referer. On le retire ensuite de la barre d'adresse — sans quoi il
+ * resterait visible et consultable dans l'historique du navigateur, sur une
+ * machine potentiellement partagée.
+ *
+ * La query string reste acceptée en repli, le temps que les liens déjà envoyés
+ * expirent (trente minutes).
+ */
+let cachedToken: string | null = null;
+
+function readResetToken(): string {
+  // Mémorisé au niveau du module : React StrictMode monte deux fois en
+  // développement, et la seconde lecture arriverait après le nettoyage de
+  // l'URL — l'utilisateur verrait « lien invalide » avec un lien valide.
+  if (cachedToken !== null) return cachedToken;
+  if (typeof window === "undefined") return "";
+
+  const fromHash = new URLSearchParams(window.location.hash.replace(/^#/, "")).get("token");
+  const fromQuery = new URLSearchParams(window.location.search).get("token");
+  cachedToken = fromHash || fromQuery || "";
+
+  if (cachedToken) {
+    window.history.replaceState(null, "", window.location.pathname);
+  }
+  return cachedToken;
+}
+
 export default function ResetPasswordPage() {
-  const [params] = useSearchParams();
-  const token = params.get("token") || "";
+  // Carte unique et centrée : une entrée sobre suffit.
+  const pageRef = useReveal<HTMLDivElement>({ rise: 14 });
+  // Lu une seule fois : l'URL est nettoyée dans la foulée.
+  const [token] = useState(readResetToken);
   const navigate = useNavigate();
 
   const [password, setPassword] = useState("");
@@ -57,6 +91,7 @@ export default function ResetPasswordPage() {
 
   return (
     <div
+      ref={pageRef}
       style={{
         minHeight: "100vh", display: "grid", placeItems: "center",
         padding: 24, background: "var(--bg)",
@@ -101,13 +136,15 @@ export default function ResetPasswordPage() {
 
             <div className="col gap-3">
               <div>
-                <label className="label">Nouveau mot de passe</label>
+                <label className="label" htmlFor="reset-password-f1">Nouveau mot de passe</label>
                 <div className="input-wrap">
                   <span className="input-icon"><Lock size={16} /></span>
-                  <input
+                  <input id="reset-password-f1"
                     required
                     type={show ? "text" : "password"}
                     className="input has-icon"
+                    autoComplete="new-password"
+                    maxLength={128}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     minLength={8}
@@ -115,20 +152,24 @@ export default function ResetPasswordPage() {
                   <button
                     type="button"
                     className="input-suffix-btn"
+                    aria-label={show ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                    aria-pressed={show}
                     onClick={() => setShow((s) => !s)}
                   >
-                    {show ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {show ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
                   </button>
                 </div>
               </div>
               <div>
-                <label className="label">Confirmer le mot de passe</label>
+                <label className="label" htmlFor="reset-password-f2">Confirmer le mot de passe</label>
                 <div className="input-wrap">
                   <span className="input-icon"><Lock size={16} /></span>
-                  <input
+                  <input id="reset-password-f2"
                     required
                     type={show ? "text" : "password"}
                     className="input has-icon"
+                    autoComplete="new-password"
+                    maxLength={128}
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
                     minLength={8}
@@ -138,7 +179,7 @@ export default function ResetPasswordPage() {
             </div>
 
             {err && (
-              <div
+              <div role="alert"
                 className="row items-center gap-2"
                 style={{
                   marginTop: 16, padding: "10px 12px",

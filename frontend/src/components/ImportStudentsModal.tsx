@@ -86,7 +86,7 @@ export function ImportStudentsModal({ onClose }: Props) {
             Importer des étudiants
           </h3>
           <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-            Fichier Excel ESATIC — une feuille par classe.
+            Fichier Excel ESATIC, une feuille par classe.
           </p>
         </div>
         <button className="btn btn-ghost btn-sm" onClick={onClose} aria-label="Fermer">
@@ -278,7 +278,7 @@ function FormatHelp() {
       </summary>
       <ul style={{ marginTop: 8, paddingLeft: 18, lineHeight: 1.6 }}>
         <li>
-          Une feuille <strong>par classe</strong> — le nom de la feuille doit correspondre
+          Une feuille <strong>par classe</strong> : le nom de la feuille doit correspondre
           au libellé de la classe en base (ex : <code>MP2I A</code>, <code>SRIT 1B</code>,
           <code> L3 Génie Logiciel</code>).
         </li>
@@ -290,7 +290,7 @@ function FormatHelp() {
           Colonnes détectées automatiquement (insensibles casse/accents/pluriel) :
           <ul style={{ marginTop: 4, paddingLeft: 18 }}>
             <li>
-              <code>matricule</code> — format <code>XX-ESATICNNNNAA</code>
+              <code>matricule</code> : format <code>XX-ESATICNNNNAA</code>
               {" "}(ex <code>25-ESATIC0676AA</code>)
             </li>
             <li>
@@ -300,13 +300,13 @@ function FormatHelp() {
               <code>prénom</code> / <code>prenoms</code>
             </li>
             <li>
-              <code>genre</code> / <code>sexe</code> — optionnel
+              <code>genre</code> / <code>sexe</code> : optionnel
             </li>
           </ul>
         </li>
         <li>
           Un en-tête institutionnel (ministère, secrétariat…) avant la ligne de colonnes
-          est <strong>toléré</strong> — le parser cherche automatiquement la ligne contenant
+          est <strong>toléré</strong> : le parser cherche automatiquement la ligne contenant
           "matricule" dans les 20 premières lignes.
         </li>
         <li>
@@ -368,7 +368,7 @@ function ImportReportView({ report, dryRun }: { report: ImportReport; dryRun: bo
                 <CheckCircle2 size={14} style={{ color: "var(--success-500)" }} />
               )}
               {r.status === "skipped" && (
-                <span style={{ color: "var(--ink-400)", fontSize: 16 }}>—</span>
+                <span style={{ color: "var(--ink-400)", fontSize: 16 }}>-</span>
               )}
               {r.status === "error" && (
                 <XCircle size={14} style={{ color: "var(--danger-500)" }} />
@@ -378,7 +378,7 @@ function ImportReportView({ report, dryRun }: { report: ImportReport; dryRun: bo
               L.{r.row}
             </div>
             <div className="mono" style={{ color: "var(--navy-900)", fontSize: 11 }}>
-              {r.matricule || "—"}
+              {r.matricule || "-"}
             </div>
             <div className="muted" style={{ fontSize: 12 }}>
               {r.message}

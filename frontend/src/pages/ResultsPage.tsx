@@ -1,436 +1,198 @@
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useMemo } from "react";
+import { Link, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Activity, TrendingUp } from "lucide-react";
+import { ArrowLeft, EyeOff, Trophy } from "lucide-react";
 
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar } from "@/components/Avatar";
+import { BarChart } from "@/components/charts/bar-chart";
+import { Bar } from "@/components/charts/bar";
+import { BarYAxis } from "@/components/charts/bar-y-axis";
+import { Grid } from "@/components/charts/grid";
+import { ChartTooltip } from "@/components/charts/tooltip";
+import { RingChart } from "@/components/charts/ring-chart";
+import { Ring } from "@/components/charts/ring";
+import { RingCenter } from "@/components/charts/ring-center";
+import { useReveal } from "@/hooks/useReveal";
 import { electionKeys, useElection, useElectionResults } from "@/lib/queries";
 import { colorFor } from "@/lib/palette";
 import { supabase } from "@/lib/supabase";
-import type { CandidateResult } from "@/types/api";
 
-type ColoredResult = CandidateResult & { color: string; initials: string };
+const STATUS_LABEL: Record<string, string> = {
+  draft: "En préparation",
+  open: "Scrutin ouvert",
+  closed: "Scrutin clos",
+  published: "Résultats publiés",
+};
+
+// Constante hors du composant : bklit relance son animation d'entrée quand la
+// référence de `margin` change, et un objet recréé à chaque rendu l'empêchait
+// de jamais se terminer (barres invisibles).
+const BAR_MARGIN = { left: 150, right: 24 };
+
+function initials(name: string) {
+  return name.split(" ").map((s) => s[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+}
 
 export default function ResultsPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
-  const [tick, setTick] = useState(0);
-
   const { data: results } = useElectionResults(id);
   const { data: election } = useElection(id);
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", deps: [!!results] });
 
+  // Temps réel via Supabase si configuré ; sinon, la requête se renouvelle
+  // toutes les 5 secondes (voir useElectionResults).
   useEffect(() => {
-    if (!id) return;
-    const t = setInterval(() => setTick((x) => x + 1), 4000);
-
-    // Realtime via Supabase si configuré, sinon le refetchInterval (5s) fait office de polling.
     const sb = supabase;
-    if (!sb) {
-      return () => clearInterval(t);
-    }
-
+    if (!id || !sb) return;
     const channel = sb
       .channel(`votes:${id}`)
       .on(
         "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "votes",
-          filter: `election_id=eq.${id}`,
-        },
+        { event: "INSERT", schema: "public", table: "votes", filter: `election_id=eq.${id}` },
         () => queryClient.invalidateQueries({ queryKey: electionKeys.results(id) })
       )
       .subscribe();
     return () => {
-      clearInterval(t);
       sb.removeChannel(channel);
     };
   }, [id, queryClient]);
 
-  const colored: ColoredResult[] = useMemo(
-    () =>
-      (results?.candidates || []).map((c, i) => ({
-        ...c,
-        color: colorFor(i),
-        initials: c.full_name
-          .split(" ")
-          .map((s) => s[0])
-          .filter(Boolean)
-          .slice(0, 2)
-          .join("")
-          .toUpperCase(),
-      })),
-    [results]
-  );
+  const rows = useMemo(() => {
+    const list = (results?.candidates || []).map((c, i) => ({
+      key: c.candidate_id,
+      name: c.full_name,
+      votes: c.votes,
+      percentage: c.percentage,
+      photo: c.photo_url,
+      color: colorFor(i),
+    }));
+    const blank = results?.blank_votes ?? 0;
+    if (results && blank > 0) {
+      const pct = results.total_votes ? (blank / results.total_votes) * 100 : 0;
+      list.push({ key: "blank", name: "Vote blanc", votes: blank, percentage: Math.round(pct * 100) / 100, photo: null, color: "#a1a1aa" });
+    }
+    return list;
+  }, [results]);
+
+  const chartData = rows.map((r) => ({ name: r.name, voix: r.votes }));
+  const eligible = results?.total_eligible ?? 0;
+  const turnout = results?.total_votes ?? 0;
+  const rate = Math.round(results?.participation_rate ?? 0);
+  const leader = rows.find((r) => r.key !== "blank");
+  const isOpen = election?.status === "open";
 
   return (
     <div>
       <AppHeader />
-      <div className="container scene" style={{ padding: "32px 32px 80px" }}>
-        <div className="row items-center justify-between sv-results-stats" style={{ marginBottom: 28 }}>
+      <div ref={pageRef} className="mx-auto max-w-6xl px-4 pb-20 pt-8 sm:px-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <div className="h-eyebrow">En direct</div>
-            <h1 className="h-title" style={{ marginTop: 8 }}>
-              {election?.title || "Élection"}
+            <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-[var(--ink-500)] hover:text-[var(--ink-900)]">
+              <ArrowLeft size={15} aria-hidden="true" /> Tableau de bord
+            </Link>
+            <h1 className="mt-3 text-[28px] font-semibold tracking-[-0.02em] text-[var(--ink-900)]">
+              {election?.title || "Résultats"}
             </h1>
           </div>
-          <div className="row items-center gap-2">
-            <span className="badge badge-open">
-              <span className="dot" /> Scrutin{" "}
-              {election?.status === "open" ? "ouvert" : election?.status || ""}
+          <div className="flex items-center gap-3 text-sm">
+            <span className={`badge ${isOpen ? "badge-open" : "badge-closed"}`}>
+              {isOpen && <span className="dot" />}
+              {STATUS_LABEL[election?.status ?? ""] ?? ""}
             </span>
-            <span className="muted" style={{ fontSize: 12 }}>
-              · mise à jour {tick % 2 === 0 ? "il y a 1s" : "à l'instant"}
-            </span>
+            {isOpen && <span className="text-[var(--ink-500)]">Actualisé automatiquement</span>}
           </div>
         </div>
 
-        <div
-          className="sv-results-grid"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "320px 1fr 320px",
-            gap: 20,
-          }}
-        >
-          <div
-            className="card card-pad"
-            style={{
-              display: "flex", flexDirection: "column",
-              alignItems: "center", textAlign: "center",
-            }}
-          >
-            <div
-              className="h-eyebrow"
-              style={{ color: "var(--ink-500)", alignSelf: "flex-start" }}
-            >
-              Participation
-            </div>
-            <TurnoutCircle pct={Math.round(results?.participation_rate || 0)} />
-            <div style={{ fontSize: 13, color: "var(--ink-700)" }}>
-              <span
-                className="mono"
-                style={{ color: "var(--navy-900)", fontWeight: 600 }}
-              >
-                {results?.total_votes ?? 0}
-              </span>{" "}
-              sur <span className="mono">{results?.total_eligible ?? 0}</span>{" "}
-              votants inscrits
-            </div>
-            <div
-              style={{
-                marginTop: 22, padding: 14,
-                background: "var(--orange-50)",
-                borderRadius: "var(--r-md)",
-                width: "100%", textAlign: "left",
-              }}
-            >
-              <div className="h-eyebrow" style={{ color: "var(--orange-600)" }}>
-                Tendance
-              </div>
-              <div
-                className="row items-center gap-2"
-                style={{
-                  marginTop: 6, color: "var(--orange-600)",
-                  fontSize: 13, fontWeight: 500,
-                }}
-              >
-                <TrendingUp size={14} /> Mise à jour temps réel
-              </div>
-            </div>
-          </div>
-
-          <div className="card card-pad">
-            <div className="row items-center justify-between" style={{ marginBottom: 24 }}>
-              <div style={{ fontWeight: 600, color: "var(--navy-900)" }}>
-                Répartition par candidat
-              </div>
-              <div className="row items-center gap-2 muted" style={{ fontSize: 12 }}>
-                <Activity size={14} /> Mise à jour live
-              </div>
-            </div>
-            <div className="col gap-4">
-              {colored.length === 0 && (
-                <div className="muted" style={{ fontSize: 13 }}>
-                  Aucun candidat enregistré.
-                </div>
-              )}
-              {colored.map((c, i) => (
-                <ResultBar
-                  key={c.candidate_id}
-                  c={c}
-                  rank={i + 1}
-                  pulse={tick % 4 === i}
-                />
-              ))}
-              
-              {results?.blank_votes !== undefined && results.blank_votes > 0 && (
-                <div style={{ marginTop: 12, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
-                  <div className="row items-center justify-between" style={{ marginBottom: 8 }}>
-                    <div className="row items-center gap-3">
-                      <div className="mono muted" style={{ width: 18, textAlign: "center", fontSize: 12 }}>—</div>
-                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--ink-200, #e2e8f0)", display: "grid", placeItems: "center", color: "var(--ink-700)", fontSize: 14, fontWeight: 600 }}>N</div>
-                      <div>
-                        <div style={{ fontWeight: 600, color: "var(--navy-900)", fontSize: 14 }}>Vote Blanc / Neutre</div>
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div className="mono" style={{ fontSize: 24, fontWeight: 600, color: "var(--navy-900)" }}>
-                        {results.total_votes ? ((results.blank_votes / results.total_votes) * 100).toFixed(1) : "0.0"}%
-                      </div>
-                      <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>
-                        {results.blank_votes} voix
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ height: 12, background: "var(--surface-2)", borderRadius: "var(--r-pill)", overflow: "hidden", border: "1px solid var(--border)" }}>
-                    <div style={{ height: "100%", width: `${results.total_votes ? (results.blank_votes / results.total_votes) * 100 : 0}%`, background: "var(--ink-400)", borderRadius: "var(--r-pill)", transition: "width 700ms cubic-bezier(.2,.7,.2,1)" }} />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="col gap-5">
-            <div className="card card-pad">
-              <div className="h-eyebrow" style={{ color: "var(--ink-500)" }}>
-                Évolution dans le temps
-              </div>
-              <Sparklines data={colored} tick={tick} />
-            </div>
-            <div className="card card-pad" style={{ flex: 1 }}>
-              <div className="row items-center gap-2" style={{ marginBottom: 12 }}>
-                <span
-                  style={{
-                    width: 6, height: 6, borderRadius: "50%",
-                    background: "var(--success-500)",
-                    animation: "sv-pulse 2s infinite",
-                  }}
-                />
-                <div
-                  style={{
-                    fontWeight: 600, fontSize: 13, color: "var(--navy-900)",
-                  }}
+        <div className="mt-6 grid gap-5 lg:grid-cols-[340px_1fr]">
+          <section aria-labelledby="participation-title" className="card card-pad">
+            <h2 id="participation-title" className="text-[15px] font-semibold text-[var(--ink-900)]">Participation</h2>
+            <div className="mt-4 flex justify-center">
+              {results && (
+                <RingChart
+                  data={[{ label: `sur ${eligible} inscrits`, value: turnout, maxValue: Math.max(eligible, 1), color: "var(--navy-900)" }]}
+                  size={220}
+                  strokeWidth={16}
+                  baseInnerRadius={72}
                 >
-                  Flux on-chain
-                </div>
+                  <Ring index={0} />
+                  <RingCenter defaultLabel={`sur ${eligible} inscrits`} />
+                </RingChart>
+              )}
+            </div>
+            <p className="mt-4 text-center text-sm text-[var(--ink-700)]">
+              <strong className="text-[var(--ink-900)]">{rate} %</strong> des électeurs ont voté.
+            </p>
+          </section>
+
+          <section aria-labelledby="scores-title" className="card card-pad">
+            <h2 id="scores-title" className="text-[15px] font-semibold text-[var(--ink-900)]">Répartition des voix</h2>
+
+            {results?.scores_hidden ? (
+              <div className="mt-6 flex items-start gap-3 rounded-xl border border-border bg-muted p-4 text-sm text-[var(--ink-700)]">
+                <EyeOff size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-[var(--ink-500)]" />
+                <p className="m-0 leading-relaxed">
+                  Les scores restent masqués tant que le scrutin est ouvert, pour ne pas influencer
+                  ceux qui n'ont pas encore voté. Ils seront publiés à la clôture.
+                </p>
               </div>
-              <p className="muted" style={{ fontSize: 13, lineHeight: 1.55, margin: 0 }}>
-                Chaque vote enregistré apparaît ici dès sa validation par le réseau.{" "}
-                {results?.total_votes ?? 0} vote
-                {(results?.total_votes ?? 0) > 1 ? "s" : ""} scellé
-                {(results?.total_votes ?? 0) > 1 ? "s" : ""} jusqu'à présent.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+            ) : rows.length === 0 ? (
+              <p className="mt-6 text-sm text-[var(--ink-500)]">Aucun vote enregistré pour l'instant.</p>
+            ) : (
+              <>
+                {leader && !isOpen && leader.votes > 0 && (
+                  <p className="mt-4 flex items-center gap-2 text-sm text-[var(--ink-700)]">
+                    <Trophy size={16} aria-hidden="true" className="text-[var(--orange-600)]" />
+                    <span>
+                      En tête : <strong className="text-[var(--ink-900)]">{leader.name}</strong>, {leader.votes}{" "}
+                      voix
+                    </span>
+                  </p>
+                )}
+                <div className="mt-5" aria-hidden="true">
+                  <BarChart data={chartData} xDataKey="name" orientation="horizontal" margin={BAR_MARGIN} barGap={0.45} aspectRatio={`4 / ${(0.6 + rows.length * 0.5).toFixed(2)}`}>
+                    <Grid vertical />
+                    <Bar dataKey="voix" fill="var(--navy-900)" lineCap={6} />
+                    <BarYAxis showAllLabels />
+                    <ChartTooltip />
+                  </BarChart>
+                </div>
 
-function ResultBar({
-  c, rank, pulse,
-}: {
-  c: ColoredResult;
-  rank: number;
-  pulse: boolean;
-}) {
-  const [animPct, setAnimPct] = useState(0);
-  useEffect(() => {
-    const t = setTimeout(() => setAnimPct(c.percentage), 100);
-    return () => clearTimeout(t);
-  }, [c.percentage]);
-
-  return (
-    <div>
-      <div className="row items-center justify-between" style={{ marginBottom: 8 }}>
-        <div className="row items-center gap-3">
-          <div
-            className="mono muted"
-            style={{ width: 18, textAlign: "center", fontSize: 12 }}
-          >
-            {String(rank).padStart(2, "0")}
-          </div>
-          <Avatar
-            initials={c.initials}
-            size={36}
-            color={c.color}
-            src={c.photo_url || undefined}
-          />
-          <div>
-            <div
-              style={{
-                fontWeight: 600, color: "var(--navy-900)",
-                fontSize: 14, letterSpacing: "-0.01em",
-              }}
-            >
-              {c.full_name}
-            </div>
-          </div>
+                {/* Le graphique est décoratif pour un lecteur d'écran : les chiffres
+                    exacts sont dans ce tableau, lisible par tous. */}
+                <table className="mt-6 w-full text-sm">
+                  <caption className="sr-only">Voix par candidat</caption>
+                  <thead>
+                    <tr className="border-b border-border text-left text-[var(--ink-500)]">
+                      <th scope="col" className="py-2 font-medium">Candidat</th>
+                      <th scope="col" className="py-2 text-right font-medium">Voix</th>
+                      <th scope="col" className="py-2 text-right font-medium">Part</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r) => (
+                      <tr key={r.key} className="border-b border-border last:border-0">
+                        <td className="py-2.5">
+                          <span className="flex items-center gap-3">
+                            {r.key === "blank" ? (
+                              <span aria-hidden="true" className="h-8 w-8 rounded-full bg-muted" />
+                            ) : (
+                              <Avatar initials={initials(r.name)} name={r.name} size={32} color={r.color} src={r.photo || undefined} />
+                            )}
+                            <span className="font-medium text-[var(--ink-900)]">{r.name}</span>
+                          </span>
+                        </td>
+                        <td className="py-2.5 text-right font-mono text-[var(--ink-900)]">{r.votes}</td>
+                        <td className="py-2.5 text-right font-mono text-[var(--ink-700)]">{r.percentage.toFixed(1)} %</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </section>
         </div>
-        <div style={{ textAlign: "right" }}>
-          <div
-            className="mono"
-            style={{
-              fontSize: 24, fontWeight: 600,
-              color: "var(--navy-900)", letterSpacing: "-0.02em",
-            }}
-          >
-            {c.percentage.toFixed(1)}%
-          </div>
-          <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>
-            {c.votes} voix
-          </div>
-        </div>
-      </div>
-      <div
-        style={{
-          height: 12,
-          background: "var(--surface-2)",
-          borderRadius: "var(--r-pill)",
-          overflow: "hidden", position: "relative",
-          border: "1px solid var(--border)",
-        }}
-      >
-        <div
-          style={{
-            height: "100%", width: `${animPct}%`, background: c.color,
-            borderRadius: "var(--r-pill)",
-            transition: "width 700ms cubic-bezier(.2,.7,.2,1)",
-            position: "relative",
-          }}
-        >
-          {pulse && (
-            <span
-              style={{
-                position: "absolute", right: 0, top: -2, bottom: -2, width: 12,
-                background: "rgba(255,255,255,0.6)",
-                borderRadius: "var(--r-pill)",
-                animation: "sv-shimmer 1.2s ease",
-                filter: "blur(4px)",
-              }}
-            />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TurnoutCircle({ pct }: { pct: number }) {
-  const r = 72;
-  const c = 2 * Math.PI * r;
-  const off = c * (1 - pct / 100);
-  return (
-    <div style={{ position: "relative", width: 200, height: 200, margin: "24px 0 18px" }}>
-      <svg className="sv-turnout-svg" width="200" height="200" viewBox="0 0 200 200">
-        <circle
-          cx="100" cy="100" r={r}
-          stroke="var(--navy-50)" strokeWidth="14" fill="none"
-        />
-        <circle
-          cx="100" cy="100" r={r}
-          stroke="var(--orange-500)" strokeWidth="14"
-          strokeLinecap="round" fill="none"
-          strokeDasharray={c}
-          strokeDashoffset={off}
-          transform="rotate(-90 100 100)"
-          style={{
-            transition: "stroke-dashoffset 800ms cubic-bezier(.2,.7,.2,1)",
-          }}
-        />
-      </svg>
-      <div
-        style={{
-          position: "absolute", inset: 0,
-          display: "grid", placeItems: "center",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div
-            className="mono"
-            style={{
-              fontSize: 44, fontWeight: 600, color: "var(--navy-900)",
-              letterSpacing: "-0.03em",
-            }}
-          >
-            {pct}%
-          </div>
-          <div
-            className="muted"
-            style={{
-              fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em",
-            }}
-          >
-            de participation
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Sparklines({
-  data, tick,
-}: {
-  data: ColoredResult[];
-  tick: number;
-}) {
-  const W = 280, H = 120, P = 6;
-  const N = 24;
-  const lines = data.map((c) => {
-    const points: number[] = [];
-    for (let i = 0; i < N; i++) {
-      const v = c.votes * (i / (N - 1)) * (0.7 + 0.3 * Math.sin(i * 0.4 + tick * 0.3));
-      points.push(Math.max(0, v));
-    }
-    return { c, points };
-  });
-  const maxV = Math.max(1, ...lines.flatMap((l) => l.points));
-  const x = (i: number) => P + (i / (N - 1)) * (W - 2 * P);
-  const y = (v: number) => H - P - (v / maxV) * (H - 2 * P);
-
-  return (
-    <div style={{ marginTop: 12 }}>
-      <svg
-        width="100%" height={H}
-        viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
-      >
-        {lines.map((l) => {
-          const path = l.points
-            .map((p, idx) => `${idx === 0 ? "M" : "L"} ${x(idx)} ${y(p)}`)
-            .join(" ");
-          return (
-            <path
-              key={l.c.candidate_id}
-              d={path}
-              stroke={l.c.color}
-              strokeWidth="2"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          );
-        })}
-      </svg>
-      <div className="row gap-3" style={{ marginTop: 12, flexWrap: "wrap" }}>
-        {data.map((c) => (
-          <div
-            key={c.candidate_id}
-            className="row items-center gap-2"
-            style={{ fontSize: 11, color: "var(--ink-700)" }}
-          >
-            <span
-              style={{
-                width: 8, height: 8, borderRadius: 2, background: c.color,
-              }}
-            />
-            {c.full_name.split(" ")[0]}
-          </div>
-        ))}
       </div>
     </div>
   );

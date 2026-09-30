@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileSpreadsheet, MoreVertical, Pencil, Plus, Search, Shield, ShieldOff, Trash2, UserCheck, UserX } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { useReveal } from "@/hooks/useReveal";
 import { Avatar, getInitials } from "@/components/Avatar";
 import { ImportStudentsModal } from "@/components/ImportStudentsModal";
 import { Modal } from "@/components/Modal";
@@ -15,10 +16,13 @@ import {
   useUpdateStudent,
   type AdminStudent,
 } from "@/lib/queries";
-import { usePendingStudents, useActivateStudent } from "@/lib/queries/admin";
+import { usePendingStudents, useActivateStudent, useRejectClaim } from "@/lib/queries/admin";
 import type { UserRole } from "@/types/api";
 
 export default function StudentsPage() {
+  // Écran d'administration : les blocs se posent de haut en bas, sans
+  // retarder la lecture d'un tableau qu'on vient consulter.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", rise: 12 });
   const [activeTab, setActiveTab] = useState<"all" | "pending">("all");
   const [classFilter, setClassFilter] = useState<string>("");
   const [search, setSearch] = useState("");
@@ -36,6 +40,7 @@ export default function StudentsPage() {
   
   const { data: pendingStudents, isLoading: isLoadingPending } = usePendingStudents();
   const activateStudent = useActivateStudent();
+  const rejectClaim = useRejectClaim();
 
   const classMap = new Map(classes?.map((c) => [c.id, `${c.level} ${c.name}`]) || []);
   const isSuper = me?.role === "super_admin";
@@ -49,11 +54,33 @@ export default function StudentsPage() {
     }
   };
 
+  /**
+   * Refuse la revendication et rend le compte revendicable.
+   *
+   * La confirmation n'est pas une politesse : refuser à tort renvoie
+   * l'étudiant légitime à la case départ. Le nom rappelé dans la question
+   * évite le clic sur la mauvaise ligne.
+   */
+  const handleReject = async (id: string, label: string) => {
+    if (!window.confirm(
+      `Refuser la demande de ${label} ?
+
+` +
+      "Le compte redeviendra revendicable : personne ne le détiendra, et le " +
+      "titulaire pourra recommencer son inscription."
+    )) return;
+    try {
+      await rejectClaim.mutateAsync(id);
+      toast.success("Demande refusée. Le compte est de nouveau revendicable.");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || "Erreur lors du refus");
+    }
+  };
+
   return (
-    <div style={{ padding: "40px 40px 80px" }} onClick={() => setOpenMenuId(null)}>
+    <div ref={pageRef} style={{ padding: "40px 40px 80px" }} onClick={() => setOpenMenuId(null)}>
       <div className="row items-center justify-between" style={{ marginBottom: 28 }}>
         <div>
-          <div className="h-eyebrow">Administration</div>
           <h1 className="h-title" style={{ marginTop: 8 }}>Étudiants</h1>
         </div>
         <div className="row gap-2">
@@ -104,6 +131,7 @@ export default function StudentsPage() {
               />
             </div>
             <select
+              aria-label="Filtrer par classe"
               className="input"
               value={classFilter}
               onChange={(e) => setClassFilter(e.target.value)}
@@ -131,8 +159,7 @@ export default function StudentsPage() {
             background: "var(--surface-2)",
             borderBottom: "1px solid var(--border)",
             fontSize: 11, fontWeight: 600, color: "var(--ink-500)",
-            textTransform: "uppercase", letterSpacing: "0.06em",
-          }}
+            }}
         >
           <div>Étudiant</div>
           <div>Matricule</div>
@@ -166,7 +193,7 @@ export default function StudentsPage() {
           <StudentRow
             key={s.id}
             s={s}
-            classLabel={s.class_id ? classMap.get(s.class_id) || "—" : "—"}
+            classLabel={s.class_id ? classMap.get(s.class_id) || "Sans classe" : "Sans classe"}
             isMe={me?.id === s.id}
             canChangeRole={!!isSuper && me?.id !== s.id}
             menuOpen={openMenuId === s.id}
@@ -188,7 +215,7 @@ export default function StudentsPage() {
             borderBottom: "1px solid var(--border)", fontSize: 14
           }}>
             <div className="row items-center gap-3">
-              <Avatar initials={getInitials(s.first_name, s.last_name)} size={36} color="#0A2540" src={s.photo_url || undefined} />
+              <Avatar initials={getInitials(s.first_name, s.last_name)} name={`${s.first_name ?? ""} ${s.last_name ?? ""}`} size={36} color="#0A2540" src={s.photo_url || undefined} />
               <div style={{ fontWeight: 500, color: "var(--navy-900)" }}>
                 {s.first_name} {s.last_name}
               </div>
@@ -197,12 +224,23 @@ export default function StudentsPage() {
             <div style={{ fontSize: 13, color: "var(--ink-700)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.email}</div>
             <div>
               <div className="badge" style={{ background: "var(--orange-100)", color: "var(--orange-800)", padding: "2px 6px", borderRadius: "4px", fontSize: 11 }}>
-                En attente
+                {/* Le libellé dit à l'administrateur ce qu'il doit vérifier :
+                    une identité non confirmée se contrôle sur pièce, carte
+                    d'étudiant à l'appui, pas au jugé. */}
+                {s.identity_verified ? "En attente" : "Identité à vérifier"}
               </div>
             </div>
-            <div style={{ fontSize: 12, color: "var(--ink-500)" }}>{s.class_id ? classMap.get(s.class_id) || "—" : "—"}</div>
-            <div style={{ textAlign: "right" }}>
-              <button className="btn btn-primary btn-sm" onClick={() => handleActivate(s.id)} disabled={activateStudent.isPending}>
+            <div style={{ fontSize: 12, color: "var(--ink-500)" }}>{s.class_id ? classMap.get(s.class_id) || "Sans classe" : "Sans classe"}</div>
+            <div className="row items-center gap-2" style={{ justifyContent: "flex-end" }}>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => handleReject(s.id, `${s.first_name} ${s.last_name}`)}
+                disabled={rejectClaim.isPending || activateStudent.isPending}
+                title="Refuser et libérer le compte"
+              >
+                <UserX size={14} /> Refuser
+              </button>
+              <button className="btn btn-primary btn-sm" onClick={() => handleActivate(s.id)} disabled={activateStudent.isPending || rejectClaim.isPending}>
                 <UserCheck size={14} /> Autoriser
               </button>
             </div>
@@ -292,7 +330,7 @@ function StudentRow({ s, classLabel, isMe, canChangeRole, menuOpen, onToggleMenu
     >
       <div className="row items-center gap-3">
         <Avatar
-          initials={getInitials(s.first_name, s.last_name)}
+          initials={getInitials(s.first_name, s.last_name)} name={`${s.first_name ?? ""} ${s.last_name ?? ""}`}
           size={36}
           color="#0A2540"
           src={s.photo_url || undefined}
@@ -450,30 +488,30 @@ function CreateStudentModal({
         <div className="col gap-3" style={{ marginTop: 20 }}>
           <div className="row gap-3">
             <div style={{ flex: 1 }}>
-              <label className="label">Prénom</label>
-              <input required className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+              <label className="label" htmlFor="students-f1">Prénom</label>
+              <input id="students-f1" required className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
             </div>
             <div style={{ flex: 1 }}>
-              <label className="label">Nom</label>
-              <input required className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              <label className="label" htmlFor="students-f2">Nom</label>
+              <input id="students-f2" required className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} />
             </div>
           </div>
           <div>
-            <label className="label">Matricule ESATIC</label>
-            <input required className="input mono" value={matricule} onChange={(e) => setMatricule(e.target.value)} placeholder="20240412" />
+            <label className="label" htmlFor="students-f3">Matricule ESATIC</label>
+            <input id="students-f3" required className="input mono" value={matricule} onChange={(e) => setMatricule(e.target.value)} placeholder="20240412" />
           </div>
           <div>
-            <label className="label">Email</label>
-            <input required type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="prenom.nom@esatic.ci" />
+            <label className="label" htmlFor="students-f4">Email</label>
+            <input id="students-f4" required type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="prenom.nom@esatic.ci" />
           </div>
           <div>
-            <label className="label">Mot de passe initial</label>
-            <input required className="input mono" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} />
+            <label className="label" htmlFor="students-f5">Mot de passe initial</label>
+            <input id="students-f5" required className="input mono" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} />
             <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>L'étudiant pourra le changer à sa première connexion.</div>
           </div>
           <div>
-            <label className="label">Classe</label>
-            <select className="input" value={classId} onChange={(e) => setClassId(e.target.value)}>
+            <label className="label" htmlFor="students-f6">Classe</label>
+            <select id="students-f6" className="input" value={classId} onChange={(e) => setClassId(e.target.value)}>
               <option value="">Aucune classe</option>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>{c.level} {c.name}</option>
@@ -538,21 +576,21 @@ function EditStudentModal({
         <div className="col gap-3" style={{ marginTop: 20 }}>
           <div className="row gap-3">
             <div style={{ flex: 1 }}>
-              <label className="label">Prénom</label>
-              <input required className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+              <label className="label" htmlFor="students-f7">Prénom</label>
+              <input id="students-f7" required className="input" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
             </div>
             <div style={{ flex: 1 }}>
-              <label className="label">Nom</label>
-              <input required className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              <label className="label" htmlFor="students-f8">Nom</label>
+              <input id="students-f8" required className="input" value={lastName} onChange={(e) => setLastName(e.target.value)} />
             </div>
           </div>
           <div>
-            <label className="label">Email</label>
-            <input required type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <label className="label" htmlFor="students-f9">Email</label>
+            <input id="students-f9" required type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div>
-            <label className="label">Classe</label>
-            <select className="input" value={classId} onChange={(e) => setClassId(e.target.value)}>
+            <label className="label" htmlFor="students-f10">Classe</label>
+            <select id="students-f10" className="input" value={classId} onChange={(e) => setClassId(e.target.value)}>
               <option value="">Aucune classe</option>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>{c.level} {c.name}</option>

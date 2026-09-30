@@ -1,0 +1,163 @@
+services:
+  # Prometheus - Collecte et stockage des métriques
+  prometheus:
+    image: prom/prometheus:v2.47.0
+    container_name: votex-prometheus
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    ports:
+      - "9090:9090"
+    networks:
+      - votex-network
+    restart: unless-stopped
+
+  # Grafana - Visualisation des dashboards
+  grafana:
+    image: grafana/grafana:10.1.0
+    container_name: votex-grafana
+    volumes:
+      # Pas de grafana.ini monté : le fichier n'existait pas, et Docker créait
+      # un DOSSIER vide à sa place — Grafana démarrait alors sur une
+      # configuration illisible. Les réglages passent par les variables
+      # d'environnement ci-dessous, qui suffisent ici.
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=smartvote2024
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_UNIFIED_ALERTING_ENABLED=true
+      - GF_FEATURE_TOGGLES_ENABLE=ngalert
+    ports:
+      - "3000:3000"
+    networks:
+      - votex-network
+    depends_on:
+      - prometheus
+      - loki
+    restart: unless-stopped
+
+  # Loki - Centralisation des logs
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: votex-loki
+    volumes:
+      - ./monitoring/loki/loki.yml:/etc/loki/local-config.yaml
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    networks:
+      - votex-network
+    restart: unless-stopped
+
+  # Promtail - Collecte des logs Docker
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: votex-promtail
+    volumes:
+      # Le socket, et non les fichiers de journaux : sur Docker Desktop ceux-ci
+      # vivent dans la VM du moteur et le montage hôte arrivait vide.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./monitoring/promtail/promtail.yml:/etc/promtail/config.yml:ro
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - votex-network
+    depends_on:
+      - loki
+    restart: unless-stopped
+
+  # Alertmanager - Gestion des alertes
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: votex-alertmanager
+    volumes:
+      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      # Clé SMTP tenue hors du dépôt et hors du YAML de configuration.
+      - ./monitoring/alertmanager/smtp_password:/etc/alertmanager/smtp_password:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    ports:
+      - "9093:9093"
+    networks:
+      - votex-network
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # Node Exporter - Métriques système (CPU, RAM, Disk)
+  node-exporter:
+    image: prom/node-exporter:v1.6.0
+    container_name: votex-node-exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points="^/(sys|proc|dev|host|etc)($$|/)"'
+    ports:
+      - "9100:9100"
+    networks:
+      - votex-network
+    restart: unless-stopped
+
+  # Postgres Exporter - Métriques PostgreSQL
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.14.0
+    container_name: votex-postgres-exporter
+    environment:
+      # Doit désigner la base réellement servie par docker-compose.yml —
+      # l'ancienne chaîne pointait un utilisateur, un hôte et une base qui
+      # n'ont jamais existé, donc l'exporter ne remontait rien.
+      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER:-smartvote}:${POSTGRES_PASSWORD:-smartvote}@smartvote-postgres:5432/${POSTGRES_DB:-smartvote}?sslmode=disable
+    ports:
+      - "9187:9187"
+    networks:
+      - votex-network
+    # Pas de depends_on : `postgres` vit dans docker-compose.yml, un autre
+    # projet Compose. Le référencer ici rendait CE fichier invalide
+    # ("depends on undefined service postgres") et bloquait toute commande.
+    restart: unless-stopped
+
+  # Blackbox Exporter - Sonde HTTP externe (alerte FrontendDown)
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.24.0
+    container_name: votex-blackbox-exporter
+    volumes:
+      - ./monitoring/blackbox/blackbox.yml:/etc/blackbox_exporter/config.yml
+    command:
+      - '--config.file=/etc/blackbox_exporter/config.yml'
+    ports:
+      - "9115:9115"
+    networks:
+      - votex-network
+    restart: unless-stopped
+
+networks:
+  votex-network:
+    external: true
+
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+  alertmanager_data:

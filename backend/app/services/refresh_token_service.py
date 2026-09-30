@@ -41,6 +41,21 @@ def _new_raw_token() -> str:
     return secrets.token_urlsafe(48)
 
 
+
+def _as_utc(value: datetime | None) -> datetime | None:
+    """Ramène un datetime lu en base à un datetime aware UTC.
+
+    Postgres (timestamptz) rend un datetime aware, SQLite rend un naïf. Sans
+    normalisation, `record.expires_at < now` lève TypeError sur SQLite —
+    c'est-à-dire en CI et sur tout déploiement mono-fichier.
+    """
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
 def issue(
     db: Session,
     *,
@@ -104,10 +119,10 @@ def rotate(
         )
         revoke_all_for_user(db, user_id=record.user_id)
         raise UnauthorizedError(
-            "Token déjà utilisé — toutes vos sessions ont été révoquées par sécurité"
+            "Session réutilisée : par sécurité, toutes vos sessions ont été fermées. Reconnectez-vous."
         )
 
-    if record.expires_at < now:
+    if (_as_utc(record.expires_at) or now) < now:
         record.revoked_at = now
         db.commit()
         raise UnauthorizedError("Refresh token expiré")

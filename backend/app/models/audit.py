@@ -10,6 +10,7 @@ from app.core.database import Base
 
 class AuditAction(str, PyEnum):
     LOGIN = "login"
+    LOGIN_FAILED = "login_failed"
     LOGOUT = "logout"
     PASSWORD_CHANGED = "password_changed"
     PASSWORD_RESET_REQUESTED = "password_reset_requested"

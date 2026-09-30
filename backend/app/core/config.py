@@ -28,6 +28,11 @@ class Settings(BaseSettings):
         return v
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
+    # Environnement de déploiement : "development" | "staging" | "production".
+    # Sert de source de vérité pour les gardes de démarrage et pour Sentry —
+    # avant, la production était devinée à partir de COOKIE_SECURE.
+    ENVIRONMENT: str = "development"
+
     DATABASE_URL: str
 
     # Supabase — optionnel pour le backend (utilisé par le frontend pour Realtime).
@@ -69,13 +74,52 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     RESEND_DOMAIN_FROM: str = "no-reply@itgala-esatic.org"
 
+    # HTTPS forcé : redirection 308 des requêtes en clair + en-tête HSTS.
+    # Vide = automatique (actif en production). Derrière un reverse proxy qui
+    # termine TLS, uvicorn doit faire confiance à son X-Forwarded-Proto
+    # (FORWARDED_ALLOW_IPS), sinon toute requête paraîtrait en clair.
+    FORCE_HTTPS: bool | None = None
+    HSTS_MAX_AGE: int = 31536000
+
+    # Connexion avec Google (OpenID Connect) : active si l'identifiant et le
+    # secret du client OAuth sont renseignés. L'URI de redirection doit figurer
+    # telle quelle dans la console Google Cloud (identifiants OAuth).
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
+
     # CORS
     FRONTEND_URL: str = "http://localhost:5173"
     EXTRA_CORS_ORIGINS: str = ""
 
     # Rate limiting
-    RATE_LIMIT_VOTE: str = "5/minute"
-    RATE_LIMIT_LOGIN: str = "10/minute"
+    #
+    # Ces limites sont par ADRESSE IP. Sur un campus, une promotion entière sort
+    # par la même IP publique : une limite serrée y bloquerait les étudiants les
+    # uns après les autres un jour de scrutin, sans gêner un attaquant opérant
+    # depuis chez lui. Elles servent donc à protéger l'infrastructure d'un
+    # afflux anormal, pas à protéger les comptes.
+    #
+    # Contre les essais de mots de passe, la défense est le verrouillage
+    # progressif du COMPTE visé — voir auth_service.LOCKOUT_STEPS.
+    RATE_LIMIT_VOTE: str = "30/minute"
+    RATE_LIMIT_LOGIN: str = "60/minute"
+
+    # Ancrage on-chain des bulletins : période du balayage qui rejoue les échecs.
+    ANCHOR_INTERVAL_SECONDS: int = 15
+
+    # Monitoring — si vide, Sentry n'est pas initialisé.
+    SENTRY_DSN: str = ""
+
+    # Métriques Prometheus — voir app/core/metrics.py. Fermé par défaut :
+    # /metrics décrit toute la surface de l'API et le rythme des votes.
+    METRICS_ENABLED: bool = False
+    METRICS_TOKEN: str = ""
+
+    # Cache Redis — optionnel. Si vide, le cache est désactivé (mode passthrough).
+    REDIS_URL: str = ""
+    # Durée de vie des résultats d'élections fermées en cache (en secondes). 5 minutes par défaut.
+    CACHE_TTL_SECONDS: int = 300
 
     @field_validator("JWT_SECRET")
     @classmethod
@@ -94,6 +138,14 @@ class Settings(BaseSettings):
                 "Utilise un secret aléatoire en production."
             )
         return v
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT.strip().lower() in {"production", "prod"}
+
+    @property
+    def force_https(self) -> bool:
+        return self.is_production if self.FORCE_HTTPS is None else self.FORCE_HTTPS
 
     @property
     def cors_origins(self) -> list[str]:

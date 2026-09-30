@@ -31,7 +31,14 @@ export function Countdown({ targetMs, compact }: CountdownProps) {
     );
   }
   return (
-    <div style={{ display: "flex", gap: 16, alignItems: "baseline" }}>
+    // role="timer" sans aria-live : un lecteur d'écran lit le temps restant à la
+    // demande, au lieu d'être interrompu chaque seconde.
+    <div
+      className="sv-countdown"
+      role="timer"
+      aria-label={`Temps restant : ${d} jours, ${h} heures, ${m} minutes`}
+      style={{ display: "flex", gap: 16, alignItems: "baseline" }}
+    >
       <Block v={d} l="jours" />
       <Sep />
       <Block v={h} l="heures" />
@@ -45,9 +52,9 @@ export function Countdown({ targetMs, compact }: CountdownProps) {
 
 function Block({ v, l }: { v: number; l: string }) {
   return (
-    <div style={{ textAlign: "center", minWidth: 64 }}>
+    <div className="sv-countdown-block" aria-hidden="true" style={{ textAlign: "center", minWidth: 64 }}>
       <div
-        className="mono"
+        className="mono sv-countdown-value"
         style={{
           fontSize: 36, fontWeight: 600, color: "var(--navy-900)",
           letterSpacing: "-0.03em", lineHeight: 1,
@@ -57,8 +64,7 @@ function Block({ v, l }: { v: number; l: string }) {
       </div>
       <div
         style={{
-          fontSize: 11, color: "var(--ink-500)", textTransform: "uppercase",
-          letterSpacing: "0.08em", marginTop: 6,
+          fontSize: 11, color: "var(--ink-500)", marginTop: 6,
         }}
       >
         {l}
@@ -68,5 +74,5 @@ function Block({ v, l }: { v: number; l: string }) {
 }
 
 function Sep() {
-  return <span style={{ color: "var(--ink-300)", fontSize: 24 }}>:</span>;
+  return <span aria-hidden="true" style={{ color: "var(--ink-300)", fontSize: 24 }}>:</span>;
 }

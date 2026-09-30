@@ -95,3 +95,21 @@ export function useActivateStudent() {
     },
   });
 }
+
+/**
+ * Refuse une revendication et libère le compte.
+ *
+ * Pendant naturel de `useActivateStudent` : sans elle, l'administrateur ne
+ * pourrait qu'accepter, et un compte revendiqué à tort resterait bloqué pour
+ * son titulaire légitime.
+ */
+export function useRejectClaim() {
+  const qc = useQueryClient();
+  return useMutation<any, Error, string>({
+    mutationFn: async (id) => (await api.patch(`/api/admin/reject-claim/${id}`)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.pendingStudents });
+      qc.invalidateQueries({ queryKey: ["students"] });
+    },
+  });
+}

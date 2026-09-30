@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AlertCircle, ArrowLeft, Check, ChevronRight, Lock } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { useReveal } from "@/hooks/useReveal";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar } from "@/components/Avatar";
 import { CandidateProfileModal } from "@/components/CandidateProfileModal";
@@ -12,14 +13,17 @@ import { colorFor, fullNameOf, initialsOf } from "@/lib/palette";
 import type { Candidate } from "@/types/api";
 
 const RULES = [
-  "1 seul vote par étudiant, irrévocable",
-  "Vote anonyme, scellé sur la blockchain",
-  "Résultats publiés dès la clôture",
+  "Un seul vote par étudiant, définitif",
+  "Vote secret : votre choix n'est lié à aucun nom",
+  "Résultats publiés à la clôture",
 ];
 
 type ColoredCandidate = Candidate & { color: string };
 
 export default function VotingRoomPage() {
+  // Salle de vote : entrée volontairement discrète et rapide. Le geste à
+  // accomplir prime, l'animation ne doit ni retarder ni distraire.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", rise: 10 });
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -47,6 +51,7 @@ export default function VotingRoomPage() {
     <div>
       <AppHeader />
       <div
+        ref={pageRef}
         className="container container-narrow scene"
         style={{ padding: "32px 32px 120px" }}
       >
@@ -158,7 +163,7 @@ export default function VotingRoomPage() {
                   style={{
                     position: "absolute", top: 16, right: 16,
                     width: 28, height: 28, borderRadius: "50%",
-                    background: "var(--orange-500)", color: "white",
+                    background: "var(--orange-500)", color: "var(--navy-900)",
                     display: "grid", placeItems: "center",
                     animation: "sv-fade-in 240ms ease",
                   }}
@@ -221,7 +226,7 @@ export default function VotingRoomPage() {
                   initials={initialsOf(
                     selectedCandidate.student.first_name,
                     selectedCandidate.student.last_name
-                  )}
+                  )} name={`${selectedCandidate.student.first_name ?? ""} ${selectedCandidate.student.last_name ?? ""}`}
                   size={32}
                   color={selectedCandidate.color}
                 />
@@ -334,7 +339,7 @@ function CandidateCard({
           style={{
             position: "absolute", top: 16, right: 16,
             width: 28, height: 28, borderRadius: "50%",
-            background: "var(--orange-500)", color: "white",
+            background: "var(--orange-500)", color: "var(--navy-900)",
             display: "grid", placeItems: "center",
             animation: "sv-fade-in 240ms ease",
           }}
@@ -344,7 +349,7 @@ function CandidateCard({
       )}
       <div className="row items-center gap-3">
         <Avatar
-          initials={initialsOf(c.student.first_name, c.student.last_name)}
+          initials={initialsOf(c.student.first_name, c.student.last_name)} name={`${c.student.first_name ?? ""} ${c.student.last_name ?? ""}`}
           size={56}
           color={c.color}
           src={c.photo_url || c.student.photo_url || undefined}

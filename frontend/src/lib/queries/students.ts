@@ -104,6 +104,8 @@ export function useChangeRole() {
 }
 
 interface SelfUpdatePayload {
+  /** Exigé par le serveur pour changer d'adresse e-mail. */
+  current_password?: string;
   first_name?: string;
   last_name?: string;
   email?: string;

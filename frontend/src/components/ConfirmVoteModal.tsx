@@ -3,6 +3,7 @@ import { Lock } from "lucide-react";
 
 import { Avatar } from "@/components/Avatar";
 import { Modal } from "@/components/Modal";
+import { HoldToConfirm } from "@/components/kokonutui/hold-to-confirm";
 import { fullNameOf, initialsOf } from "@/lib/palette";
 import type { Candidate } from "@/types/api";
 
@@ -15,129 +16,109 @@ interface Props {
 
 export function ConfirmVoteModal({ candidate, classLabel, onCancel, onConfirm }: Props) {
   const [submitting, setSubmitting] = useState(false);
-  const [stage, setStage] = useState<"idle" | "signing" | "mining">("idle");
+  const blank = candidate.id === "neutral";
 
   const fire = async () => {
     setSubmitting(true);
-    setStage("signing");
-    setTimeout(() => setStage("mining"), 900);
     try {
       await onConfirm();
     } catch {
       setSubmitting(false);
-      setStage("idle");
     }
   };
 
   return (
-    <Modal open={true} onClose={!submitting ? onCancel : undefined} width={500}>
-      <div style={{ padding: 32 }}>
+    <Modal open={true} onClose={!submitting ? onCancel : undefined} width={480}>
+      <div style={{ padding: 28 }}>
         <div
+          aria-hidden="true"
           style={{
-            width: 48, height: 48, borderRadius: 12,
-            background: "var(--orange-50)", color: "var(--orange-600)",
+            width: 44, height: 44, borderRadius: 12,
+            background: "var(--surface-2)", color: "var(--navy-900)",
+            border: "1px solid var(--border)",
             display: "grid", placeItems: "center",
           }}
         >
-          <Lock size={22} />
+          <Lock size={20} />
         </div>
-        <h3
+        <h2
           style={{
-            fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em",
-            color: "var(--navy-900)", margin: "20px 0 8px",
+            fontSize: 21, fontWeight: 600, letterSpacing: "-0.02em",
+            color: "var(--ink-900)", margin: "18px 0 8px",
           }}
         >
           Confirmer votre vote
-        </h3>
+        </h2>
         <p style={{ fontSize: 14, color: "var(--ink-700)", lineHeight: 1.6, margin: 0 }}>
-          Vous êtes sur le point de voter pour{" "}
-          <strong style={{ color: "var(--navy-900)" }}>{fullNameOf(candidate.student)}</strong>.
-          Cette action est <strong>définitive</strong> et sera scellée sur la blockchain.
+          {blank ? (
+            <>Vous allez voter <strong>blanc</strong>.</>
+          ) : (
+            <>
+              Vous allez voter pour{" "}
+              <strong style={{ color: "var(--ink-900)" }}>{fullNameOf(candidate.student)}</strong>.
+            </>
+          )}{" "}
+          Un vote enregistré ne peut plus être modifié.
         </p>
 
-        <div
-          className="row items-center gap-3"
-          style={{
-            marginTop: 20, padding: 14,
-            background: "var(--surface-2)",
-            borderRadius: "var(--r-md)",
-            border: "1px solid var(--border)",
-          }}
-        >
-          <Avatar
-            initials={initialsOf(candidate.student.first_name, candidate.student.last_name)}
-            size={40}
-            color={candidate.color}
-          />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: "var(--navy-900)" }}>
-              {fullNameOf(candidate.student)}
-            </div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-              {classLabel || "—"}
-            </div>
-          </div>
-          <span className="badge badge-orange">Sélectionné</span>
-        </div>
-
-        {submitting && (
+        {!blank && (
           <div
-            className="row items-center gap-3 fade-in"
+            className="row items-center gap-3"
             style={{
-              marginTop: 20, padding: 16,
-              background: "var(--navy-900)",
+              marginTop: 18, padding: 12,
+              background: "var(--surface-2)",
               borderRadius: "var(--r-md)",
-              color: "white",
+              border: "1px solid var(--border)",
             }}
           >
-            <div style={{ position: "relative", width: 36, height: 36 }}>
-              <div
-                style={{
-                  position: "absolute", inset: 0, borderRadius: "50%",
-                  border: "2px solid rgba(255,122,0,0.3)",
-                  borderTopColor: "var(--orange-500)",
-                  animation: "sv-spin 0.8s linear infinite",
-                }}
-              />
-              <div
-                style={{
-                  position: "absolute", inset: 0,
-                  display: "grid", placeItems: "center",
-                  color: "var(--orange-400)",
-                }}
-              >
-                <Lock size={14} />
+            <Avatar
+              initials={initialsOf(candidate.student.first_name, candidate.student.last_name)}
+              name={fullNameOf(candidate.student)}
+              size={40}
+              color={candidate.color}
+            />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, color: "var(--ink-900)" }}>
+                {fullNameOf(candidate.student)}
               </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 500 }}>
-                {stage === "signing"
-                  ? "Signature cryptographique du bulletin…"
-                  : "Scellement on-chain en cours…"}
-              </div>
-              <div
-                className="mono"
-                style={{
-                  fontSize: 11, color: "rgba(255,255,255,0.55)", marginTop: 4,
-                }}
-              >
-                {stage === "mining"
-                  ? "transaction en attente de validation…"
-                  : "préparation du payload"}
-              </div>
+              {classLabel && (
+                <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{classLabel}</div>
+              )}
             </div>
           </div>
         )}
 
-        {!submitting && (
-          <div className="row gap-3" style={{ marginTop: 24 }}>
-            <button className="btn btn-outline btn-lg" onClick={onCancel} style={{ flex: 1 }}>
+        {submitting ? (
+          <div
+            role="status"
+            className="row items-center gap-3 fade-in"
+            style={{ marginTop: 22, fontSize: 14, color: "var(--ink-700)" }}
+          >
+            <span
+              aria-hidden="true"
+              style={{
+                width: 18, height: 18, borderRadius: "50%",
+                border: "2px solid var(--border-strong)",
+                borderTopColor: "var(--navy-900)",
+                animation: "sv-spin 0.8s linear infinite",
+              }}
+            />
+            Enregistrement de votre bulletin…
+          </div>
+        ) : (
+          <div className="row gap-3" style={{ marginTop: 22, flexWrap: "wrap" }}>
+            <button className="btn btn-outline btn-lg" onClick={onCancel} style={{ flex: "1 1 140px" }}>
               Annuler
             </button>
-            <button className="btn btn-primary btn-lg" onClick={fire} style={{ flex: 1 }}>
-              Confirmer mon vote
-            </button>
+            <HoldToConfirm onConfirm={fire} className="sv-hold-confirm">
+              Maintenir pour voter
+            </HoldToConfirm>
           </div>
+        )}
+        {!submitting && (
+          <p className="muted" style={{ fontSize: 12, margin: "10px 0 0" }}>
+            Gardez le bouton appuyé une seconde, à la souris, au doigt ou avec la touche Espace.
+          </p>
         )}
       </div>
     </Modal>

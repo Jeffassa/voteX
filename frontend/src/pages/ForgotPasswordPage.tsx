@@ -2,18 +2,23 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Mail } from "lucide-react";
 
+import { useReveal } from "@/hooks/useReveal";
 import { Brand } from "@/components/Brand";
+import { Honeypot } from "@/components/Honeypot";
 import { useRequestPasswordReset } from "@/lib/queries";
 
 export default function ForgotPasswordPage() {
+  // Carte unique et centrée : une entrée sobre suffit.
+  const pageRef = useReveal<HTMLDivElement>({ rise: 14 });
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [website, setWebsite] = useState("");
   const request = useRequestPasswordReset();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await request.mutateAsync({ email });
+      await request.mutateAsync({ email: email.trim(), website });
     } finally {
       // Toujours afficher l'écran de succès, même si l'email n'existe pas
       // (anti-énumération)
@@ -23,6 +28,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div
+      ref={pageRef}
       style={{
         minHeight: "100vh", display: "grid", placeItems: "center",
         padding: 24, background: "var(--bg)",
@@ -76,12 +82,15 @@ export default function ForgotPasswordPage() {
             </p>
 
             <div>
-              <label className="label">Email</label>
+              <label className="label" htmlFor="forgot-password-f1">Email</label>
               <div className="input-wrap">
                 <span className="input-icon"><Mail size={16} /></span>
-                <input
+                <input id="forgot-password-f1"
                   required
                   type="email"
+                  name="email"
+                  autoComplete="email"
+                  maxLength={255}
                   className="input has-icon"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -89,6 +98,8 @@ export default function ForgotPasswordPage() {
                 />
               </div>
             </div>
+
+            <Honeypot value={website} onChange={setWebsite} />
 
             <button
               type="submit"

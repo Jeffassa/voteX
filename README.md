@@ -5,7 +5,7 @@ Plateforme de vote en ligne pour l'élection des chefs de classe à l'ESATIC.
 ## Stack
 
 - **Backend** : FastAPI + SQLAlchemy + PostgreSQL
-- **Frontend** : React + Vite + TypeScript + Tailwind + Magic UI + Lordicon
+- **Frontend** : React + Vite + TypeScript + Tailwind v4, Kokonut UI, bklit UI (graphiques), Three.js
 - **Realtime** (optionnel) : Supabase Realtime
 - **Blockchain** (optionnel) : Solidity + Hardhat + ethers.js + Sepolia testnet
 - **Auth** : JWT + matricule ESATIC

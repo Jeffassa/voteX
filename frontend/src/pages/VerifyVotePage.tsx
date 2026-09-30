@@ -36,7 +36,7 @@ export default function VerifyVotePage() {
         style={{ padding: "64px 32px 120px" }}
       >
         <div className="text-center">
-          <div className="h-eyebrow">Vérification on-chain</div>
+          <div className="h-eyebrow">Vérification</div>
           <h1 className="h-title" style={{ fontSize: 40, marginTop: 12 }}>
             Vérifier un vote
           </h1>
@@ -48,16 +48,16 @@ export default function VerifyVotePage() {
             }}
           >
             Collez le hash de votre reçu pour vérifier que votre bulletin a bien
-            été enregistré sur la blockchain — sans révéler pour qui vous avez voté.
+            été enregistré sur la blockchain, sans révéler pour qui vous avez voté.
           </p>
         </div>
 
         <div className="card" style={{ marginTop: 40, padding: 28 }}>
-          <label className="label">Hash de vote</label>
+          <label className="label" htmlFor="verify-vote-f1">Hash de vote</label>
           <div className="row gap-3">
             <div className="input-wrap" style={{ flex: 1 }}>
               <span className="input-icon"><Hash size={16} /></span>
-              <input
+              <input id="verify-vote-f1"
                 className="input has-icon mono"
                 value={hash}
                 onChange={(e) => {

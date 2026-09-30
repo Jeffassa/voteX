@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 
 import { seoFiles } from "./seo.config";
@@ -24,7 +25,7 @@ export default defineConfig(({ command, mode }) => {
   }
 
   return {
-  plugins: [react(), seoFiles(env.VITE_SITE_URL)],
+  plugins: [react(), tailwindcss(), seoFiles(env.VITE_SITE_URL)],
   build: {
     // Bibliothèques stables regroupées : leur empreinte change rarement, le
     // navigateur les garde en cache d'un déploiement à l'autre.

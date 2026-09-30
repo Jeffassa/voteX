@@ -6,24 +6,24 @@ import { useAuditLog, useStudents } from "@/lib/queries";
 
 const ACTION_LABELS: Record<string, { label: string; color: string }> = {
   login: { label: "Connexion", color: "var(--ink-500)" },
-  password_changed: { label: "Mdp modifié", color: "var(--info-500)" },
-  password_reset_requested: { label: "Reset demandé", color: "var(--info-500)" },
-  password_reset_confirmed: { label: "Reset confirmé", color: "var(--success-500)" },
-  election_created: { label: "Élection créée", color: "var(--info-500)" },
-  election_updated: { label: "Élection modifiée", color: "var(--warn-500)" },
-  election_deleted: { label: "Élection supprimée", color: "var(--danger-500)" },
-  election_opened: { label: "Scrutin ouvert", color: "var(--success-500)" },
-  election_closed: { label: "Scrutin clôturé", color: "var(--warn-500)" },
-  candidate_created: { label: "Candidat ajouté", color: "var(--info-500)" },
-  candidate_deleted: { label: "Candidat retiré", color: "var(--danger-500)" },
-  student_created: { label: "Étudiant inscrit", color: "var(--info-500)" },
-  student_updated: { label: "Étudiant modifié", color: "var(--warn-500)" },
-  student_deleted: { label: "Étudiant supprimé", color: "var(--danger-500)" },
-  student_role_changed: { label: "Rôle modifié", color: "var(--orange-500)" },
-  class_created: { label: "Classe créée", color: "var(--info-500)" },
-  class_updated: { label: "Classe modifiée", color: "var(--warn-500)" },
-  class_deleted: { label: "Classe supprimée", color: "var(--danger-500)" },
-  vote_cast: { label: "Vote enregistré", color: "var(--success-500)" },
+  password_changed: { label: "Mdp modifié", color: "var(--info-600)" },
+  password_reset_requested: { label: "Reset demandé", color: "var(--info-600)" },
+  password_reset_confirmed: { label: "Reset confirmé", color: "var(--success-600)" },
+  election_created: { label: "Élection créée", color: "var(--info-600)" },
+  election_updated: { label: "Élection modifiée", color: "var(--warn-600)" },
+  election_deleted: { label: "Élection supprimée", color: "var(--danger-600)" },
+  election_opened: { label: "Scrutin ouvert", color: "var(--success-600)" },
+  election_closed: { label: "Scrutin clôturé", color: "var(--warn-600)" },
+  candidate_created: { label: "Candidat ajouté", color: "var(--info-600)" },
+  candidate_deleted: { label: "Candidat retiré", color: "var(--danger-600)" },
+  student_created: { label: "Étudiant inscrit", color: "var(--info-600)" },
+  student_updated: { label: "Étudiant modifié", color: "var(--warn-600)" },
+  student_deleted: { label: "Étudiant supprimé", color: "var(--danger-600)" },
+  student_role_changed: { label: "Rôle modifié", color: "var(--orange-600)" },
+  class_created: { label: "Classe créée", color: "var(--info-600)" },
+  class_updated: { label: "Classe modifiée", color: "var(--warn-600)" },
+  class_deleted: { label: "Classe supprimée", color: "var(--danger-600)" },
+  vote_cast: { label: "Vote enregistré", color: "var(--success-600)" },
 };
 
 export default function AuditLogPage() {
@@ -52,7 +52,6 @@ export default function AuditLogPage() {
     <div ref={pageRef} style={{ padding: "40px 40px 80px" }}>
       <div className="row items-center justify-between" style={{ marginBottom: 28 }}>
         <div>
-          <div className="h-eyebrow">Administration</div>
           <h1 className="h-title" style={{ marginTop: 8 }}>Journal d'audit</h1>
           <p className="muted" style={{ fontSize: 14, marginTop: 6 }}>
             Trace des actions sensibles. {events?.length || 0} événements affichés.
@@ -64,6 +63,7 @@ export default function AuditLogPage() {
         <div className="input-wrap">
           <span className="input-icon"><Filter size={16} /></span>
           <input
+            aria-label="Filtrer le journal d'audit"
             className="input has-icon"
             placeholder="Filtrer par action, acteur, ou détail…"
             value={filter}
@@ -92,7 +92,7 @@ export default function AuditLogPage() {
             label: e.action,
             color: "var(--ink-500)",
           };
-          const actor = e.actor_id ? studentMap.get(e.actor_id) || "—" : "Système";
+          const actor = e.actor_id ? studentMap.get(e.actor_id) || "Compte supprimé" : "Système";
 
           return (
             <div
@@ -120,7 +120,7 @@ export default function AuditLogPage() {
               </div>
               <div style={{ color: "var(--ink-700)" }}>{actor}</div>
               <div className="muted mono" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {e.details || "—"}
+                {e.details || "-"}
               </div>
               <div className="muted mono" style={{ fontSize: 11, textAlign: "right" }}>
                 {new Date(e.created_at).toLocaleString("fr-FR")}

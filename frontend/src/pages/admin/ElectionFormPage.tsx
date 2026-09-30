@@ -52,7 +52,7 @@ export default function ElectionFormPage({ mode }: Props) {
   const createElection = useCreateElection();
   const updateElection = useUpdateElection();
 
-  const [title, setTitle] = useState(mode === "edit" ? "" : "Chef de classe — ");
+  const [title, setTitle] = useState(mode === "edit" ? "" : "Chef de classe, ");
   const [description, setDescription] = useState("");
   const [classId, setClassId] = useState("");
   const [startsAt, setStartsAt] = useState(defaultStart());
@@ -150,19 +150,19 @@ export default function ElectionFormPage({ mode }: Props) {
         <fieldset disabled={!!isEditingLocked} style={{ border: 0, padding: 0, margin: 0 }}>
           <div className="col gap-4">
             <div>
-              <label className="label">Titre</label>
-              <input
+              <label className="label" htmlFor="election-form-f1">Titre</label>
+              <input id="election-form-f1"
                 required
                 className="input"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Chef de classe — L3 Génie Logiciel"
+                placeholder="Chef de classe, L3 Génie Logiciel"
               />
             </div>
 
             <div>
-              <label className="label">Description (optionnel)</label>
-              <textarea
+              <label className="label" htmlFor="election-form-f2">Description (optionnel)</label>
+              <textarea id="election-form-f2"
                 className="input"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -173,8 +173,8 @@ export default function ElectionFormPage({ mode }: Props) {
             </div>
 
             <div>
-              <label className="label">Classe concernée</label>
-              <select
+              <label className="label" htmlFor="election-form-f3">Classe concernée</label>
+              <select id="election-form-f3"
                 required
                 className="input"
                 value={classId}
@@ -183,7 +183,7 @@ export default function ElectionFormPage({ mode }: Props) {
                 <option value="">Sélectionner une classe…</option>
                 {classes?.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.level} {c.name} — {c.field}
+                    {c.level} {c.name} ({c.field})
                   </option>
                 ))}
               </select>
@@ -191,8 +191,8 @@ export default function ElectionFormPage({ mode }: Props) {
 
             <div className="row gap-4">
               <div style={{ flex: 1 }}>
-                <label className="label">Début du scrutin</label>
-                <input
+                <label className="label" htmlFor="election-form-f4">Début du scrutin</label>
+                <input id="election-form-f4"
                   required
                   type="datetime-local"
                   className="input"
@@ -201,8 +201,8 @@ export default function ElectionFormPage({ mode }: Props) {
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label className="label">Fin du scrutin</label>
-                <input
+                <label className="label" htmlFor="election-form-f5">Fin du scrutin</label>
+                <input id="election-form-f5"
                   required
                   type="datetime-local"
                   className="input"

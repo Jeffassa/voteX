@@ -11,19 +11,3 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
-
-declare namespace JSX {
-  interface IntrinsicElements {
-    "lord-icon": React.DetailedHTMLProps<
-      React.HTMLAttributes<HTMLElement> & {
-        src?: string;
-        trigger?: string;
-        colors?: string;
-        delay?: string | number;
-        state?: string;
-        target?: string;
-      },
-      HTMLElement
-    >;
-  }
-}

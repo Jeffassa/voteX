@@ -119,7 +119,7 @@ def rotate(
         )
         revoke_all_for_user(db, user_id=record.user_id)
         raise UnauthorizedError(
-            "Token déjà utilisé — toutes vos sessions ont été révoquées par sécurité"
+            "Session réutilisée : par sécurité, toutes vos sessions ont été fermées. Reconnectez-vous."
         )
 
     if (_as_utc(record.expires_at) or now) < now:

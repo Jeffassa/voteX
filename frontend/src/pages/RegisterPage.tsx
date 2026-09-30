@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 
 import { useReveal } from "@/hooks/useReveal";
 import { Brand } from "@/components/Brand";
+import { Honeypot } from "@/components/Honeypot";
 import { api } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
 import { extractErrorMessage, extractStatus } from "@/lib/errors";
@@ -26,12 +27,13 @@ export default function RegisterPage() {
   const [requestingCode, setRequestingCode] = useState(false);
   // Revendication en attente d'une validation par l'administration.
   const [pendingReview, setPendingReview] = useState(false);
+  const [website, setWebsite] = useState("");
   const navigate = useNavigate();
 
   // Calcul visuel de la force du mot de passe
   function getPasswordStrength(pwd: string): { label: string; color: string; width: string } {
     if (!pwd) return { label: "", color: "transparent", width: "0%" };
-    if (pwd.length < 8) return { label: "Trop court (min. 8)", color: "var(--danger-500)", width: "25%" };
+    if (pwd.length < 8) return { label: "Trop court (min. 8)", color: "var(--danger-600)", width: "25%" };
     
     let score = 0;
     if (pwd.length >= 8) score += 1;
@@ -40,7 +42,7 @@ export default function RegisterPage() {
     if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
 
     if (score <= 2) return { label: "Moyen", color: "var(--warning-500)", width: "60%" };
-    return { label: "Fort", color: "var(--success-500)", width: "100%" };
+    return { label: "Fort", color: "var(--success-600)", width: "100%" };
   }
 
   const pwdStrength = getPasswordStrength(password);
@@ -80,8 +82,9 @@ export default function RegisterPage() {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         email: email.trim(),
+        website: website || undefined,
       });
-      toast.success("Code envoyé ! Vérifie ta boîte mail.");
+      toast.success("Si ces informations correspondent à un compte, un code a été envoyé. Vérifie ta boîte mail.");
       trackEvent("activation_code_requested");
     } catch (e: unknown) {
       const detail = extractErrorMessage(e, "Impossible d'envoyer le code.");
@@ -110,6 +113,7 @@ export default function RegisterPage() {
         activation_code: activationCode.trim(),
         password,
         confirm_password: confirmPassword,
+        website: website || undefined,
       });
 
       // Une revendication que l'école n'a pas pu rattacher à une adresse
@@ -232,29 +236,24 @@ export default function RegisterPage() {
           <Brand />
         </div>
         <div className="sv-auth-tagline" style={{ position: "relative", marginTop: "auto", maxWidth: 460, textAlign: "left" }}>
-          <div className="h-eyebrow" style={{ color: "var(--orange-400)", textAlign: "left" }}>
-            Inscription
-          </div>
           <h2
             style={{
-              fontSize: 40,
+              fontSize: 34,
               fontWeight: 600,
-              letterSpacing: "-0.035em",
-              lineHeight: 1.05,
-              marginTop: 14,
+              letterSpacing: "-0.03em",
+              lineHeight: 1.1,
+              marginTop: 0,
               textAlign: "left",
             }}
           >
-            Activez votre compte
-            <br />
-            étudiant ESATIC.
+            Activez votre compte étudiant
           </h2>
           <p
             style={{
               fontSize: 15,
-              color: "rgba(255,255,255,0.65)",
+              color: "rgba(255,255,255,0.78)",
               lineHeight: 1.6,
-              marginTop: 18,
+              marginTop: 14,
               textAlign: "left",
             }}
           >
@@ -268,11 +267,11 @@ export default function RegisterPage() {
               display: "flex",
               gap: 12,
               alignItems: "center",
-              fontSize: 12,
-              color: "rgba(255,255,255,0.55)",
+              fontSize: 13,
+              color: "rgba(255,255,255,0.78)",
             }}
           >
-            <ShieldCheck size={16} style={{ color: "var(--orange-400)" }} /> Processus de vérification en 2 étapes
+            <ShieldCheck size={16} aria-hidden="true" style={{ color: "var(--orange-400)" }} /> Un code de confirmation vous est envoyé par e-mail
           </div>
         </div>
       </div>
@@ -314,46 +313,60 @@ export default function RegisterPage() {
 
           <form
             onSubmit={submit}
+            noValidate
             style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 16, textAlign: "left" }}
           >
             <div>
-              <label className="label" style={{ textAlign: "left", display: "block" }}>Matricule ESATIC</label>
+              <label className="label" htmlFor="register-f1" style={{ textAlign: "left", display: "block" }}>Matricule ESATIC</label>
               <div className="input-wrap">
                 <span className="input-icon">
                   <User size={16} />
                 </span>
-                <input
+                <input id="register-f1"
                   required
                   className="input has-icon mono"
+                  name="matricule"
+                  autoComplete="username"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                  maxLength={20}
+                  aria-invalid={!matriculeFormatOk}
+                  aria-describedby="register-f1-hint"
                   value={matricule}
                   onChange={(e) => setMatricule(e.target.value.toUpperCase())}
                   placeholder="22-ESATIC0273DN"
                   style={{
-                    borderColor: !matriculeFormatOk ? "var(--danger-500)" : undefined,
+                    borderColor: !matriculeFormatOk ? "var(--danger-600)" : undefined,
                   }}
                 />
               </div>
-              <div className="muted" style={{ fontSize: 11, marginTop: 4, textAlign: "left" }}>
+              <div id="register-f1-hint" className="muted" style={{ fontSize: 11, marginTop: 4, textAlign: "left" }}>
                 Format : {MATRICULE_FORMAT_HUMAN}
               </div>
             </div>
 
             <div className="row gap-3">
               <div style={{ flex: 1 }}>
-                <label className="label" style={{ textAlign: "left", display: "block" }}>Prénom</label>
-                <input
+                <label className="label" htmlFor="register-f2" style={{ textAlign: "left", display: "block" }}>Prénom</label>
+                <input id="register-f2"
                   required
                   className="input"
+                  name="given-name"
+                  autoComplete="given-name"
+                  maxLength={100}
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="Ex: Sékou"
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label className="label" style={{ textAlign: "left", display: "block" }}>Nom</label>
-                <input
+                <label className="label" htmlFor="register-f3" style={{ textAlign: "left", display: "block" }}>Nom</label>
+                <input id="register-f3"
                   required
                   className="input"
+                  name="family-name"
+                  autoComplete="family-name"
+                  maxLength={100}
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="Ex: Bamba"
@@ -362,16 +375,19 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="label" style={{ textAlign: "left", display: "block" }}>Email ESATIC ou Gmail</label>
+              <label className="label" htmlFor="register-f4" style={{ textAlign: "left", display: "block" }}>Email ESATIC ou Gmail</label>
               <div className="row gap-2">
                 <div className="input-wrap" style={{ flex: 1 }}>
                   <span className="input-icon">
                     <Mail size={16} />
                   </span>
-                  <input
+                  <input id="register-f4"
                     required
                     type="email"
                     className="input has-icon"
+                    name="email"
+                    autoComplete="email"
+                    maxLength={255}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="nom@esatic.edu.ci"
@@ -379,7 +395,7 @@ export default function RegisterPage() {
                 </div>
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className="btn btn-outline"
                   onClick={requestActivationCode}
                   disabled={requestingCode}
                   style={{ height: "42px", minWidth: "120px" }}
@@ -390,34 +406,41 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="label" style={{ textAlign: "left", display: "block" }}>Code d'activation</label>
+              <label className="label" htmlFor="register-f5" style={{ textAlign: "left", display: "block" }}>Code d'activation</label>
               <div className="input-wrap">
                 <span className="input-icon">
                   <KeyRound size={16} />
                 </span>
-                <input
+                <input id="register-f5"
                   required
                   className="input has-icon mono"
+                  name="one-time-code"
+                  autoComplete="one-time-code"
+                  maxLength={20}
+                  aria-describedby="register-f5-hint"
                   value={activationCode}
                   onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
                   placeholder="CODE REÇU PAR EMAIL"
                 />
               </div>
-              <div className="muted" style={{ fontSize: 11, marginTop: 4, textAlign: "left" }}>
+              <div id="register-f5-hint" className="muted" style={{ fontSize: 11, marginTop: 4, textAlign: "left" }}>
                 Saisis le code secret envoyé à ton adresse email.
               </div>
             </div>
 
             <div>
-              <label className="label" style={{ textAlign: "left", display: "block" }}>Mot de passe</label>
+              <label className="label" htmlFor="register-f6" style={{ textAlign: "left", display: "block" }}>Mot de passe</label>
               <div className="input-wrap">
                 <span className="input-icon">
                   <Lock size={16} />
                 </span>
-                <input
+                <input id="register-f6"
                   required
                   type={show ? "text" : "password"}
                   className="input has-icon"
+                  name="new-password"
+                  autoComplete="new-password"
+                  maxLength={128}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   minLength={8}
@@ -426,9 +449,11 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   className="input-suffix-btn"
+                  aria-label={show ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                  aria-pressed={show}
                   onClick={() => setShow((s) => !s)}
                 >
-                  {show ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {show ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
                 </button>
               </div>
 
@@ -469,15 +494,19 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="label" style={{ textAlign: "left", display: "block" }}>Confirmer le mot de passe</label>
+              <label className="label" htmlFor="register-f7" style={{ textAlign: "left", display: "block" }}>Confirmer le mot de passe</label>
               <div className="input-wrap">
                 <span className="input-icon">
                   <Lock size={16} />
                 </span>
-                <input
+                <input id="register-f7"
                   required
                   type={show ? "text" : "password"}
                   className="input has-icon"
+                  name="confirm-password"
+                  autoComplete="new-password"
+                  maxLength={128}
+                  aria-invalid={!!confirmPassword && confirmPassword !== password}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   minLength={8}
@@ -486,8 +515,10 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            <Honeypot value={website} onChange={setWebsite} />
+
             {err && (
-              <div
+              <div role="alert"
                 className="row items-center gap-2"
                 style={{
                   padding: "12px 14px",

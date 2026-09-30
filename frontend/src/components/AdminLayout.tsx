@@ -35,13 +35,13 @@ export function AdminLayout() {
         }}
       >
         <Link to="/" style={{ paddingLeft: 4 }}>
-          <div style={{ filter: "brightness(0) invert(1)", display: "inline-block" }}>
+          <div className="brand-inverse" style={{ display: "inline-block" }}>
             <Brand />
           </div>
         </Link>
 
-        <nav style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
-          <div className="h-eyebrow" style={{ color: "rgba(255,255,255,0.4)", padding: "0 12px 6px" }}>
+        <nav aria-label="Administration" style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
+          <div className="h-eyebrow sv-admin-eyebrow" style={{ color: "rgba(255,255,255,0.7)", padding: "0 12px 6px" }}>
             Administration
           </div>
           {NAV.map((item) => {
@@ -84,9 +84,10 @@ export function AdminLayout() {
           }}
         >
           <Avatar
-            initials={getInitials(me?.first_name, me?.last_name)}
+            initials={getInitials(me?.first_name, me?.last_name)} name={`${me?.first_name ?? ""} ${me?.last_name ?? ""}`}
             size={36}
-            color="#FF7A00"
+            color="#FF9333"
+            onDark
           />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div
@@ -110,9 +111,10 @@ export function AdminLayout() {
               navigate("/login");
             }}
             title="Se déconnecter"
+            aria-label="Se déconnecter"
             style={{
               background: "transparent",
-              color: "rgba(255,255,255,0.6)",
+              color: "rgba(255,255,255,0.75)",
               border: 0,
               padding: 6,
               borderRadius: 6,
@@ -125,9 +127,9 @@ export function AdminLayout() {
         </div>
       </aside>
 
-      <main style={{ background: "var(--bg)", overflow: "auto" }}>
+      <div style={{ background: "var(--bg)", overflow: "auto" }}>
         <Outlet />
-      </main>
+      </div>
     </div>
   );
 }

@@ -174,7 +174,7 @@ def candidate_students(db, classroom):
 def open_election(db, classroom, candidate_students):
     now = datetime.now(timezone.utc)
     election = Election(
-        title="Chef de classe — Test",
+        title="Chef de classe, Test",
         class_id=classroom.id,
         starts_at=now - timedelta(hours=1),
         ends_at=now + timedelta(hours=24),

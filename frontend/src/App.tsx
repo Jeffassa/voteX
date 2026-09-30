@@ -33,9 +33,12 @@ const AuditLogPage = lazy(() => import("@/pages/admin/AuditLogPage"));
 import { useMe } from "@/lib/queries";
 import { useAuthStore } from "@/stores/auth";
 
+// Indicateur de chargement en CSS pur : il s'affiche avant tout le reste, il ne
+// doit donc embarquer aucune bibliothèque d'animation dans le bundle initial.
 const PageLoader = () => (
-  <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: "var(--text-muted)" }}>
-    Chargement...
+  <div role="status" style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
+    <span className="sv-spinner" aria-hidden="true" />
+    <span className="sr-only">Chargement</span>
   </div>
 );
 

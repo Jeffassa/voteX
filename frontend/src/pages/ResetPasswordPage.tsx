@@ -136,13 +136,15 @@ export default function ResetPasswordPage() {
 
             <div className="col gap-3">
               <div>
-                <label className="label">Nouveau mot de passe</label>
+                <label className="label" htmlFor="reset-password-f1">Nouveau mot de passe</label>
                 <div className="input-wrap">
                   <span className="input-icon"><Lock size={16} /></span>
-                  <input
+                  <input id="reset-password-f1"
                     required
                     type={show ? "text" : "password"}
                     className="input has-icon"
+                    autoComplete="new-password"
+                    maxLength={128}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     minLength={8}
@@ -150,20 +152,24 @@ export default function ResetPasswordPage() {
                   <button
                     type="button"
                     className="input-suffix-btn"
+                    aria-label={show ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                    aria-pressed={show}
                     onClick={() => setShow((s) => !s)}
                   >
-                    {show ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {show ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
                   </button>
                 </div>
               </div>
               <div>
-                <label className="label">Confirmer le mot de passe</label>
+                <label className="label" htmlFor="reset-password-f2">Confirmer le mot de passe</label>
                 <div className="input-wrap">
                   <span className="input-icon"><Lock size={16} /></span>
-                  <input
+                  <input id="reset-password-f2"
                     required
                     type={show ? "text" : "password"}
                     className="input has-icon"
+                    autoComplete="new-password"
+                    maxLength={128}
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
                     minLength={8}
@@ -173,7 +179,7 @@ export default function ResetPasswordPage() {
             </div>
 
             {err && (
-              <div
+              <div role="alert"
                 className="row items-center gap-2"
                 style={{
                   marginTop: 16, padding: "10px 12px",

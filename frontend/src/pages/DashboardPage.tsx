@@ -1,16 +1,20 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, CheckCircle2, Hash, History, Shield } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock, Hash, History, Shield } from "lucide-react";
 
 import { useReveal } from "@/hooks/useReveal";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar, getInitials } from "@/components/Avatar";
 import { Countdown } from "@/components/Countdown";
 import { HashChip } from "@/components/HashChip";
-import { BorderBeam } from "@/components/magic";
-import { Lordicon } from "@/components/icons/Lordicon";
-import { LORDICONS, LORDICON_COLORS } from "@/lib/lordicons";
 import { useElections, useMe, useMyVotes } from "@/lib/queries";
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: "En préparation",
+  open: "Scrutin ouvert",
+  closed: "Scrutin clos",
+  published: "Résultats publiés",
+};
 
 export default function DashboardPage() {
   // En-tête, carte de scrutin, puis les deux colonnes du bas : l'ordre
@@ -41,21 +45,21 @@ export default function DashboardPage() {
       <div ref={pageRef} className="container" style={{ padding: "40px 32px 80px" }}>
         <div className="row items-center gap-4" style={{ marginBottom: 36 }}>
           <Avatar
-            initials={getInitials(me?.first_name, me?.last_name)}
+            initials={getInitials(me?.first_name, me?.last_name)} name={`${me?.first_name ?? ""} ${me?.last_name ?? ""}`}
             size={56}
             color="#0A2540"
           />
           <div>
-            <div
+            <h1
               style={{
-                fontSize: 24, fontWeight: 600, letterSpacing: "-0.025em",
+                margin: 0, fontSize: 24, fontWeight: 600, letterSpacing: "-0.025em",
                 color: "var(--navy-900)",
               }}
             >
-              {meLoading ? "…" : `Bonjour, ${me?.first_name || "—"}.`}
-            </div>
+              {meLoading ? "…" : me?.first_name ? `Bonjour, ${me.first_name}.` : "Bonjour."}
+            </h1>
             <div className="muted" style={{ fontSize: 14, marginTop: 2 }}>
-              <span className="mono">{me?.matricule || "—"}</span> · {classLabel}
+              <span className="mono">{me?.matricule ?? ""}</span> · {classLabel}
             </div>
           </div>
         </div>
@@ -100,31 +104,21 @@ function ActiveElectionCard({
 }) {
   return (
     <div className="card" style={{ padding: 0, overflow: "hidden", position: "relative" }}>
-      {isOpen && !hasVoted && (
-        <BorderBeam size={240} duration={9} colorFrom="#FF7A00" colorTo="#FFC988" />
-      )}
       <div
         style={{
           padding: "28px 32px",
-          background: "linear-gradient(135deg, var(--navy-900) 0%, var(--navy-800) 100%)",
+          background: "var(--navy-900)",
           color: "white",
           position: "relative", overflow: "hidden",
         }}
       >
-        <div
-          style={{
-            position: "absolute", right: -40, top: -40,
-            width: 220, height: 220, borderRadius: "50%",
-            background: "var(--orange-500)", opacity: 0.18, filter: "blur(40px)",
-          }}
-        />
         <div className="row items-center gap-2" style={{ marginBottom: 12 }}>
           <span
             className="badge badge-open"
             style={{ background: "rgba(34, 197, 94, 0.18)", color: "#86EFAC" }}
           >
             <span className="dot" style={{ background: "#86EFAC" }} />
-            Scrutin {election.status === "open" ? "ouvert" : election.status}
+            {STATUS_LABEL[election.status] ?? election.status}
           </span>
         </div>
         <h2
@@ -156,7 +150,7 @@ function ActiveElectionCard({
       >
         <div>
           <div className="row items-center gap-2">
-            <Lordicon src={LORDICONS.clock} size={20} colors={LORDICON_COLORS.orangeNavy} />
+            <Clock size={18} aria-hidden="true" style={{ color: "var(--ink-500)" }} />
             <span className="h-eyebrow">Clôture du scrutin dans</span>
           </div>
           <div style={{ marginTop: 14 }}>
@@ -176,7 +170,7 @@ function ActiveElectionCard({
                 to={`/elections/${election.id}/results`}
                 className="btn btn-outline"
               >
-                Voir les résultats en direct <ArrowRight size={16} />
+                Suivre la participation <ArrowRight size={16} aria-hidden="true" />
               </Link>
             </>
           ) : isOpen ? (
@@ -271,7 +265,7 @@ function VerificationPanel() {
       </div>
       <p className="muted" style={{ fontSize: 13, lineHeight: 1.55, margin: 0 }}>
         Chaque vote produit un hash unique. Vous pouvez à tout moment vérifier
-        qu'il a bien été enregistré sur la blockchain — sans dévoiler pour qui
+        qu'il a bien été enregistré sur la blockchain, sans dévoiler pour qui
         vous avez voté.
       </p>
       <Link

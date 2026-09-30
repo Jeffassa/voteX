@@ -25,7 +25,7 @@ def send_activation_code_email(to_email: str, student_name: str, activation_code
     <div style="font-family:-apple-system,Inter,sans-serif;max-width:520px;margin:0 auto;color:#0F172A;background:#F7F8FA;padding:32px">
         <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
             <div style="background:#0A2540;color:white;padding:16px 20px;border-radius:12px;margin:-32px -32px 24px;font-weight:600;font-size:16px">
-                ESATIC SmartVote — Code d'activation
+                ESATIC SmartVote, code d'activation
             </div>
             <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(student_name)},</h1>
             <p style="color:#334155;line-height:1.6;font-size:14px">
@@ -66,7 +66,7 @@ def send_account_activated_email(to_email: str, student_name: str) -> None:
     <div style="font-family:-apple-system,Inter,sans-serif;max-width:520px;margin:0 auto;color:#0F172A;background:#F7F8FA;padding:32px">
         <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
             <div style="background:#0A2540;color:white;padding:16px 20px;border-radius:12px;margin:-32px -32px 24px;font-weight:600;font-size:16px">
-                ESATIC SmartVote — Compte Autorisé
+                ESATIC SmartVote, compte autorisé
             </div>
             <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(student_name)},</h1>
             <p style="color:#334155;line-height:1.6;font-size:14px">

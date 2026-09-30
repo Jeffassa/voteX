@@ -40,7 +40,7 @@ def cast(
         email_service.send_vote_receipt_email,
         to_email=user.email,
         voter_name=f"{user.first_name} {user.last_name}",
-        election_title=election.title if election else "—",
+        election_title=election.title if election else "Élection",
         vote_hash=vote.vote_hash,
         tx_hash=vote.tx_hash,
         block_number=vote.block_number,

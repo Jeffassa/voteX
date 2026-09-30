@@ -216,7 +216,7 @@ def main():
         else:
             now = datetime.now(timezone.utc)
             election = Election(
-                title="Chef de classe — L3 Génie Logiciel",
+                title="Chef de classe, L3 Génie Logiciel",
                 description="Élection 2026 du chef de classe de la promotion L3 GL.",
                 class_id=gl.id,
                 starts_at=now - timedelta(hours=2),

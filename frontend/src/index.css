@@ -1,11 +1,101 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* ESATIC SmartVote — design tokens (ported from design handoff) */
+@custom-variant dark (&:is(.dark *));
+
+/* Thème Tailwind v4 : alimente les classes utilitaires des composants Kokonut
+   UI et bklit UI (bg-background, text-muted-foreground, border-border…) à
+   partir des jetons SmartVote définis dans :root. */
+@theme inline {
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-mono);
+  --color-background: var(--bg);
+  --color-foreground: var(--ink-900);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--ink-900);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--ink-900);
+  --color-primary: var(--navy-900);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--surface-2);
+  --color-secondary-foreground: var(--ink-900);
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--ink-500);
+  --color-accent: var(--orange-50);
+  --color-accent-foreground: var(--orange-600);
+  --color-destructive: var(--danger-600);
+  --color-border: var(--border);
+  --color-input: var(--border-strong);
+  --color-ring: var(--navy-600);
+  --color-chart-1: var(--navy-900);
+  --color-chart-2: var(--orange-500);
+  --color-chart-3: var(--navy-500);
+  --color-chart-4: #16a34a;
+  --color-chart-5: #7c3aed;
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --color-chart-scale-pattern-color: var(--chart-scale-pattern-color);
+  --color-chart-scale-05: var(--chart-scale-05);
+  --color-chart-scale-04: var(--chart-scale-04);
+  --color-chart-scale-03: var(--chart-scale-03);
+  --color-chart-scale-02: var(--chart-scale-02);
+  --color-chart-scale-01: var(--chart-scale-01);
+  --color-chart-label: var(--chart-label);
+  --color-chart-marker-foreground: var(--chart-marker-foreground);
+  --color-chart-marker-border: var(--chart-marker-border);
+  --color-chart-marker-background: var(--chart-marker-background);
+  --color-chart-tooltip-muted: var(--chart-tooltip-muted);
+  --color-chart-tooltip-foreground: var(--chart-tooltip-foreground);
+  --color-chart-tooltip-background: var(--chart-tooltip-background);
+  --chart-brush-border: var(--chart-brush-border);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-crosshair: var(--chart-crosshair);
+  --chart-line-secondary: var(--chart-line-secondary);
+  --chart-line-primary: var(--chart-line-primary);
+  --color-chart-foreground-muted: var(--chart-foreground-muted);
+  --color-chart-foreground: var(--chart-foreground);
+  --color-chart-background: var(--chart-background);
+}
+
+/* bklit UI lit aussi ces variables CSS brutes. */
 :root {
-  --font-ui: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --background: var(--bg);
+  --foreground: var(--ink-900);
+  --muted-foreground: var(--ink-500);
+  --chart-1: var(--navy-900);
+  --chart-2: var(--orange-500);
+  --chart-3: var(--navy-500);
+  --chart-4: #16a34a;
+  --chart-5: #7c3aed;
+  --radius: var(--r-md);
+  --chart-background: oklch(1 0 0);
+  --chart-foreground: oklch(0.145 0.004 285);
+  --chart-foreground-muted: oklch(0.55 0.014 260);
+  --chart-line-primary: var(--chart-1);
+  --chart-line-secondary: var(--chart-2);
+  --chart-crosshair: oklch(0.4 0.1828 274.34);
+  --chart-grid: oklch(0.9 0 0);
+  --chart-brush-border: var(--chart-grid);
+  --chart-tooltip-background: oklch(0.21 0.006 285 / 0.8);
+  --chart-tooltip-foreground: oklch(0.985 0 0);
+  --chart-tooltip-muted: oklch(0.65 0.01 260);
+  --chart-marker-background: oklch(0.97 0.005 260);
+  --chart-marker-border: oklch(0.85 0.01 260);
+  --chart-marker-foreground: oklch(0.3 0.01 260);
+  --chart-label: oklch(0.45 0.01 260);
+  --chart-scale-01: oklch(0.98 0.003 106);
+  --chart-scale-02: oklch(0.92 0.008 106);
+  --chart-scale-03: oklch(0.82 0.015 106);
+  --chart-scale-04: oklch(0.68 0.02 106);
+  --chart-scale-05: oklch(0.55 0.025 106);
+  --chart-scale-pattern-color: oklch(0.96 0.005 106);
+}
+
+/* ESATIC SmartVote : jetons de design. */
+:root {
+  --font-ui: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
 
   --navy-900: #0a2540;
   --navy-800: #133158;
@@ -15,49 +105,55 @@
   --navy-100: #e6edf6;
   --navy-50: #f2f6fb;
 
-  --orange-600: #e86a00;
+  /* Teinte « texte » de l'orange : #e86a00 n'atteignait que 3,2:1 sur fond
+     blanc. Les contrastes de ce fichier visent WCAG AA (4,5:1 pour le texte). */
+  --orange-600: #b55600;
   --orange-500: #ff7a00;
   --orange-400: #ff9333;
   --orange-100: #ffe9d4;
   --orange-50: #fff5eb;
 
-  --bg: #f7f8fa;
+  --bg: #fafafa;
   --surface: #ffffff;
-  --surface-2: #fbfbfd;
-  --border: #e5e8ee;
-  --border-strong: #d4d9e2;
-  --ink-900: #0f172a;
-  --ink-700: #334155;
-  --ink-500: #64748b;
-  --ink-400: #94a3b8;
-  --ink-300: #cbd5e1;
+  --surface-2: #f4f4f5;
+  --border: #e4e4e7;
+  --border-strong: #d4d4d8;
+  --ink-900: #18181b;
+  --ink-700: #3f3f46;
+  --ink-500: #5f5f6b;
+  /* Utilisée pour du texte (aides, placeholders) : #94a3b8 plafonnait à 2,6:1. */
+  --ink-400: #6b6b75;
+  --ink-300: #d4d4d8;
 
   --success-600: #15803d;
   --success-500: #22c55e;
   --success-50: #f0fdf4;
   --danger-600: #b91c1c;
   --danger-500: #ef4444;
+  --danger-200: #fecaca;
   --danger-50: #fef2f2;
   --warn-500: #f59e0b;
+  --warn-600: #92400e;
   --warn-50: #fffbeb;
   --info-500: #3b82f6;
+  --info-600: #1d4ed8;
   --info-50: #eff6ff;
 
   --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
-  --r-xl: 20px;
-  --r-2xl: 24px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+  --r-2xl: 20px;
   --r-pill: 999px;
 
-  --shadow-sm: 0 1px 2px rgba(10, 37, 64, 0.04), 0 1px 1px rgba(10, 37, 64, 0.02);
-  --shadow-md: 0 4px 12px rgba(10, 37, 64, 0.06), 0 1px 2px rgba(10, 37, 64, 0.03);
-  --shadow-lg: 0 12px 32px rgba(10, 37, 64, 0.08), 0 4px 8px rgba(10, 37, 64, 0.04);
-  --shadow-xl: 0 24px 56px rgba(10, 37, 64, 0.10), 0 8px 16px rgba(10, 37, 64, 0.04);
-  --shadow-orange: 0 6px 20px rgba(255, 122, 0, 0.28);
+  --shadow-sm: 0 1px 2px rgba(24, 24, 27, 0.05);
+  --shadow-md: 0 2px 8px rgba(24, 24, 27, 0.06), 0 1px 2px rgba(24, 24, 27, 0.04);
+  --shadow-lg: 0 10px 30px rgba(24, 24, 27, 0.08), 0 2px 6px rgba(24, 24, 27, 0.04);
+  --shadow-xl: 0 24px 60px rgba(24, 24, 27, 0.12), 0 6px 16px rgba(24, 24, 27, 0.05);
+  --shadow-orange: 0 1px 2px rgba(24, 24, 27, 0.08);
 }
 
-* { box-sizing: border-box; }
+*, ::before, ::after { box-sizing: border-box; border-color: var(--border); }
 html, body, #root { height: 100%; }
 body {
   margin: 0;
@@ -66,9 +162,23 @@ body {
   color: var(--ink-900);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: "ss01", "cv11";
+  font-feature-settings: "ss01";
+  text-rendering: optimizeLegibility;
 }
 button { font-family: inherit; cursor: pointer; }
+
+/* Focus clavier toujours visible : sans lui, naviguer au clavier revient à
+   avancer à l'aveugle. :focus-visible l'épargne aux clics de souris. */
+:focus-visible { outline: 3px solid var(--navy-600); outline-offset: 2px; border-radius: 4px; }
+.input:focus-visible { outline: none; }
+
+/* Lien d'évitement : premier élément focalisable de chaque page. */
+.sv-skip-link {
+  position: absolute; left: 12px; top: -48px; z-index: 1000;
+  background: var(--navy-900); color: white; padding: 10px 14px; border-radius: var(--r-md);
+  font-size: 14px; font-weight: 500;
+}
+.sv-skip-link:focus { top: 12px; }
 input, textarea, select { font-family: inherit; }
 a { color: inherit; text-decoration: none; }
 
@@ -83,6 +193,11 @@ a { color: inherit; text-decoration: none; }
 .brand .logo svg { color: var(--orange-500); }
 .brand .name { font-size: 16px; color: var(--navy-900); }
 .brand .name .tag { color: var(--ink-500); font-weight: 400; }
+/* Variante sur fond sombre. Remplace un filter: invert() qui blanchissait tout,
+   y compris l'orange du logo, et que les outils d'audit ne savent pas lire. */
+.brand-inverse .brand .name { color: white; }
+.brand-inverse .brand .name .tag { color: rgba(255, 255, 255, 0.75); }
+.brand-inverse .brand .logo { background: rgba(255, 255, 255, 0.08); }
 
 /* Buttons */
 .btn {
@@ -91,18 +206,24 @@ a { color: inherit; text-decoration: none; }
   border-radius: var(--r-md);
   border: 1px solid transparent;
   font-size: 14px; font-weight: 500; letter-spacing: -0.01em;
-  transition: all 160ms ease; white-space: nowrap;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease;
+  white-space: nowrap;
 }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-primary { background: var(--orange-500); color: white; box-shadow: var(--shadow-orange); }
-.btn-primary:not(:disabled):hover { background: var(--orange-600); transform: translateY(-1px); }
+/* Bouton principal : marine plein (15:1). L'orange de la marque est réservé
+   aux accents ; en fond de bouton, il n'offrait que 2,6:1 au texte blanc. */
+.btn-primary { background: var(--navy-900); color: #fff; box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+.btn-primary:not(:disabled):hover { background: var(--navy-800); }
+.btn-primary:not(:disabled):active { transform: translateY(1px); }
+.btn-accent { background: var(--orange-500); color: var(--navy-900); font-weight: 600; }
+.btn-accent:not(:disabled):hover { background: var(--orange-400); }
 .btn-navy { background: var(--navy-900); color: white; }
 .btn-navy:not(:disabled):hover { background: var(--navy-800); }
-.btn-outline { background: white; color: var(--ink-900); border-color: var(--border-strong); }
-.btn-outline:not(:disabled):hover { background: var(--navy-50); border-color: var(--navy-500); }
+.btn-outline { background: var(--surface); color: var(--ink-900); border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
+.btn-outline:not(:disabled):hover { background: var(--surface-2); border-color: var(--ink-300); }
 .btn-ghost { background: transparent; color: var(--ink-700); }
-.btn-ghost:hover { background: var(--navy-50); color: var(--navy-900); }
-.btn-danger { background: var(--danger-500); color: white; }
+.btn-ghost:hover { background: var(--surface-2); color: var(--ink-900); }
+.btn-danger { background: var(--danger-600); color: white; }
 .btn-lg { padding: 14px 22px; font-size: 15px; border-radius: var(--r-md); }
 .btn-xl { padding: 18px 28px; font-size: 16px; border-radius: var(--r-lg); }
 .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: var(--r-sm); }
@@ -140,9 +261,8 @@ a { color: inherit; text-decoration: none; }
 /* Badges */
 .badge {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 10px; border-radius: var(--r-pill);
-  font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
-  text-transform: uppercase;
+  padding: 3px 10px; border-radius: var(--r-pill);
+  font-size: 12px; font-weight: 500;
 }
 .badge-open { background: var(--success-50); color: var(--success-600); }
 .badge-open .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success-500); animation: sv-pulse 2s infinite; }
@@ -183,9 +303,11 @@ a { color: inherit; text-decoration: none; }
 .hash-chip button:hover { background: white; color: var(--navy-900); }
 
 /* Section heads */
-.h-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--orange-600); }
-.h-title { font-size: 28px; font-weight: 600; letter-spacing: -0.025em; color: var(--navy-900); line-height: 1.15; }
-.h-display { font-size: 64px; font-weight: 600; letter-spacing: -0.04em; color: var(--navy-900); line-height: 1.0; }
+/* Libellé de section : casse normale, sans espacement de lettres ni couleur
+   criarde. Les capitales espacées en orange partout faisaient « gabarit ». */
+.h-eyebrow { font-size: 13px; font-weight: 500; color: var(--ink-500); letter-spacing: 0; }
+.h-title { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; color: var(--navy-900); line-height: 1.15; }
+.h-display { font-size: 64px; font-weight: 600; letter-spacing: -0.035em; color: var(--navy-900); line-height: 1.0; }
 .muted { color: var(--ink-500); }
 .mono { font-family: var(--font-mono); }
 
@@ -206,8 +328,8 @@ a { color: inherit; text-decoration: none; }
   padding: 8px 14px; border-radius: var(--r-md);
   font-size: 13px; color: var(--ink-700); font-weight: 500; cursor: pointer;
 }
-.app-header nav a:hover { background: var(--navy-50); color: var(--navy-900); }
-.app-header nav a.active { background: var(--navy-900); color: white; }
+.app-header nav a:hover { background: var(--surface-2); color: var(--ink-900); }
+.app-header nav a.active { background: var(--surface-2); color: var(--ink-900); box-shadow: inset 0 0 0 1px var(--border); }
 
 /* Scene fade transition */
 /* Entrée de page.
@@ -277,71 +399,6 @@ a { color: inherit; text-decoration: none; }
 @keyframes sv-rcpt-check { to { stroke-dashoffset: 0; } }
 @keyframes sv-shimmer { from { transform: translateX(-12px); opacity: 0; } 50% { opacity: 1; } to { transform: translateX(12px); opacity: 0; } }
 
-/* Magic UI animations */
-@keyframes sv-marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(calc(-100% - var(--gap, 1rem))); }
-}
-@keyframes sv-marquee-vertical {
-  from { transform: translateY(0); }
-  to { transform: translateY(calc(-100% - var(--gap, 1rem))); }
-}
-@keyframes sv-gradient-x {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-@keyframes sv-meteor {
-  0% { transform: rotate(215deg) translateX(0); opacity: 1; }
-  70% { opacity: 1; }
-  100% { transform: rotate(215deg) translateX(-500px); opacity: 0; }
-}
-
-.sv-animate-marquee { animation: sv-marquee var(--duration, 30s) linear infinite; }
-.sv-animate-marquee-vertical { animation: sv-marquee-vertical var(--duration, 30s) linear infinite; }
-.sv-animate-gradient {
-  background-size: 200% 200%;
-  animation: sv-gradient-x 6s ease infinite;
-}
-/* Liseré lumineux d'une carte — voir components/magic/BorderBeam.tsx.
-   Le dégradé est peint dans la bordure et tourne : `background-clip` et
-   `rotate` suffisent, sans masque composite ni chemin de mouvement. */
-.sv-beam {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--beam-radius, 20px);
-  padding: var(--beam-width, 1.5px);
-  pointer-events: none;
-  background: conic-gradient(
-    from var(--beam-angle, 0deg),
-    transparent 0deg,
-    var(--beam-from, #ff7a00) 40deg,
-    var(--beam-to, #ffc988) 70deg,
-    transparent 110deg
-  );
-  /* Seule la bordure reste peinte : le centre est découpé. */
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: sv-beam-spin var(--beam-duration, 12s) linear infinite;
-  animation-delay: var(--beam-delay, 0s);
-}
-
-@property --beam-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-
-@keyframes sv-beam-spin {
-  to { --beam-angle: 360deg; }
-}
-
-/* Sans @property, l'angle n'est pas interpolable : la bordure reste fixe,
-   ce qui est un repli acceptable — jamais un artefact. */
-@media (prefers-reduced-motion: reduce) {
-  .sv-beam { animation: none; }
-}
 
 /* Layout utility shorthands used in the design */
 .row { display: flex; }
@@ -433,20 +490,25 @@ a { color: inherit; text-decoration: none; }
   .sv-admin-layout {
     grid-template-columns: 1fr !important;
   }
+  /* Barre latérale → bandeau : logo, menu défilant horizontalement, puis la
+     carte de profil, qui porte le seul bouton de déconnexion de l'admin et ne
+     doit donc pas disparaître. */
   .sv-admin-sidebar {
     position: static !important;
     height: auto !important;
-    flex-direction: row !important;
     padding: 12px !important;
+    gap: 10px !important;
+    min-width: 0;
   }
   .sv-admin-sidebar nav {
     flex-direction: row !important;
-    flex-wrap: wrap;
-    gap: 8px;
+    overflow-x: auto;
+    gap: 4px !important;
+    min-width: 0;
   }
-  .sv-admin-sidebar .sv-admin-profile-card {
-    display: none;
-  }
+  .sv-admin-sidebar nav a { white-space: nowrap; flex-shrink: 0; }
+  .sv-admin-eyebrow { display: none; }
+  .sv-admin-sidebar .sv-admin-profile-card { padding: 8px 10px !important; }
 }
 
 /* Très petits écrans (< 480px, iPhone SE-style) */
@@ -465,41 +527,6 @@ a { color: inherit; text-decoration: none; }
   }
 }
 
-
-/* ── Décor 3D du hero (page d'accueil) ─────────────────────────────────────
-   Posé derrière le contenu et inerte au pointeur : le décor ne doit jamais
-   intercepter un clic destiné à un bouton. L'opacité le maintient en retrait
-   du texte, qui reste l'élément à lire. */
-.hero-scene {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.42;
-  z-index: 0;
-  /* Le décor s'efface du côté du texte. Sans ce masque, le maillage traverse
-     la zone de lecture : le titre reste lisible mais le paragraphe se noie
-     dedans, ce qu'aucun gain esthétique ne justifie sur un service public. */
-  -webkit-mask-image: linear-gradient(to right, transparent 0%, transparent 38%, black 72%);
-  mask-image: linear-gradient(to right, transparent 0%, transparent 38%, black 72%);
-}
-
-/* Le contenu passe explicitement au-dessus : sans z-index, texte et décor
-   partagent le même plan et l'ordre de peinture devient une question de
-   chance. */
-.hero-copy {
-  position: relative;
-  z-index: 1;
-}
-
-/* Sur petit écran, le décor cède la place : la hauteur utile est précieuse et
-   la charge GPU d'un téléphone d'entrée de gamme ne l'est pas moins. */
-@media (max-width: 900px) {
-  .hero-scene { display: none; }
-}
-
-/* Un utilisateur qui a demandé moins de mouvement garde le décor — la scène
-   se rend alors sur une image fixe — mais rien ne bouge. Voir motion.ts. */
-
 /* Élévation au survol — traitée par le navigateur plutôt que par JavaScript.
    `transform` et `box-shadow` sont composés sur le GPU : aucune mise en page
    n'est recalculée, et rien ne tourne quand le pointeur est ailleurs. */
@@ -515,5 +542,129 @@ a { color: inherit; text-decoration: none; }
   .card-lift:hover { transform: none; }
 }
 
-/* Le hero se révèle en cascade : ses enfants directs sont les cibles. */
-.hero-copy > * { will-change: auto; }
+
+/* ── Bouton à l'apparence d'un lien ─────────────────────────────────────── */
+.sv-link-button {
+  background: none; border: 0; padding: 0; font: inherit; font-size: 13px;
+  color: var(--ink-500); text-decoration: underline; text-underline-offset: 2px;
+}
+.sv-link-button:hover { color: var(--navy-900); }
+
+/* ── Pied de page légal ─────────────────────────────────────────────────── */
+.sv-site-footer { border-top: 1px solid var(--border); background: var(--surface); }
+.sv-site-footer-inner {
+  max-width: 1240px; margin: 0 auto; padding: 20px 32px;
+  display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between;
+  font-size: 13px; color: var(--ink-500);
+}
+.sv-site-footer nav { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
+.sv-site-footer a { color: var(--ink-500); text-decoration: underline; text-underline-offset: 2px; }
+.sv-site-footer a:hover { color: var(--navy-900); }
+
+/* ── Bannière de consentement ───────────────────────────────────────────── */
+.sv-cookie-banner {
+  position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 900;
+  display: flex; justify-content: center; pointer-events: none;
+}
+.sv-cookie-banner-inner {
+  pointer-events: auto; max-width: 880px; width: 100%;
+  display: flex; gap: 16px; align-items: center;
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-xl); padding: 16px 20px;
+}
+.sv-cookie-icon { color: var(--orange-600); flex-shrink: 0; }
+.sv-cookie-text { flex: 1; font-size: 13px; color: var(--ink-700); line-height: 1.5; }
+.sv-cookie-text strong { color: var(--navy-900); font-size: 14px; }
+.sv-cookie-text p { margin: 4px 0 0; }
+.sv-cookie-text a { color: var(--navy-700); text-decoration: underline; }
+.sv-cookie-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.sv-cookie-actions .btn { min-width: 96px; padding: 10px 14px; font-size: 13px; }
+
+/* ── Pages légales et 404 ───────────────────────────────────────────────── */
+.sv-legal-page { min-height: 100vh; background: var(--bg); display: flex; flex-direction: column; }
+.sv-legal-container { width: 100%; max-width: 820px; margin: 0 auto; padding: 0 32px; }
+.sv-legal-header { background: var(--surface); border-bottom: 1px solid var(--border); }
+.sv-legal-header-inner { display: flex; align-items: center; justify-content: space-between; padding-top: 14px; padding-bottom: 14px; }
+.sv-legal-main { padding-top: 48px; padding-bottom: 72px; flex: 1; }
+.sv-legal-main h1 { font-size: 34px; letter-spacing: -0.03em; color: var(--navy-900); margin: 0 0 8px; line-height: 1.15; }
+.sv-legal-updated { color: var(--ink-500); font-size: 13px; margin: 0 0 32px; }
+.sv-legal-body { color: var(--ink-700); font-size: 15px; line-height: 1.7; }
+.sv-legal-body h2 { font-size: 20px; color: var(--navy-900); letter-spacing: -0.015em; margin: 36px 0 10px; scroll-margin-top: 24px; }
+.sv-legal-body a { color: var(--navy-700); text-decoration: underline; }
+.sv-legal-body ul { padding-left: 22px; }
+.sv-legal-body li { margin: 4px 0; }
+.sv-table-wrap { overflow-x: auto; margin: 12px 0; }
+.sv-legal-body table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 14px; background: var(--surface); }
+.sv-legal-body th, .sv-legal-body td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+.sv-legal-body th { background: var(--navy-50); color: var(--navy-900); font-weight: 600; }
+.sv-legal-body code { font-family: var(--font-mono); font-size: 13px; background: var(--navy-50); padding: 1px 5px; border-radius: 4px; }
+.sv-legal-body .sv-link-button { font-size: 15px; color: var(--navy-700); }
+.sv-to-fill { background: var(--warn-50); color: var(--warn-600); border: 1px dashed #d97706; border-radius: 4px; padding: 0 4px; font-weight: 500; }
+
+.sv-notfound { flex: 1; max-width: 560px; margin: 0 auto; padding: 64px 24px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; }
+.sv-notfound-icon { width: 80px; height: 80px; border-radius: 50%; background: var(--navy-50); color: var(--navy-700); display: grid; place-items: center; margin-top: 40px; }
+.sv-notfound h1 { font-size: 32px; letter-spacing: -0.03em; color: var(--navy-900); margin: 0; }
+.sv-notfound p { margin: 0; line-height: 1.6; }
+.sv-notfound code { font-family: var(--font-mono); font-size: 13px; background: var(--navy-50); padding: 1px 6px; border-radius: 4px; word-break: break-all; }
+.sv-notfound-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 12px; }
+
+/* ── Messages d'erreur de formulaire ────────────────────────────────────── */
+.field-error { color: var(--danger-600); font-size: 12px; margin-top: 6px; display: flex; gap: 6px; align-items: center; }
+.input[aria-invalid="true"] { border-color: var(--danger-600); }
+
+@media (max-width: 768px) {
+  .sv-site-footer-inner { padding: 16px; flex-direction: column; align-items: flex-start; }
+  .sv-cookie-banner { left: 8px; right: 8px; bottom: 8px; }
+  .sv-cookie-banner-inner { flex-direction: column; align-items: stretch; padding: 14px; gap: 10px; }
+  .sv-cookie-icon { display: none; }
+  .sv-cookie-actions .btn { flex: 1; }
+  .sv-legal-container { padding: 0 16px; }
+  .sv-legal-main { padding-top: 28px; }
+  .sv-legal-main h1 { font-size: 26px; }
+}
+
+/* Compte à rebours : quatre blocs de 64 px ne tiennent pas dans une carte de
+   téléphone. */
+@media (max-width: 480px) {
+  .sv-countdown { gap: 6px !important; }
+  .sv-countdown-block { min-width: 48px !important; }
+  .sv-countdown-value { font-size: 26px !important; }
+}
+
+/* Une grille laisse ses colonnes grandir jusqu'à leur contenu le plus large
+   (min-width: auto) : un tableau large poussait toute la page hors écran. */
+.sv-admin-layout > * { min-width: 0; }
+
+.dark {
+  --chart-1: oklch(1 0 none);
+  --chart-2: oklch(0.73 0 none);
+  --chart-3: oklch(0.51 0 none);
+  --chart-4: oklch(0.39 0 none);
+  --chart-5: oklch(0.32 0 none);
+  --chart-background: oklch(0.145 0 0);
+  --chart-foreground: oklch(0.45 0 0);
+  --chart-foreground-muted: oklch(0.65 0.01 260);
+  --chart-crosshair: oklch(0.45 0 0);
+  --chart-grid: oklch(0.25 0 0);
+  --chart-brush-border: var(--chart-grid);
+  --chart-marker-background: oklch(0.25 0.01 260);
+  --chart-marker-border: oklch(0.4 0.01 260);
+  --chart-marker-foreground: oklch(0.9 0 0);
+  --chart-label: oklch(0.75 0.01 260);
+  --chart-scale-01: oklch(0.28 0.03 270);
+  --chart-scale-02: oklch(0.38 0.04 270);
+  --chart-scale-03: oklch(0.48 0.05 270);
+  --chart-scale-04: oklch(0.58 0.06 270);
+  --chart-scale-05: oklch(0.68 0.07 270);
+  --chart-scale-pattern-color: oklch(0.145 0 0);
+}
+
+.sv-hold-confirm { flex: 2 1 200px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+.sv-spinner {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 2.5px solid var(--border-strong); border-top-color: var(--navy-900);
+  animation: sv-spin 0.8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) { .sv-spinner { animation-duration: 2.4s; } }

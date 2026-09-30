@@ -82,7 +82,7 @@ def _build_receipt_html(
               Vérifier sur l'explorateur →
             </a>
         </td></tr>
-        """.replace("{:,}".format(block_number) if block_number else "—", str(block_number or "—"))
+        """.replace("{:,}".format(block_number) if block_number else "-", str(block_number or "-"))
 
     return f"""
     <div style="font-family:-apple-system,Inter,sans-serif;max-width:560px;margin:0 auto;
@@ -90,7 +90,7 @@ def _build_receipt_html(
       <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
         <div style="background:#0A2540;color:white;padding:16px 20px;border-radius:12px;
                     margin:-32px -32px 24px;font-weight:600;font-size:16px;letter-spacing:-0.02em">
-          ESATIC SmartVote — Reçu de vote
+          ESATIC SmartVote, reçu de vote
         </div>
         <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540;letter-spacing:-0.025em">
           Votre vote a été enregistré.
@@ -138,7 +138,7 @@ async def send_password_reset_email(
       <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
         <div style="background:#0A2540;color:white;padding:16px 20px;border-radius:12px;
                     margin:-32px -32px 24px;font-weight:600;font-size:16px">
-          ESATIC SmartVote — Réinitialisation
+          ESATIC SmartVote, réinitialisation du mot de passe
         </div>
         <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(voter_name)},</h1>
         <p style="color:#334155;line-height:1.6;font-size:14px">
@@ -155,7 +155,7 @@ async def send_password_reset_email(
         </p>
         <p style="color:#94A3B8;font-size:11px;margin-top:24px;border-top:1px solid #E5E8EE;
                   padding-top:16px;line-height:1.5">
-          Si tu n'es pas à l'origine de cette demande, ignore cet email — ton mot de passe
+          Si tu n'es pas à l'origine de cette demande, ignore cet e-mail : ton mot de passe
           ne sera pas changé.
         </p>
       </div>
@@ -208,7 +208,7 @@ async def send_vote_receipt_email(
         # Un en-tête ne doit jamais contenir de saut de ligne : un titre
         # d'élection en portant un pourrait injecter un en-tête supplémentaire
         # (Bcc, Reply-To) dans le message.
-        subject=_header_safe(f"[ESATIC SmartVote] Reçu — {election_title}"),
+        subject=_header_safe(f"[ESATIC SmartVote] Reçu de vote : {election_title}"),
         recipients=[to_email],
         body=html,
         subtype=MessageType.html,
@@ -241,7 +241,7 @@ async def send_activation_code_email(
       <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
         <div style="background:#0A2540;color:white;padding:16px 20px;border-radius:12px;
                     margin:-32px -32px 24px;font-weight:600;font-size:16px">
-          ESATIC SmartVote — Activation
+          ESATIC SmartVote, activation du compte
         </div>
         <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(voter_name)},</h1>
         <p style="color:#334155;line-height:1.6;font-size:14px">
@@ -303,7 +303,7 @@ async def send_account_activated_email(*, to_email: str, student_name: str) -> N
       <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
         <div style="background:#0A2540;color:white;padding:16px 20px;border-radius:12px;
                     margin:-32px -32px 24px;font-weight:600;font-size:16px">
-          ESATIC SmartVote — Compte autorisé
+          ESATIC SmartVote, compte autorisé
         </div>
         <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(student_name)},</h1>
         <p style="color:#334155;line-height:1.6;font-size:14px">

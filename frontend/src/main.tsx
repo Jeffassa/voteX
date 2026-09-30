@@ -6,6 +6,11 @@ import { Toaster } from "react-hot-toast";
 
 import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+// Polices servies par l'application, sous-ensemble latin uniquement. Google
+// Fonts bloquait le premier rendu (feuille de style externe) et transmettait
+// l'adresse IP de chaque visiteur à un tiers, sans consentement.
+import "@fontsource-variable/geist";
+import "@fontsource-variable/geist-mono";
 import "./index.css";
 
 const queryClient = new QueryClient({

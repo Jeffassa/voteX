@@ -32,7 +32,6 @@ export default function ElectionsListPage() {
     <div ref={pageRef} style={{ padding: "40px 40px 80px" }}>
       <div className="row items-center justify-between" style={{ marginBottom: 28 }}>
         <div>
-          <div className="h-eyebrow">Administration</div>
           <h1 className="h-title" style={{ marginTop: 8 }}>Élections</h1>
         </div>
         <Link to="/admin/elections/new" className="btn btn-primary">
@@ -52,9 +51,7 @@ export default function ElectionsListPage() {
             fontSize: 11,
             fontWeight: 600,
             color: "var(--ink-500)",
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
-          }}
+            }}
         >
           <div>Élection</div>
           <div>Classe</div>
@@ -112,7 +109,7 @@ export default function ElectionsListPage() {
               )}
             </div>
             <div style={{ fontSize: 13, color: "var(--ink-700)" }}>
-              {classMap.get(e.class_id) || "—"}
+              {classMap.get(e.class_id) || "Classe inconnue"}
             </div>
             <div style={{ fontSize: 12, color: "var(--ink-500)" }} className="mono">
               {new Date(e.starts_at).toLocaleDateString("fr-FR")}

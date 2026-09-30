@@ -67,7 +67,7 @@ export default function ElectionDetailPage() {
     try {
       await setStatus.mutateAsync({ id: election.id, status });
       toast.success(
-        status === "open" ? "Scrutin ouvert — scellement on-chain en cours" : "Scrutin clôturé"
+        status === "open" ? "Scrutin ouvert" : "Scrutin clôturé"
       );
     } catch (e: any) {
       toast.error(e?.response?.data?.detail || "Action impossible");
@@ -292,7 +292,7 @@ function CandidateRow({
     <div className="card card-pad" style={{ position: "relative" }}>
       <div className="row items-center gap-3">
         <Avatar
-          initials={initialsOf(c.student.first_name, c.student.last_name)}
+          initials={initialsOf(c.student.first_name, c.student.last_name)} name={`${c.student.first_name ?? ""} ${c.student.last_name ?? ""}`}
           size={48}
           color={c.color}
           src={c.student.photo_url || c.photo_url || undefined}
@@ -450,6 +450,7 @@ function NonVotersPanel({ electionId, classId }: { electionId: string; classId: 
             >
               <Search size={14} color="var(--ink-400)" />
               <input
+                aria-label="Rechercher un étudiant par nom ou matricule"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Rechercher par nom ou matricule…"
@@ -494,8 +495,6 @@ function NonVotersPanel({ electionId, classId }: { electionId: string; classId: 
                   fontSize: 11,
                   fontWeight: 600,
                   color: "var(--ink-400)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
                   borderBottom: "1px solid var(--border)",
                   position: "sticky",
                   top: 0,
@@ -524,7 +523,7 @@ function NonVotersPanel({ electionId, classId }: { electionId: string; classId: 
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
                   <Avatar
-                    initials={initialsOf(s.first_name, s.last_name)}
+                    initials={initialsOf(s.first_name, s.last_name)} name={`${s.first_name ?? ""} ${s.last_name ?? ""}`}
                     size={32}
                     color="#94A3B8"
                     src={s.photo_url || undefined}
@@ -617,8 +616,8 @@ function AddCandidateModal({
 
         <div className="col gap-3" style={{ marginTop: 20 }}>
           <div>
-            <label className="label">Rechercher un étudiant</label>
-            <input
+            <label className="label" htmlFor="election-detail-f1">Rechercher un étudiant</label>
+            <input id="election-detail-f1"
               className="input"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -627,8 +626,8 @@ function AddCandidateModal({
           </div>
 
           <div>
-            <label className="label">Étudiant</label>
-            <select
+            <label className="label" htmlFor="election-detail-f2">Étudiant</label>
+            <select id="election-detail-f2"
               required
               className="input"
               value={studentId}
@@ -649,8 +648,8 @@ function AddCandidateModal({
           </div>
 
           <div>
-            <label className="label">Slogan (optionnel)</label>
-            <input
+            <label className="label" htmlFor="election-detail-f3">Slogan (optionnel)</label>
+            <input id="election-detail-f3"
               className="input"
               value={slogan}
               onChange={(e) => setSlogan(e.target.value)}
@@ -660,8 +659,8 @@ function AddCandidateModal({
           </div>
 
           <div>
-            <label className="label">Programme — une ligne par point</label>
-            <textarea
+            <label className="label" htmlFor="election-detail-f4">Programme (une ligne par point)</label>
+            <textarea id="election-detail-f4"
               className="input"
               value={program}
               onChange={(e) => setProgram(e.target.value)}
@@ -671,8 +670,8 @@ function AddCandidateModal({
           </div>
 
           <div>
-            <label className="label">Biographie (optionnel)</label>
-            <textarea
+            <label className="label" htmlFor="election-detail-f5">Biographie (optionnel)</label>
+            <textarea id="election-detail-f5"
               className="input"
               value={bio}
               onChange={(e) => setBio(e.target.value)}

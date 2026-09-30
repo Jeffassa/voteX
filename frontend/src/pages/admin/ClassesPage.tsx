@@ -24,7 +24,6 @@ export default function ClassesPage() {
     <div ref={pageRef} style={{ padding: "40px 40px 80px" }}>
       <div className="row items-center justify-between" style={{ marginBottom: 28 }}>
         <div>
-          <div className="h-eyebrow">Administration</div>
           <h1 className="h-title" style={{ marginTop: 8 }}>Classes</h1>
         </div>
         <button className="btn btn-primary" onClick={() => setCreating(true)}>
@@ -42,8 +41,7 @@ export default function ClassesPage() {
             background: "var(--surface-2)",
             borderBottom: "1px solid var(--border)",
             fontSize: 11, fontWeight: 600, color: "var(--ink-500)",
-            textTransform: "uppercase", letterSpacing: "0.06em",
-          }}
+            }}
         >
           <div>Niveau</div>
           <div>Nom</div>
@@ -61,7 +59,7 @@ export default function ClassesPage() {
         {!isLoading && classes?.length === 0 && (
           <div className="text-center muted" style={{ padding: 56 }}>
             <GraduationCap size={32} style={{ marginBottom: 12, opacity: 0.5 }} />
-            <div>Aucune classe — crée la première.</div>
+            <div>Aucune classe pour l'instant. Créez la première.</div>
           </div>
         )}
 
@@ -173,8 +171,8 @@ function ClassFormModal({
         <div className="col gap-3" style={{ marginTop: 20 }}>
           <div className="row gap-3">
             <div style={{ width: 120 }}>
-              <label className="label">Niveau</label>
-              <select
+              <label className="label" htmlFor="classes-f1">Niveau</label>
+              <select id="classes-f1"
                 required
                 className="input"
                 value={level}
@@ -188,8 +186,8 @@ function ClassFormModal({
               </select>
             </div>
             <div style={{ flex: 1 }}>
-              <label className="label">Nom court</label>
-              <input
+              <label className="label" htmlFor="classes-f2">Nom court</label>
+              <input id="classes-f2"
                 required
                 className="input"
                 value={name}
@@ -199,8 +197,8 @@ function ClassFormModal({
             </div>
           </div>
           <div>
-            <label className="label">Filière (libellé long)</label>
-            <input
+            <label className="label" htmlFor="classes-f3">Filière (libellé long)</label>
+            <input id="classes-f3"
               required
               className="input"
               value={field}

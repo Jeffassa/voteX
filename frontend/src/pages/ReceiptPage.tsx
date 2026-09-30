@@ -11,7 +11,6 @@ import { useElection, useMe } from "@/lib/queries";
 import { verifyVoteHash } from "@/lib/queries/votes";
 import { etherscanTxUrl, explorerName } from "@/lib/blockchain";
 import { fullNameOf } from "@/lib/palette";
-import { downloadVoteReceiptPdf } from "@/lib/pdfReceipt";
 import type { Candidate, VoteReceipt } from "@/types/api";
 
 const ANCHOR_WAIT_MS = 2 * 60 * 1000;
@@ -86,7 +85,7 @@ export default function ReceiptPage() {
               animation: "sv-rcpt-pulse 2s ease-out infinite",
             }}
           />
-          <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+          <svg aria-hidden="true" focusable="false" width="56" height="56" viewBox="0 0 56 56" fill="none">
             <circle
               cx="28" cy="28" r="26"
               stroke="var(--success-500)" strokeWidth="3" fill="none"
@@ -123,7 +122,7 @@ export default function ReceiptPage() {
             fontSize: 16, maxWidth: 540, margin: "0 auto", lineHeight: 1.6,
           }}
         >
-          Merci, {me?.first_name || "—"}. Votre bulletin
+          Merci{me?.first_name ? `, ${me.first_name}` : ""}. Votre bulletin
           {candidate && (
             <>
               {" "}pour{" "}
@@ -171,14 +170,14 @@ export default function ReceiptPage() {
                 <HashChip value={txHash} />
               ) : (
                 <span className="muted">
-                  {anchoring ? "ancrage en cours…" : "— hors chaîne —"}
+                  {anchoring ? "ancrage en cours…" : "hors chaîne"}
                 </span>
               )}
             </div>
 
             <div className="muted">Bloc</div>
             <div className="mono" style={{ color: "var(--navy-900)" }}>
-              {blockNumber ? `#${blockNumber.toLocaleString("fr-FR")}` : "—"}
+              {blockNumber ? `#${blockNumber.toLocaleString("fr-FR")}` : "-"}
             </div>
 
             <div className="muted">Horodatage</div>
@@ -187,7 +186,7 @@ export default function ReceiptPage() {
             </div>
 
             <div className="muted">Élection</div>
-            <div style={{ color: "var(--navy-900)" }}>{election?.title || "—"}</div>
+            <div style={{ color: "var(--navy-900)" }}>{election?.title || "-"}</div>
           </div>
           <div
             style={{
@@ -218,12 +217,14 @@ export default function ReceiptPage() {
                   toast.error("Utilisateur indisponible");
                   return;
                 }
-                downloadVoteReceiptPdf({
+                // jsPDF n'est chargé qu'au clic : il pèse plus lourd que toute la
+                // page, pour un bouton que la plupart des électeurs n'utilisent pas.
+                void import("@/lib/pdfReceipt").then(({ downloadVoteReceiptPdf }) => downloadVoteReceiptPdf({
                   receipt,
                   electionTitle: election?.title || "Élection",
                   voterFullName: `${me.first_name} ${me.last_name}`,
                   voterMatricule: me.matricule,
-                });
+                }));
               }}
             >
               <Download size={14} /> Télécharger PDF

@@ -68,3 +68,16 @@ def test_votes_table_has_no_link_to_the_voter(migrated_engine):
     columns = {c["name"] for c in inspect(migrated_engine).get_columns("votes")}
     assert "student_id" not in columns
     assert "voter_id" not in columns
+
+
+def test_blank_vote_is_allowed_by_the_migrated_schema(migrated_engine):
+    """Le vote blanc est un bulletin sans candidat.
+
+    Vérification explicite : la comparaison générale ignore la nullabilité
+    (voir _IGNORED_KINDS), et c'est exactement ce qui avait laissé passer un
+    `candidate_id NOT NULL` qui faisait échouer tout vote blanc sur PostgreSQL.
+    """
+    from sqlalchemy import inspect
+
+    columns = {c["name"]: c for c in inspect(migrated_engine).get_columns("votes")}
+    assert columns["candidate_id"]["nullable"] is True

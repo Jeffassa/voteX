@@ -80,6 +80,13 @@ sécurité, pas une évolution.
    `add_header` local annulait autrement ceux du serveur, et la page HTML
    partait sans CSP.
 
+10. **Une adresse e-mail n'est rattachée qu'après confirmation.** Elle ouvre la
+   connexion Google et reçoit les liens de réinitialisation : une adresse saisie
+   par l'étudiant (à l'activation ou dans son profil) reste en attente jusqu'au
+   clic sur le lien envoyé à cette adresse, et la changer depuis le profil exige
+   le mot de passe actuel. L'ancienne adresse est prévenue du changement.
+   Vérifié par `tests/test_email_change.py`.
+
 ## Acheminement des emails — à vérifier avant toute campagne
 
 Les codes d'activation, les liens de réinitialisation, les reçus de vote et les

@@ -20,7 +20,7 @@ export const PUBLIC_PAGES: Array<{ path: string; priority: string; changefreq: s
   { path: "/cgu", priority: "0.3", changefreq: "yearly" },
 ];
 
-const PRIVATE_PREFIXES = ["/admin", "/elections/", "/profile", "/reset-password", "/forgot-password", "/connexion/", "/api/"];
+const PRIVATE_PREFIXES = ["/admin", "/elections/", "/profile", "/reset-password", "/forgot-password", "/connexion/", "/confirmer-email", "/api/"];
 
 export function robotsTxt(siteUrl: string): string {
   return [

@@ -67,7 +67,7 @@ def test_register_rejects_duplicate_email(db, voter):
         password="secure-pass-12",
         confirm_password="secure-pass-12",
     )
-    with pytest.raises(ConflictError, match="Email"):
+    with pytest.raises(ConflictError, match="adresse e-mail"):
         auth_service.register_student(db, payload)
 
 

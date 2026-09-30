@@ -18,6 +18,8 @@ export default function RegisterPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  // Adresse personnelle facultative (Gmail…) : appliquée après confirmation.
+  const [personalEmail, setPersonalEmail] = useState("");
   const [activationCode, setActivationCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -62,6 +64,9 @@ export default function RegisterPage() {
     if (password.length < 8) return "Le mot de passe doit faire au moins 8 caractères.";
     if (!confirmPassword) return "Confirme ton mot de passe.";
     if (password !== confirmPassword) return "Les deux mots de passe ne correspondent pas.";
+    if (personalEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(personalEmail.trim())) {
+      return "L'adresse e-mail personnelle n'est pas valide.";
+    }
     return null;
   }
 
@@ -113,6 +118,7 @@ export default function RegisterPage() {
         activation_code: activationCode.trim(),
         password,
         confirm_password: confirmPassword,
+        email: personalEmail.trim() || undefined,
         website: website || undefined,
       });
 
@@ -127,7 +133,12 @@ export default function RegisterPage() {
         return;
       }
 
-      toast.success("Compte activé. Connecte-toi maintenant.");
+      toast.success(
+        personalEmail.trim()
+          ? `Compte activé. Un lien de confirmation a été envoyé à ${personalEmail.trim()}.`
+          : "Compte activé. Connecte-toi maintenant.",
+        { duration: 7000 }
+      );
       trackEvent("account_activated");
 
       navigate("/login", {
@@ -144,7 +155,11 @@ export default function RegisterPage() {
           "Ce matricule n'existe pas dans le système. Vérifie qu'il a été importé par l'administration."
         );
       } else if (status === 409) {
-        setErr(detail.includes("activé") ? detail : "Ce compte est déjà activé. Va sur la page de connexion.");
+        setErr(
+          detail.includes("activé") || detail.includes("adresse")
+            ? detail
+            : "Ce compte est déjà activé. Va sur la page de connexion."
+        );
       } else if (status === 400 || status === 422 || status === 403) {
         setErr(detail);
       } else if (!status) {
@@ -375,7 +390,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="label" htmlFor="register-f4" style={{ textAlign: "left", display: "block" }}>Email ESATIC ou Gmail</label>
+              <label className="label" htmlFor="register-f4" style={{ textAlign: "left", display: "block" }}>E-mail pour recevoir le code</label>
               <div className="row gap-2">
                 <div className="input-wrap" style={{ flex: 1 }}>
                   <span className="input-icon">
@@ -512,6 +527,28 @@ export default function RegisterPage() {
                   minLength={8}
                   placeholder="Répète ton mot de passe"
                 />
+              </div>
+            </div>
+
+            <div>
+              <label className="label" htmlFor="register-personal-email" style={{ textAlign: "left", display: "block" }}>
+                Adresse e-mail personnelle <span style={{ fontWeight: 400, color: "var(--ink-500)" }}>(facultatif)</span>
+              </label>
+              <input
+                id="register-personal-email"
+                type="email"
+                name="personal-email"
+                autoComplete="email"
+                maxLength={255}
+                className="input"
+                value={personalEmail}
+                onChange={(e) => setPersonalEmail(e.target.value)}
+                placeholder="prenom.nom@gmail.com"
+                aria-describedby="register-personal-email-hint"
+              />
+              <div id="register-personal-email-hint" className="muted" style={{ fontSize: 12, marginTop: 4, textAlign: "left" }}>
+                Pour vous connecter avec Google et recevoir vos reçus de vote. Un lien de
+                confirmation y sera envoyé : l'adresse n'est enregistrée qu'après votre clic.
               </div>
             </div>
 

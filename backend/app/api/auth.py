@@ -24,6 +24,7 @@ from app.core.security import create_access_token, decode_token
 from app.models import Student
 from app.schemas.auth import (
     ActivationCodeRequest,
+    EmailConfirmRequest,
     PasswordResetConfirm,
     PasswordResetRequest,
     RegisterRequest,
@@ -34,6 +35,8 @@ from app.models.audit import AuditAction
 from app.services import (
     audit_service,
     auth_service,
+    email_change_service,
+    email_service,
     google_oauth,
     refresh_token_service,
 )
@@ -89,10 +92,11 @@ def register(
     request: Request,
     payload: RegisterRequest,
     db: Annotated[Session, Depends(get_db)],
+    background_tasks: BackgroundTasks,
 ):
     if is_bot(payload.website, form="register"):
         raise HTTPException(status_code=400, detail="Requête refusée.")
-    return auth_service.register_student(db, payload)
+    return auth_service.register_student(db, payload, background_tasks)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -390,3 +394,32 @@ def google_callback(
         ip_address=client_ip,
     )
     return response
+
+
+@router.post("/email/confirm")
+@limiter.limit("10/minute")
+def confirm_email(
+    request: Request,
+    payload: EmailConfirmRequest,
+    db: Annotated[Session, Depends(get_db)],
+    background_tasks: BackgroundTasks,
+):
+    """Confirme l'adresse e-mail en attente (lien reçu par e-mail)."""
+    user, previous = email_change_service.confirm(db, token=payload.token)
+    if previous and previous.lower() != (user.email or "").lower():
+        background_tasks.add_task(
+            email_service.send_email_changed_notice,
+            to_email=previous,
+            student_name=f"{user.first_name} {user.last_name}",
+            new_email=user.email,
+        )
+    audit_service.record(
+        db,
+        action=AuditAction.STUDENT_UPDATED,
+        actor_id=user.id,
+        target_type="student",
+        target_id=user.id,
+        details="adresse e-mail confirmée",
+        ip_address=request.client.host if request.client else None,
+    )
+    return {"detail": "Adresse e-mail confirmée.", "email": user.email}

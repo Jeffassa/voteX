@@ -336,3 +336,94 @@ async def send_account_activated_email(*, to_email: str, student_name: str) -> N
     except Exception as exc:
         EMAILS_TOTAL.labels(kind="account_activated", outcome="failed").inc()
         logger.warning("email: failed to send activation notice to %s: %s", to_email, exc)
+
+
+def _mask(email: str) -> str:
+    """a***@gmail.com : assez pour se reconnaître, pas assez pour être divulgué."""
+    local, _, domain = email.partition("@")
+    return f"{local[:1]}***@{domain}" if domain else "***"
+
+
+async def _send(kind: str, *, to_email: str, subject: str, html: str) -> None:
+    config = _config()
+    if not config:
+        EMAILS_TOTAL.labels(kind=kind, outcome="not_configured").inc()
+        logger.info("email: SMTP not configured, %s for %s not sent", kind, to_email)
+        return
+    message = MessageSchema(
+        subject=_header_safe(subject),
+        recipients=[to_email],
+        body=html,
+        subtype=MessageType.html,
+    )
+    try:
+        await FastMail(config).send_message(message)
+        EMAILS_TOTAL.labels(kind=kind, outcome="sent").inc()
+        logger.info("email: %s sent to %s", kind, to_email)
+    except Exception as exc:
+        EMAILS_TOTAL.labels(kind=kind, outcome="failed").inc()
+        logger.warning("email: failed to send %s to %s: %s", kind, to_email, exc)
+
+
+def _layout(title: str, body: str) -> str:
+    return f"""
+    <div style="font-family:-apple-system,Inter,sans-serif;max-width:520px;margin:0 auto;
+                color:#0F172A;background:#F7F8FA;padding:32px">
+      <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
+        <div style="background:#0A2540;color:white;padding:16px 20px;border-radius:12px;
+                    margin:-32px -32px 24px;font-weight:600;font-size:16px">
+          {_esc(title)}
+        </div>
+        {body}
+      </div>
+    </div>
+    """
+
+
+async def send_email_confirmation_email(*, to_email: str, student_name: str, confirm_url: str) -> None:
+    """Lien de confirmation d'une adresse saisie par l'étudiant."""
+    html = _layout(
+        "ESATIC SmartVote, confirmation de votre adresse",
+        f"""
+        <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(student_name)},</h1>
+        <p style="color:#334155;line-height:1.6;font-size:14px">
+          Confirmez que cette adresse vous appartient pour l'associer à votre compte SmartVote.
+          Vous pourrez ensuite l'utiliser pour vous connecter avec Google et recevoir vos reçus
+          de vote. Ce lien expire dans <strong>48 heures</strong>.
+        </p>
+        <p style="margin-top:20px">
+          <a href="{_esc(confirm_url)}"
+             style="display:inline-block;padding:12px 22px;background:#0A2540;color:white;
+                    text-decoration:none;border-radius:10px;font-weight:500">
+            Confirmer mon adresse
+          </a>
+        </p>
+        <p style="color:#64748B;font-size:12px;margin-top:24px;border-top:1px solid #E5E8EE;
+                  padding-top:16px;line-height:1.5">
+          Vous n'êtes pas à l'origine de cette demande ? Ignorez cet e-mail : l'adresse ne sera
+          pas associée au compte.
+        </p>
+        """,
+    )
+    await _send("email_confirmation", to_email=to_email,
+                subject="[ESATIC SmartVote] Confirmez votre adresse e-mail", html=html)
+
+
+async def send_email_changed_notice(*, to_email: str, student_name: str, new_email: str) -> None:
+    """Prévient l'ancienne adresse qu'une autre la remplace."""
+    html = _layout(
+        "ESATIC SmartVote, adresse e-mail modifiée",
+        f"""
+        <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(student_name)},</h1>
+        <p style="color:#334155;line-height:1.6;font-size:14px">
+          L'adresse e-mail de votre compte SmartVote vient d'être remplacée par
+          <strong>{_esc(_mask(new_email))}</strong>. Cette adresse ne recevra plus de message.
+        </p>
+        <p style="color:#334155;line-height:1.6;font-size:14px">
+          Si vous n'êtes pas à l'origine de ce changement, contactez l'administration de l'école
+          sans attendre.
+        </p>
+        """,
+    )
+    await _send("email_changed_notice", to_email=to_email,
+                subject="[ESATIC SmartVote] Votre adresse e-mail a été modifiée", html=html)

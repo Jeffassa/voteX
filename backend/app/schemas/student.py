@@ -46,6 +46,8 @@ class MeResponse(BaseModel):
     first_name: str
     last_name: str
     email: EmailStr | None = None
+    # Adresse saisie mais pas encore confirmée par le lien envoyé.
+    pending_email: EmailStr | None = None
     role: str
     gender: str | None = None
     photo_url: str | None = None
@@ -85,3 +87,6 @@ class StudentSelfUpdate(BaseModel):
 
     email: EmailStr | None = None
     photo_url: HttpUrl | None = None
+    # Exigé pour changer d'adresse : une session restée ouverte ne doit pas
+    # suffire à rattacher une autre boîte (et donc un autre compte Google).
+    current_password: str | None = Field(default=None, max_length=128)

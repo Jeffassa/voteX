@@ -15,7 +15,9 @@ export interface Me {
   matricule: string;
   first_name: string;
   last_name: string;
-  email: string;
+  email: string | null;
+  /** Adresse saisie, en attente du clic sur le lien de confirmation. */
+  pending_email?: string | null;
   role: UserRole;
   photo_url: string | null;
   is_active: boolean;

@@ -95,9 +95,15 @@ def update_my_profile(
     payload: StudentSelfUpdate,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[Student, Depends(get_current_user)],
+    background_tasks: BackgroundTasks,
 ):
-    """Modification du profil par l'étudiant lui-même."""
-    return student_service.update_self(db, user=current, payload=payload)
+    """Modification du profil par l'étudiant lui-même.
+
+    Une nouvelle adresse e-mail reste en attente jusqu'à sa confirmation.
+    """
+    return student_service.update_self(
+        db, user=current, payload=payload, background_tasks=background_tasks
+    )
 
 
 @router.post("/import", response_model=ImportReport)

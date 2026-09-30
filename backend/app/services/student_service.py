@@ -2,14 +2,16 @@
 
 from uuid import UUID
 
+from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
+from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, UnauthorizedError
+from app.core.security import verify_password
 from app.models import Student, VoterRecord
 from app.models.audit import AuditAction
 from app.models.student import UserRole
 from app.schemas.student import StudentSelfUpdate, StudentUpdate
-from app.services import audit_service
+from app.services import audit_service, email_change_service
 
 
 def get_or_404(db: Session, student_id: UUID) -> Student:
@@ -111,15 +113,27 @@ def set_role(db: Session, student_id: UUID, role: UserRole, *, current_user_id: 
     return student
 
 
-def update_self(db: Session, *, user: Student, payload: StudentSelfUpdate) -> Student:
+def update_self(
+    db: Session,
+    *,
+    user: Student,
+    payload: StudentSelfUpdate,
+    background_tasks: BackgroundTasks | None = None,
+) -> Student:
     data = payload.model_dump(exclude_unset=True, mode="json")
+    current_password = data.pop("current_password", None)
+    new_email = data.pop("email", None)
 
-    if "email" in data:
-        existing = db.query(Student).filter(
-            Student.email == data["email"], Student.id != user.id
-        ).first()
-        if existing:
-            raise ConflictError("Email déjà utilisé par un autre compte")
+    # L'adresse n'est jamais écrite directement : elle part en attente de
+    # confirmation, et seulement sur présentation du mot de passe actuel.
+    if new_email and (not user.email or new_email.strip().lower() != user.email.lower()):
+        if not current_password or not user.password_hash or not verify_password(
+            current_password, user.password_hash
+        ):
+            raise UnauthorizedError("Saisissez votre mot de passe actuel pour changer d'adresse e-mail.")
+        email_change_service.request_change(
+            db, user=user, new_email=new_email, background_tasks=background_tasks
+        )
 
     if "matricule" in data:
         existing = db.query(Student).filter(

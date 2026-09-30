@@ -25,6 +25,7 @@ from app.core.exceptions import (
 from app.core.matricule import names_match
 from app.core.security import hash_password, verify_password
 from app.models import Student
+from app.services import email_change_service
 from app.schemas.auth import ActivationCodeRequest, RegisterRequest
 
 
@@ -34,7 +35,9 @@ RESET_TOKEN_AUDIENCE = "password-reset"
 RESET_TOKEN_EXPIRE_MINUTES = 30
 
 
-def register_student(db: Session, payload: RegisterRequest) -> Student:
+def register_student(
+    db: Session, payload: RegisterRequest, background_tasks: BackgroundTasks | None = None
+) -> Student:
     """Revendique un compte pré-importé par l'admin.
 
     Le matricule doit déjà exister en base (importé via /api/students/import).
@@ -70,13 +73,13 @@ def register_student(db: Session, payload: RegisterRequest) -> Student:
                 "Le nom saisi ne correspond pas à celui enregistré pour ce matricule."
             )
             
+        # Adresse personnelle : vérifiée AVANT d'activer, pour ne pas activer
+        # un compte puis répondre 409.
+        if payload.email:
+            email_change_service.ensure_available(db, payload.email, user_id=user.id)
+
         # Mise à jour du compte importé
         user.password_hash = hash_password(payload.password)
-        if payload.email:
-            existing_email = db.query(Student).filter(Student.email == payload.email, Student.id != user.id).first()
-            if existing_email:
-                raise ConflictError("Email déjà utilisé par un autre compte")
-            user.email = payload.email
 
         # Le compte ne devient utilisable QUE si l'identité a été confirmée par
         # un canal que l'école contrôle : adresse issue du fichier d'import, ou
@@ -96,15 +99,12 @@ def register_student(db: Session, payload: RegisterRequest) -> Student:
     else:
         # Auto-inscription d'un nouvel étudiant (salle d'attente)
         if payload.email:
-            existing_email = db.query(Student).filter(Student.email == payload.email).first()
-            if existing_email:
-                raise ConflictError("Email déjà utilisé par un autre compte")
-                
+            email_change_service.ensure_available(db, payload.email, user_id=None)
+
         user = Student(
             matricule=payload.matricule,
             first_name=payload.first_name,
             last_name=payload.last_name,
-            email=payload.email,
             password_hash=hash_password(payload.password),
             is_active=False,  # En attente d'activation admin
         )
@@ -119,6 +119,11 @@ def register_student(db: Session, payload: RegisterRequest) -> Student:
 
     db.commit()
     db.refresh(user)
+
+    if payload.email:
+        email_change_service.request_change(
+            db, user=user, new_email=payload.email, background_tasks=background_tasks
+        )
     return user
 
 

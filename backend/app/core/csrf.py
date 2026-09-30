@@ -55,6 +55,9 @@ CSRF_EXEMPT_PATHS = frozenset(
         "/api/auth/request-activation-code",
         "/api/auth/password-reset/request",
         "/api/auth/password-reset/confirm",
+        # Le jeton du lien fait office de preuve : un site tiers ne peut pas
+        # le forger, et la page peut être ouverte sans session.
+        "/api/auth/email/confirm",
         "/api/auth/refresh",
     }
 )

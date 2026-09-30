@@ -29,6 +29,10 @@ class Student(Base):
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
     # Email peut être nul pour les comptes pré-importés sans email connu
     email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
+    # Adresse saisie par l'étudiant, pas encore confirmée par le lien envoyé à
+    # cette adresse. Elle n'ouvre rien : ni connexion Google, ni réinitialisation.
+    # Voir services/email_change_service.py.
+    pending_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     activation_code: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # password_hash IS NULL = compte importé en attente d'activation (inscription)
     # password_hash IS NOT NULL = compte activé

@@ -1,15 +1,44 @@
 /// <reference types="vitest" />
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
+
+import { seoFiles } from "./seo.config";
 
 // `import.meta.dirname` plutôt que `__dirname` : Vite 8 avertit que le
 // chargeur natif de configuration, appelé à devenir le défaut, ne fournit pas
 // les variables CommonJS.
 const projectRoot = import.meta.dirname;
 
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ command, mode }) => {
+  const env = loadEnv(mode, projectRoot, "VITE_");
+
+  // L'API est un service distinct, sur sa propre origine : un build de
+  // production doit dire où la trouver. Sans cette garde, le client retombait
+  // en silence sur http://localhost:8000 — un site publié qui n'appelait
+  // aucune API, ou pire, celle du poste de l'utilisateur.
+  if (command === "build" && mode === "production" && !env.VITE_API_URL) {
+    throw new Error(
+      "VITE_API_URL est requis pour un build de production (ex. https://api.smartvote.esatic.ci)."
+    );
+  }
+
+  return {
+  plugins: [react(), seoFiles(env.VITE_SITE_URL)],
+  build: {
+    // Bibliothèques stables regroupées : leur empreinte change rarement, le
+    // navigateur les garde en cache d'un déploiement à l'autre.
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (!id.includes("node_modules")) return undefined;
+          if (/[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(id)) return "react";
+          if (/[\\/]node_modules[\\/](@tanstack|axios|zustand)[\\/]/.test(id)) return "data";
+          return undefined;
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(projectRoot, "src"),
@@ -53,4 +82,5 @@ export default defineConfig({
       },
     },
   },
+};
 });

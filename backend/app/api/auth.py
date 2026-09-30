@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session, joinedload
 
@@ -13,6 +13,8 @@ from app.core.cookies import (
     set_access_cookie,
     set_refresh_cookie,
 )
+from app.core.antispam import is_bot
+from app.core.exceptions import UnauthorizedError
 from app.core.csrf import generate_csrf_token
 from app.core.database import get_db
 from app.core.rate_limit import limiter
@@ -70,7 +72,8 @@ async def request_activation_code(
     db: Annotated[Session, Depends(get_db)],
     background_tasks: BackgroundTasks,
 ):
-    await auth_service.send_activation_code(db, payload, background_tasks)
+    if not is_bot(payload.website, form="activation_code"):
+        await auth_service.send_activation_code(db, payload, background_tasks)
     return {"message": "Si les informations correspondent, un code a été envoyé."}
 
 
@@ -81,6 +84,8 @@ def register(
     payload: RegisterRequest,
     db: Annotated[Session, Depends(get_db)],
 ):
+    if is_bot(payload.website, form="register"):
+        raise HTTPException(status_code=400, detail="Requête refusée.")
     return auth_service.register_student(db, payload)
 
 
@@ -91,9 +96,14 @@ def login(
     response: Response,
     form: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Annotated[Session, Depends(get_db)],
+    website: Annotated[str | None, Form(max_length=200)] = None,
 ):
     """Authentification matricule/mdp. Émet access + refresh + csrf cookies."""
     client_ip = request.client.host if request.client else None
+    if is_bot(website, form="login"):
+        # Même réponse qu'un mot de passe faux, sans toucher au compte visé :
+        # un robot ne doit pas pouvoir verrouiller le compte d'un électeur.
+        raise UnauthorizedError("Matricule ou mot de passe incorrect")
     try:
         user = auth_service.authenticate(db, matricule=form.username, password=form.password)
     except Exception:
@@ -211,9 +221,10 @@ def request_password_reset(
     db: Annotated[Session, Depends(get_db)],
     background_tasks: BackgroundTasks,
 ):
-    auth_service.request_password_reset(
-        db, email=payload.email, background_tasks=background_tasks
-    )
+    if not is_bot(payload.website, form="password_reset"):
+        auth_service.request_password_reset(
+            db, email=payload.email, background_tasks=background_tasks
+        )
     return {"detail": "Si l'email existe, un lien de réinitialisation a été envoyé."}
 
 

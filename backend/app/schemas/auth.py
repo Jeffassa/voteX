@@ -13,6 +13,8 @@ class ActivationCodeRequest(BaseModel):
     first_name: str = Field(min_length=1, max_length=100)
     last_name: str = Field(min_length=1, max_length=100)
     email: EmailStr
+    # Champ piège anti-robots (voir app/core/antispam.py) : toujours vide chez un humain.
+    website: str | None = Field(default=None, max_length=200)
 
 
 class RegisterRequest(BaseModel):
@@ -32,6 +34,8 @@ class RegisterRequest(BaseModel):
     email: EmailStr | None = None
     class_id: str | None = None
     activation_code: str | None = None
+    # Champ piège anti-robots (voir app/core/antispam.py) : toujours vide chez un humain.
+    website: str | None = Field(default=None, max_length=200)
 
     @field_validator("matricule")
     @classmethod
@@ -54,6 +58,8 @@ class TokenResponse(BaseModel):
 
 class PasswordResetRequest(BaseModel):
     email: EmailStr
+    # Champ piège anti-robots (voir app/core/antispam.py) : toujours vide chez un humain.
+    website: str | None = Field(default=None, max_length=200)
 
 
 class PasswordResetConfirm(BaseModel):

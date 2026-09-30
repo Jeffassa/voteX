@@ -74,6 +74,9 @@ services:
       # Live reload pour le dev — modifie un .py, le container reload
       - ./backend/app:/app/app
       - ./backend/scripts:/app/scripts
+      # Sans ce montage, une migration ajoutée en dev manquait à l'image et
+      # Alembic refusait de démarrer sur une base déjà migrée.
+      - ./backend/migrations:/app/migrations
     command: >
       sh -c "
         echo '> Mise à jour du schéma (Alembic)...' &&
@@ -102,6 +105,7 @@ services:
       - ./frontend/vite.config.ts:/app/vite.config.ts
       - ./frontend/tailwind.config.js:/app/tailwind.config.js
       - ./frontend/postcss.config.js:/app/postcss.config.js
+      - ./frontend/seo.config.ts:/app/seo.config.ts
       - ./frontend/tsconfig.json:/app/tsconfig.json
     depends_on:
       - backend

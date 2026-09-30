@@ -112,6 +112,20 @@ def _check_cors_origins() -> None:
             )
 
 
+def _check_https_origins() -> None:
+    """En production, le frontend et l'API ne se parlent qu'en HTTPS."""
+    if not _is_production():
+        return
+    for origin in settings.cors_origins:
+        if origin.startswith("http://") and "localhost" not in origin:
+            _fail(
+                f"SÉCURITÉ : FRONTEND_URL/EXTRA_CORS_ORIGINS contient {origin!r} en "
+                "clair. En production, le frontend doit être servi en https://."
+            )
+    if not settings.force_https:
+        logger.warning("FORCE_HTTPS=false en production : le trafic en clair n'est pas redirigé.")
+
+
 def _check_resend_in_production() -> None:
     """En production, l'envoi d'emails doit être configuré."""
     if _is_production() and not settings.RESEND_API_KEY:
@@ -138,6 +152,7 @@ def run_startup_checks() -> None:
     _check_jwt_secret()
     _check_cookie_security()
     _check_cors_origins()
+    _check_https_origins()
     _check_database_not_test()
     _check_database_connection()
     _check_resend_in_production()

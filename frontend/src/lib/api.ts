@@ -17,7 +17,9 @@ import axios, { type AxiosRequestConfig } from "axios";
 const CSRF_HEADER = "X-CSRF-Token";
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000",
+  // L'API vit sur sa propre origine (VITE_API_URL, exigée au build de
+  // production — voir vite.config.ts). Le repli local ne vaut qu'en dev.
+  baseURL: import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:8000" : ""),
   withCredentials: true,
 });
 
@@ -96,15 +98,13 @@ function triggerLogout() {
     }
   }
   if (typeof window === "undefined") return;
+  // Seules les pages réservées renvoient vers la connexion. Une liste des pages
+  // publiques ratait les nouvelles (pages légales, 404) : un visiteur anonyme
+  // arrivant sur une adresse inconnue était expédié vers /login.
   const path = window.location.pathname;
-  const onPublicAuthRoute =
-    path === "/" ||
-    path.startsWith("/login") ||
-    path.startsWith("/register") ||
-    path.startsWith("/forgot-password") ||
-    path.startsWith("/reset-password") ||
-    path.startsWith("/verify");
-  if (!onPublicAuthRoute) {
+  const onProtectedRoute =
+    path.startsWith("/elections/") || path.startsWith("/profile") || path.startsWith("/admin");
+  if (onProtectedRoute) {
     window.location.href = "/login";
   }
 }

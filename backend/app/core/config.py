@@ -74,6 +74,13 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     RESEND_DOMAIN_FROM: str = "no-reply@itgala-esatic.org"
 
+    # HTTPS forcé : redirection 308 des requêtes en clair + en-tête HSTS.
+    # Vide = automatique (actif en production). Derrière un reverse proxy qui
+    # termine TLS, uvicorn doit faire confiance à son X-Forwarded-Proto
+    # (FORWARDED_ALLOW_IPS), sinon toute requête paraîtrait en clair.
+    FORCE_HTTPS: bool | None = None
+    HSTS_MAX_AGE: int = 31536000
+
     # CORS
     FRONTEND_URL: str = "http://localhost:5173"
     EXTRA_CORS_ORIGINS: str = ""
@@ -128,6 +135,10 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT.strip().lower() in {"production", "prod"}
+
+    @property
+    def force_https(self) -> bool:
+        return self.is_production if self.FORCE_HTTPS is None else self.FORCE_HTTPS
 
     @property
     def cors_origins(self) -> list[str]:

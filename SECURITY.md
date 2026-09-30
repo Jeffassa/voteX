@@ -69,6 +69,17 @@ sécurité, pas une évolution.
    réinitialisation de mot de passe lève le verrou — le message qui la propose
    doit dire vrai.
 
+8. **Aucun traceur sans accord, aucun tiers.** La page ne charge ni script ni
+   police d'un tiers (CSP `script-src 'self'; font-src 'self'`). La mesure
+   d'audience n'a lieu qu'après consentement, sans identifiant, et le serveur
+   ignore toute mesure arrivée sans le cookie de consentement. Vérifié par
+   `tests/test_public_site.py`.
+9. **HTTPS seulement en production.** Redirection 308 et HSTS côté API et côté
+   nginx ; le démarrage refuse une origine frontend en clair. Les en-têtes de
+   sécurité du frontend sont inclus dans chaque bloc `location` de nginx — un
+   `add_header` local annulait autrement ceux du serveur, et la page HTML
+   partait sans CSP.
+
 ## Acheminement des emails — à vérifier avant toute campagne
 
 Les codes d'activation, les liens de réinitialisation, les reçus de vote et les

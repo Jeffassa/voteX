@@ -133,6 +133,42 @@
           "refId": "B"
         }
       ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Pages vues (visiteurs consentants)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "targets": [
+        { "expr": "sum by (page) (increase(smartvote_page_views_total[1h]))", "legendFormat": "{{page}}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Parcours : événements",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "targets": [
+        { "expr": "sum by (event) (increase(smartvote_frontend_events_total[1h]))", "legendFormat": "{{event}}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Soumissions robotisées écartées",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 27 },
+      "targets": [
+        { "expr": "sum by (form) (increase(smartvote_spam_blocked_total[1h]))", "legendFormat": "{{form}}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Bulletins en attente d'ancrage",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 27 },
+      "targets": [
+        { "expr": "smartvote_votes_pending_anchor", "legendFormat": "en attente", "refId": "A" }
+      ]
     }
   ]
 }

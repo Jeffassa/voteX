@@ -103,11 +103,11 @@ npx hardhat run scripts/deploy.ts --network sepolia
 ## Tests
 
 ```bash
-# Backend (14 tests sur vote_service)
+# Backend
 cd backend
 pytest -v
 
-# Smart contract (4 tests Hardhat)
+# Smart contract
 cd contracts
 npx hardhat test
 
@@ -140,6 +140,9 @@ docker compose exec backend python -m scripts.seed
 | `MAIL_*` | ✅ | — | oui (email reçu) |
 | `ANCHOR_INTERVAL_SECONDS` | ✅ | — | défaut 15 (rejeu de l'ancrage on-chain) |
 | `VITE_CHAIN_EXPLORER_BASE` | — | ✅ | défaut Sepolia |
+| `VITE_API_URL` | — | ✅ | **requis au build de production** |
+| `VITE_SITE_URL` | — | ✅ | défaut `https://smartvote.esatic.ci` (SEO, partage) |
+| `FORCE_HTTPS` / `HSTS_MAX_AGE` | ✅ | — | défaut : actif en production |
 
 Sans les optionnels : pas de realtime (polling 5s), pas de hash on-chain, pas d'email envoyé. Le reste fonctionne.
 
@@ -159,6 +162,55 @@ docker compose -f docker-compose.monitoring.yml up -d  # s'y raccroche
   premier, sinon le réseau `votex-network` n'existe pas encore.
 
 ## Mise en production
+
+### Architecture : API et frontend séparés
+
+L'API et le frontend sont deux services, sur deux origines, par exemple
+`https://api.smartvote.esatic.ci` et `https://smartvote.esatic.ci`. Deux
+sous-domaines d'un même domaine restent « same-site » : les cookies de session
+(`SameSite=Lax/Strict`) y circulent.
+
+```bash
+# Frontend : l'URL de l'API est figée dans le bundle (le build échoue sans elle)
+docker build -f frontend/Dockerfile.prod \
+  --build-arg VITE_API_URL=https://api.smartvote.esatic.ci \
+  --build-arg VITE_SITE_URL=https://smartvote.esatic.ci \
+  -t smartvote-frontend frontend
+docker run -e API_ORIGIN=https://api.smartvote.esatic.ci -p 8080:80 smartvote-frontend
+
+# Backend : FRONTEND_URL=https://smartvote.esatic.ci (CORS + cookies)
+```
+
+Les deux conteneurs écoutent en clair derrière un reverse proxy qui termine
+TLS et transmet `X-Forwarded-Proto` : ils redirigent alors tout accès en `http`
+vers `https` (308) et publient HSTS.
+
+### Avant d'ouvrir le site au public
+
+- Compléter les mentions marquées **[À COMPLÉTER]** dans
+  `frontend/src/pages/legal/PrivacyPage.tsx` (responsable du traitement,
+  contact, hébergeur, durées de conservation) et `TermsPage.tsx`.
+- Vérifier le domaine d'envoi des emails (voir `SECURITY.md`).
+
+### Mesure d'audience
+
+Maison, sans cookie ni outil tiers, et seulement après consentement : chaque
+page vue incrémente `smartvote_page_views_total{page}` (gabarit de page, jamais
+l'URL réelle). Tableau de bord Grafana « SmartVote ». Le choix du visiteur est
+gardé dans un cookie httpOnly `sv_consent` ; le serveur ignore toute mesure
+sans accord.
+
+### Images
+
+Icônes, favicon et image de partage sont générés depuis `public/favicon.svg` :
+
+```bash
+cd frontend
+node scripts/generate-assets.mjs
+python scripts/compress-images.py
+```
+
+### Durcissement au démarrage
 
 `ENVIRONMENT=production` durcit le démarrage : le backend refuse de démarrer si
 `JWT_SECRET` est un des secrets de développement publiés dans ce dépôt, si

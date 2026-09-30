@@ -7,7 +7,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
     branches: [main]
 
@@ -76,8 +76,12 @@ jobs:
       - name: Tests
         run: npm test
 
+      # L'API est un service séparé : le build de production exige son URL.
       - name: Build
         run: npm run build
+        env:
+          VITE_API_URL: https://api.smartvote.example
+          VITE_SITE_URL: https://smartvote.example
 
   # ─────────────────────── Smart Contract ───────────────────────
   contracts:

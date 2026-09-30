@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
@@ -117,7 +117,7 @@ async def rate_limit_handler(_request: Request, exc: RateLimitExceeded):
 
 
 from uuid import uuid4
-from app.api import admin, auth, candidates, classes, elections, health, students, votes
+from app.api import admin, auth, candidates, classes, elections, health, public, students, votes
 
 
 @app.middleware("http")
@@ -125,6 +125,34 @@ async def add_request_id(request: Request, call_next):
     request_id = request.headers.get("X-Request-ID", str(uuid4()))
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
+    return response
+
+
+# Sondes internes : Docker, Prometheus et l'orchestrateur les appellent en clair
+# depuis le réseau privé. Les rediriger casserait la supervision.
+_HTTPS_EXEMPT_PATHS = frozenset({"/health", "/healthz", "/readyz", "/metrics"})
+
+
+@app.middleware("http")
+async def enforce_https(request: Request, call_next):
+    """Redirige le trafic en clair vers HTTPS et publie HSTS.
+
+    Enregistré après les autres middlewares, donc exécuté avant eux : une
+    requête en clair est redirigée avant d'être jugée par le garde CSRF.
+
+    Le schéma vu ici tient compte de X-Forwarded-Proto (uvicorn --proxy-headers)
+    quand la requête vient d'un proxy de confiance.
+    """
+    if not settings.force_https or request.url.path in _HTTPS_EXEMPT_PATHS:
+        return await call_next(request)
+    if request.url.scheme == "http":
+        # 308 et non 301 : conserve la méthode et le corps (un POST de vote
+        # redirigé en GET serait perdu).
+        return RedirectResponse(str(request.url.replace(scheme="https")), status_code=308)
+    response = await call_next(request)
+    response.headers["Strict-Transport-Security"] = (
+        f"max-age={settings.HSTS_MAX_AGE}; includeSubDomains"
+    )
     return response
 
 
@@ -154,6 +182,7 @@ app.include_router(elections.router, prefix="/api/elections", tags=["elections"]
 app.include_router(candidates.router, prefix="/api/candidates", tags=["candidates"])
 app.include_router(votes.router, prefix="/api/votes", tags=["votes"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+app.include_router(public.router, prefix="/api", tags=["public"])
 
 
 @app.get("/")

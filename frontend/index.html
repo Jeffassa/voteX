@@ -2,15 +2,18 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <!-- Primary Meta Tags -->
-    <title>ESATIC SmartVote — Plateforme de vote étudiant sécurisée & transparente</title>
-    <meta name="title" content="ESATIC SmartVote — Plateforme de vote étudiant sécurisée & transparente" />
-    <meta name="description" content="Plateforme officielle de vote en ligne pour l'élection des chefs de classe de l'ESATIC. Authentification sécurisée, résultats en temps réel et scellement des votes sur la blockchain." />
+    <title>Vote étudiant sécurisé et vérifiable · ESATIC SmartVote</title>
+    <meta name="title" content="ESATIC SmartVote, le vote des chefs de classe en ligne" />
+    <meta name="description" content="Plateforme officielle de vote en ligne pour l'élection des chefs de classe de l'ESATIC : vote secret, reçu vérifiable, résultats publiés à la clôture." />
     <meta name="keywords" content="ESATIC, SmartVote, vote en ligne, élection chef de classe, blockchain, Sepolia, Côte d'Ivoire, sécurité" />
     <meta name="theme-color" content="#0A2540" />
+    <link rel="canonical" href="%SITE_URL%/" />
 
     <!-- PWA & Mobile Web App -->
     <link rel="manifest" href="/manifest.json" />
@@ -20,19 +23,24 @@
 
     <!-- Open Graph / Facebook / WhatsApp / LinkedIn -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://smartvote.esatic.ci/" />
-    <meta property="og:title" content="ESATIC SmartVote — Le vote étudiant réinventé" />
-    <meta property="og:description" content="Participez aux élections des chefs de classe de l'ESATIC en toute sécurité. Chiffrement de bout en bout, anonymat garanti et auditabilité blockchain." />
-    <meta property="og:image" content="https://smartvote.esatic.ci/og-preview.png" />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta property="og:title" content="ESATIC SmartVote, le vote des chefs de classe en ligne" />
+    <meta property="og:description" content="Votez pour le chef de classe de votre promotion depuis votre téléphone. Votre choix reste secret, et votre reçu permet de vérifier que votre bulletin est compté." />
+    <meta property="og:image" content="%SITE_URL%/og-image.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="ESATIC SmartVote : le vote des chefs de classe, secret et vérifiable" />
     <meta property="og:site_name" content="ESATIC SmartVote" />
     <meta property="og:locale" content="fr_CI" />
 
     <!-- Twitter Cards -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://smartvote.esatic.ci/" />
-    <meta name="twitter:title" content="ESATIC SmartVote — Le vote étudiant réinventé" />
+    <meta name="twitter:url" content="%SITE_URL%/" />
+    <meta name="twitter:title" content="ESATIC SmartVote, le vote des chefs de classe en ligne" />
     <meta name="twitter:description" content="Plateforme officielle de vote en ligne pour les étudiants de l'ESATIC." />
-    <meta name="twitter:image" content="https://smartvote.esatic.ci/og-preview.png" />
+    <meta name="twitter:image" content="%SITE_URL%/og-image.jpg" />
+    <meta name="twitter:image:alt" content="ESATIC SmartVote : le vote des chefs de classe, secret et vérifiable" />
 
     <!-- Structured Data (JSON-LD) -->
     <script type="application/ld+json">
@@ -40,7 +48,7 @@
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "ESATIC SmartVote",
-        "url": "https://smartvote.esatic.ci",
+        "url": "%SITE_URL%",
         "applicationCategory": "EducationalApplication",
         "operatingSystem": "All",
         "description": "Plateforme sécurisée et transparente de vote en ligne pour les élections des chefs de classe de l'ESATIC.",
@@ -52,13 +60,6 @@
       }
     </script>
 
-    <!-- Google Fonts & Lordicon -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
     <!-- Lecteur d'animations servi par l'application, non par un CDN tiers.
          Un <script> distant sur une plateforme de vote peut lire et modifier
          la page à volonté : il verrait le bulletin choisi et pourrait altérer
@@ -67,6 +68,7 @@
     <script src="/vendor/lordicon/lordicon.js" defer></script>
   </head>
   <body>
+    <noscript>ESATIC SmartVote nécessite JavaScript pour fonctionner. Activez-le puis rechargez la page.</noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

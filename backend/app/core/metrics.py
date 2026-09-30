@@ -75,11 +75,40 @@ ANCHOR_PENDING = Gauge(
 )
 
 
+# Formulaires publics : soumissions écartées par le champ piège (antispam.py).
+SPAM_BLOCKED_TOTAL = Counter(
+    "smartvote_spam_blocked_total",
+    "Soumissions de formulaires publics écartées comme robotisées.",
+    ["form"],
+    registry=None,
+)
+
+# Mesure d'audience, uniquement après consentement (api/public.py). Aucune
+# étiquette ne porte d'identifiant : ni utilisateur, ni IP, ni UUID d'élection
+# — seulement le gabarit de page et le nom d'événement, pris dans des listes
+# fermées pour que la cardinalité reste bornée.
+PAGE_VIEWS_TOTAL = Counter(
+    "smartvote_page_views_total",
+    "Pages vues (visiteurs ayant consenti à la mesure d'audience).",
+    ["page"],
+    registry=None,
+)
+FRONTEND_EVENTS_TOTAL = Counter(
+    "smartvote_frontend_events_total",
+    "Événements du parcours (visiteurs ayant consenti à la mesure d'audience).",
+    ["event"],
+    registry=None,
+)
+
+
 def _register_application_metrics(registry: CollectorRegistry) -> None:
     """Rattache les métriques applicatives au registre exposé."""
     registry.register(EMAILS_TOTAL)
     registry.register(ANCHORED_TOTAL)
     registry.register(ANCHOR_PENDING)
+    registry.register(SPAM_BLOCKED_TOTAL)
+    registry.register(PAGE_VIEWS_TOTAL)
+    registry.register(FRONTEND_EVENTS_TOTAL)
 
 
 def _token_is_valid(request: Request) -> bool:

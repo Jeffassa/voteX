@@ -1,0 +1,22 @@
+# Sources de données déclarées au démarrage de Grafana.
+#
+# Sans ce fichier, le dossier provisioning/ était vide et Grafana démarrait sans
+# aucune connexion : l'interface s'ouvrait sur des tableaux de bord incapables
+# d'interroger quoi que ce soit.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://votex-prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 15s
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://votex-loki:3100
+    editable: false

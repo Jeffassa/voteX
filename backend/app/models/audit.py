@@ -3,13 +3,14 @@ from enum import Enum as PyEnum
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, Uuid, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
 
 class AuditAction(str, PyEnum):
     LOGIN = "login"
+    LOGIN_FAILED = "login_failed"
     LOGOUT = "logout"
     PASSWORD_CHANGED = "password_changed"
     PASSWORD_RESET_REQUESTED = "password_reset_requested"
@@ -53,3 +54,13 @@ class AuditEvent(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )
+
+    # Lecture seule : le journal affiche le nom de l'auteur. La base met
+    # actor_id à NULL quand le compte disparaît, l'événement reste.
+    actor = relationship("Student", viewonly=True)
+
+    @property
+    def actor_name(self) -> str | None:
+        if self.actor is None:
+            return None
+        return f"{self.actor.first_name} {self.actor.last_name}"

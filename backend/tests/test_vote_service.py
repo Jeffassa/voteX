@@ -29,7 +29,8 @@ def test_cast_vote_succeeds_in_open_election(db, voter, open_election):
     )
 
     assert vote.id is not None
-    assert vote.candidate_id == cand.id
+    # Le reçu ne porte jamais le choix.
+    assert not hasattr(vote, "candidate_id")
     assert vote.election_id == open_election.id
     assert vote.vote_hash.startswith("0x")
     assert len(vote.vote_hash) == 66  # 0x + 64 hex chars
@@ -45,12 +46,20 @@ def test_cast_vote_succeeds_in_open_election(db, voter, open_election):
 
 
 def test_cast_vote_persists_and_appears_in_db(db, voter, open_election):
+    """Le bulletin attend dans l'urne chiffrée, puis le brassage le verse."""
+    from app.services import ballot_box
+
     cand = open_election.candidates[0]
-    vote_service.cast_vote(
+    receipt = vote_service.cast_vote(
         db, user=voter, election_id=open_election.id, candidate_id=cand.id
     )
-    count = db.query(Vote).filter(Vote.election_id == open_election.id).count()
-    assert count == 1
+    assert db.query(Vote).filter(Vote.election_id == open_election.id).count() == 0
+    assert ballot_box.pending_count(db, open_election.id) == 1
+
+    ballot_box.mix(db, open_election.id, final=True)
+    vote = db.query(Vote).filter(Vote.election_id == open_election.id).one()
+    assert vote.candidate_id == cand.id and vote.vote_hash == receipt.vote_hash
+    assert ballot_box.pending_count(db, open_election.id) == 0
 
 
 # ─────────────────────────── invariants ───────────────────────────

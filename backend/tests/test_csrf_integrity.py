@@ -1,36 +1,96 @@
-import pytest
-from fastapi.testclient import TestClient
-from app.main import app
+"""Protection CSRF sans cookie lisible par le script.
 
-@pytest.fixture(scope="module")
-def client():
-    return TestClient(app)
+Le jeton n'est plus déposé dans un cookie que le JavaScript recopie : il est
+scellé dans l'access token (httpOnly) et publié dans l'en-tête `X-CSRF-Token`
+des réponses d'authentification. Le client le garde en mémoire.
 
-def test_csrf_token_consistency(client):
-    # Perform login (using a known test user – adjust credentials as needed)
-    login_data = {
-        "username": "testuser",  # replace with a real matricule in test DB
-        "password": "testpassword"
-    }
-    response = client.post("/api/auth/login", data=login_data)
-    assert response.status_code == 200
+Ce que ces tests vérifient : la mutation reste refusée sans jeton valide, le
+jeton suit bien la rotation de session, et rien de tout cela ne transite par un
+cookie accessible au script.
+"""
 
-    # The CSRF token should be set as a cookie and also exposed via header
-    csrf_cookie = response.cookies.get("sv_csrf")
-    csrf_header = response.headers.get("X-CSRF-Token")
-    assert csrf_cookie is not None, "CSRF cookie missing after login"
-    assert csrf_header is not None, "CSRF header missing after login"
-    # Verify that the token values match (no modification during login)
-    assert csrf_cookie == csrf_header, "CSRF token was altered between cookie and header"
+from app.core.cookies import CSRF_HEADER
 
-    # Use the token in a subsequent mutating request (e.g., change password)
-    # Include the cookie automatically; add the header manually
-    client.headers.update({"X-CSRF-Token": csrf_header})
-    change_payload = {
-        "token": "oldpassword",
-        "new_password": "newsecurepwd"
-    }
-    # Assuming the test user exists and old password is correct; otherwise expect 401/403
-    resp2 = client.post("/api/auth/me/change-password", json=change_payload)
-    # The request should be processed (or fail gracefully) but the CSRF token must remain unchanged
-    assert resp2.headers.get("X-CSRF-Token") == csrf_header, "CSRF token changed on subsequent request"
+
+def _csrf(client) -> str:
+    r = client.get("/api/auth/me")
+    token = r.headers.get(CSRF_HEADER)
+    assert token, "le serveur doit republier le jeton CSRF sur /me"
+    return token
+
+
+def test_login_publishes_the_token_in_a_header(client, voter):
+    r = client.post(
+        "/api/auth/login",
+        data={"username": voter.matricule, "password": "student12345"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.headers.get(CSRF_HEADER)
+
+
+def test_no_csrf_cookie_is_stored(auth_client):
+    """Le cookie `sv_csrf` du double-submit ne doit plus être posé."""
+    names = {c.name for c in auth_client.cookies.jar}
+    assert "sv_csrf" not in names
+
+
+def test_me_republishes_the_token(auth_client):
+    """Après un rechargement de page, le client repart de /me pour l'obtenir."""
+    assert _csrf(auth_client)
+
+
+def test_mutation_without_token_is_rejected(auth_client):
+    r = auth_client.post("/api/auth/sessions/revoke-all")
+    assert r.status_code == 403, r.text
+
+
+def test_mutation_with_forged_token_is_rejected(auth_client):
+    r = auth_client.post(
+        "/api/auth/sessions/revoke-all",
+        headers={CSRF_HEADER: "jeton-fabrique-par-un-tiers"},
+    )
+    assert r.status_code == 403, r.text
+
+
+def test_mutation_with_current_token_passes(auth_client):
+    r = auth_client.post(
+        "/api/auth/sessions/revoke-all", headers={CSRF_HEADER: _csrf(auth_client)}
+    )
+    assert r.status_code == 204, r.text
+
+
+def test_refresh_rotates_the_token(auth_client):
+    """La rotation de session change le jeton : il est lié à l'access token."""
+    before = _csrf(auth_client)
+
+    r = auth_client.post("/api/auth/refresh")
+    assert r.status_code == 200, r.text
+    issued = r.headers.get(CSRF_HEADER)
+    assert issued and issued != before
+
+    ok = auth_client.post("/api/auth/sessions/revoke-all", headers={CSRF_HEADER: issued})
+    assert ok.status_code == 204, ok.text
+
+
+def test_stale_token_is_rejected_after_refresh(auth_client):
+    stale = _csrf(auth_client)
+    assert auth_client.post("/api/auth/refresh").status_code == 200
+
+    r = auth_client.post("/api/auth/sessions/revoke-all", headers={CSRF_HEADER: stale})
+    assert r.status_code == 403, r.text
+
+
+def test_bearer_clients_are_not_subject_to_csrf(client, voter):
+    """Sans cookie de session, il n'y a pas d'autorité ambiante à protéger."""
+    login = client.post(
+        "/api/auth/login",
+        data={"username": voter.matricule, "password": "student12345"},
+    )
+    token = login.json()["access_token"]
+    client.cookies.clear()
+
+    r = client.post(
+        "/api/auth/sessions/revoke-all",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert r.status_code == 204, r.text

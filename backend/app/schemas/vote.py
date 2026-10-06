@@ -14,7 +14,6 @@ class VoteReceipt(BaseModel):
 
     id: UUID
     election_id: UUID
-    candidate_id: UUID | None
     vote_hash: str
     tx_hash: str | None
     block_number: int | None
@@ -25,6 +24,8 @@ class VoteVerification(BaseModel):
     valid: bool
     vote_hash: str
     election_title: str | None = None
-    created_at: datetime | None = None
+    # Faux tant que le bulletin attend son ancrage sur la chaîne.
+    anchored: bool = False
+    tx_hash: str | None = None
     block_number: int | None = None
     message: str

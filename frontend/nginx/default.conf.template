@@ -1,0 +1,50 @@
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+    server_tokens off;
+
+    # HTTPS forcé. Le conteneur écoute en clair derrière un reverse proxy qui
+    # termine TLS et transmet X-Forwarded-Proto : une requête arrivée en http
+    # est renvoyée vers https. 308 conserve la méthode et le corps.
+    if ($http_x_forwarded_proto = "http") {
+        return 308 https://$host$request_uri;
+    }
+
+    gzip on;
+    gzip_vary on;
+    gzip_comp_level 6;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css application/json application/manifest+json
+               application/javascript text/javascript text/xml application/xml
+               image/svg+xml image/x-icon;
+
+    # Assets à empreinte : cache d'un an. Un fichier absent répond 404 au lieu
+    # de index.html, qu'un navigateur chargerait comme script et dont l'erreur
+    # MIME masquerait la vraie cause.
+    location /assets/ {
+        try_files $uri =404;
+        include /etc/nginx/conf.d/security-headers.inc;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+    }
+
+    # Icônes et image de partage : stables, sans empreinte.
+    location ~* ^/(icons/|favicon\.|og-image\.) {
+        try_files $uri =404;
+        include /etc/nginx/conf.d/security-headers.inc;
+        add_header Cache-Control "public, max-age=604800" always;
+    }
+
+    location = /index.html {
+        include /etc/nginx/conf.d/security-headers.inc;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+    }
+
+    # Routes de l'application → index.html. Une adresse inconnue y affiche la
+    # page 404 de l'application.
+    location / {
+        include /etc/nginx/conf.d/security-headers.inc;
+        try_files $uri $uri/ /index.html;
+    }
+}

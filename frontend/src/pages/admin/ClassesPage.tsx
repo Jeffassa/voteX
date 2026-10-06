@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { GraduationCap, Pencil, Plus, Trash2 } from "lucide-react";
+import { GraduationCap, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { useReveal } from "@/hooks/useReveal";
+import { EmptyState, PageHeader, Segmented } from "@/components/admin/AdminUI";
 import { Modal } from "@/components/Modal";
 import {
   useClasses,
@@ -11,59 +13,113 @@ import {
 } from "@/lib/queries";
 import type { ClassRoom } from "@/types/api";
 
+const LEVEL_ORDER = ["L1", "L2", "L3", "M1", "M2"];
+
 export default function ClassesPage() {
+  // Écran d'administration : les blocs se posent de haut en bas, sans
+  // retarder la lecture d'un tableau qu'on vient consulter.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", rise: 12 });
   const { data: classes, isLoading } = useClasses();
   const [editing, setEditing] = useState<ClassRoom | null>(null);
   const [creating, setCreating] = useState(false);
+  const [level, setLevel] = useState("all");
+  const [search, setSearch] = useState("");
+
+  const all = classes ?? [];
+  // Niveaux connus d'abord, dans l'ordre du cursus ; un niveau inattendu suit.
+  const levels = Array.from(new Set(all.map((c) => c.level))).sort(
+    (a, b) => (LEVEL_ORDER.indexOf(a) + 1 || 99) - (LEVEL_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b)
+  );
+  const q = search.trim().toLowerCase();
+  const list = all.filter(
+    (c) =>
+      (level === "all" || c.level === level) &&
+      (!q || c.name.toLowerCase().includes(q) || c.field.toLowerCase().includes(q))
+  );
 
   return (
-    <div style={{ padding: "40px 40px 80px" }}>
-      <div className="row items-center justify-between" style={{ marginBottom: 28 }}>
-        <div>
-          <div className="h-eyebrow">Administration</div>
-          <h1 className="h-title" style={{ marginTop: 8 }}>Classes</h1>
-        </div>
-        <button className="btn btn-primary" onClick={() => setCreating(true)}>
-          <Plus size={16} /> Nouvelle classe
-        </button>
-      </div>
+    <div ref={pageRef} className="sv-admin-page sv-admin-page-narrow">
+      <PageHeader
+        title="Classes"
+        subtitle={
+          classes
+            ? `${all.length} classe${all.length > 1 ? "s" : ""} sur ${levels.length} niveau${levels.length > 1 ? "x" : ""}. Chaque élection vise une classe.`
+            : undefined
+        }
+        actions={
+          <button className="btn btn-primary" onClick={() => setCreating(true)}>
+            <Plus size={16} aria-hidden="true" /> Nouvelle classe
+          </button>
+        }
+      />
 
       <div className="card" style={{ overflow: "hidden" }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "100px 1fr 1fr 80px",
-            gap: 16,
-            padding: "14px 20px",
-            background: "var(--surface-2)",
-            borderBottom: "1px solid var(--border)",
-            fontSize: 11, fontWeight: 600, color: "var(--ink-500)",
-            textTransform: "uppercase", letterSpacing: "0.06em",
-          }}
-        >
-          <div>Niveau</div>
-          <div>Nom</div>
-          <div>Filière</div>
-          <div />
-        </div>
-
-        {isLoading && (
-          <div style={{ padding: 20 }}>
-            <div className="skel" style={{ height: 56, marginBottom: 8 }} />
-            <div className="skel" style={{ height: 56 }} />
+        {all.length > 0 && (
+          <div className="sv-toolbar">
+            <Segmented
+              label="Filtrer par niveau"
+              value={level}
+              onChange={setLevel}
+              options={[
+                { value: "all", label: "Tous", count: all.length },
+                ...levels.map((l) => ({ value: l, label: l, count: all.filter((c) => c.level === l).length })),
+              ]}
+            />
+            <div className="input-wrap sv-search">
+              <span className="input-icon"><Search size={16} aria-hidden="true" /></span>
+              <input
+                type="search"
+                aria-label="Rechercher une classe"
+                className="input has-icon"
+                placeholder="Nom ou filière…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
           </div>
         )}
 
-        {!isLoading && classes?.length === 0 && (
-          <div className="text-center muted" style={{ padding: 56 }}>
-            <GraduationCap size={32} style={{ marginBottom: 12, opacity: 0.5 }} />
-            <div>Aucune classe — crée la première.</div>
+        {isLoading ? (
+          <div style={{ padding: 16 }}>
+            <div className="skel" style={{ height: 48, marginBottom: 8 }} />
+            <div className="skel" style={{ height: 48 }} />
+          </div>
+        ) : all.length === 0 ? (
+          <EmptyState
+            icon={<GraduationCap size={20} />}
+            title="Aucune classe"
+            action={
+              <button className="btn btn-primary btn-sm" onClick={() => setCreating(true)}>
+                <Plus size={14} aria-hidden="true" /> Créer la première
+              </button>
+            }
+          >
+            Créez les classes une à une, ou laissez l'import Excel des étudiants les créer pour vous.
+          </EmptyState>
+        ) : list.length === 0 ? (
+          <EmptyState icon={<Search size={20} />} title="Aucune classe ne correspond">
+            Changez de niveau ou de recherche.
+          </EmptyState>
+        ) : (
+          <div className="sv-table-scroll">
+            <table className="sv-table" style={{ minWidth: 520 }}>
+              <caption className="sr-only">Classes</caption>
+              <thead>
+                <tr>
+                  <th scope="col" style={{ width: 90 }}>Niveau</th>
+                  <th scope="col">Classe</th>
+                  <th scope="col">Filière</th>
+                  <th scope="col" className="actions"><span className="sr-only">Actions</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((c) => (
+                  <ClassRow key={c.id} c={c} onEdit={() => setEditing(c)} />
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
-
-        {classes?.map((c) => (
-          <ClassRow key={c.id} c={c} onEdit={() => setEditing(c)} />
-        ))}
       </div>
 
       {creating && <ClassFormModal onClose={() => setCreating(false)} />}
@@ -74,9 +130,10 @@ export default function ClassesPage() {
 
 function ClassRow({ c, onEdit }: { c: ClassRoom; onEdit: () => void }) {
   const deleteClass = useDeleteClass();
+  const label = `${c.level} ${c.name}`;
 
   async function remove() {
-    if (!confirm(`Supprimer la classe "${c.level} ${c.name}" ?\n\nLa classe doit être vide (pas d'étudiants ni d'élections).`))
+    if (!confirm(`Supprimer la classe "${label}" ?\n\nLa classe doit être vide (pas d'étudiants ni d'élections).`))
       return;
     try {
       await deleteClass.mutateAsync(c.id);
@@ -87,37 +144,27 @@ function ClassRow({ c, onEdit }: { c: ClassRoom; onEdit: () => void }) {
   }
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "100px 1fr 1fr 80px",
-        gap: 16,
-        padding: "14px 20px",
-        alignItems: "center",
-        borderBottom: "1px solid var(--border)",
-        fontSize: 14,
-      }}
-    >
-      <div>
-        <span className="badge badge-navy">{c.level}</span>
-      </div>
-      <div style={{ fontWeight: 500, color: "var(--navy-900)" }}>{c.name}</div>
-      <div style={{ color: "var(--ink-700)" }}>{c.field}</div>
-      <div className="row gap-2" style={{ justifyContent: "flex-end" }}>
-        <button className="btn btn-ghost btn-sm" onClick={onEdit} title="Modifier">
-          <Pencil size={14} />
-        </button>
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={remove}
-          disabled={deleteClass.isPending}
-          title="Supprimer"
-          style={{ color: "var(--danger-600)" }}
-        >
-          <Trash2 size={14} />
-        </button>
-      </div>
-    </div>
+    <tr>
+      <td><span className="badge badge-navy">{c.level}</span></td>
+      <td className="sv-cell-title" style={{ fontWeight: 500 }}>{c.name}</td>
+      <td style={{ color: c.field === c.name ? "var(--ink-400)" : undefined }}>{c.field}</td>
+      <td className="actions">
+        <div className="row gap-2" style={{ justifyContent: "flex-end" }}>
+          <button className="btn btn-ghost btn-icon" onClick={onEdit} title="Modifier" aria-label={`Modifier la classe ${label}`}>
+            <Pencil size={15} aria-hidden="true" />
+          </button>
+          <button
+            className="btn btn-ghost btn-icon danger"
+            onClick={remove}
+            disabled={deleteClass.isPending}
+            title="Supprimer"
+            aria-label={`Supprimer la classe ${label}`}
+          >
+            <Trash2 size={15} aria-hidden="true" />
+          </button>
+        </div>
+      </td>
+    </tr>
   );
 }
 
@@ -169,8 +216,8 @@ function ClassFormModal({
         <div className="col gap-3" style={{ marginTop: 20 }}>
           <div className="row gap-3">
             <div style={{ width: 120 }}>
-              <label className="label">Niveau</label>
-              <select
+              <label className="label" htmlFor="classes-f1">Niveau</label>
+              <select id="classes-f1"
                 required
                 className="input"
                 value={level}
@@ -184,8 +231,8 @@ function ClassFormModal({
               </select>
             </div>
             <div style={{ flex: 1 }}>
-              <label className="label">Nom court</label>
-              <input
+              <label className="label" htmlFor="classes-f2">Nom court</label>
+              <input id="classes-f2"
                 required
                 className="input"
                 value={name}
@@ -195,8 +242,8 @@ function ClassFormModal({
             </div>
           </div>
           <div>
-            <label className="label">Filière (libellé long)</label>
-            <input
+            <label className="label" htmlFor="classes-f3">Filière (libellé long)</label>
+            <input id="classes-f3"
               required
               className="input"
               value={field}

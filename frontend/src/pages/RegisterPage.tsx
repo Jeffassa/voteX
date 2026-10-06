@@ -3,17 +3,24 @@ import { Link, useNavigate } from "react-router-dom";
 import { AlertCircle, ArrowLeft, ArrowRight, Eye, EyeOff, Lock, User, UserPlus, Mail, KeyRound, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { useReveal } from "@/hooks/useReveal";
 import { Brand } from "@/components/Brand";
+import { Rosette } from "@/components/SecurityPattern";
+import { Honeypot } from "@/components/Honeypot";
 import { api } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
 import { extractErrorMessage, extractStatus } from "@/lib/errors";
 import { isValidMatricule, MATRICULE_FORMAT_HUMAN, normalizeMatricule } from "@/lib/matricule";
 
 export default function RegisterPage() {
+  // Deux panneaux révélés l'un après l'autre, comme sur la page de connexion.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", rise: 12 });
   const [matricule, setMatricule] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  // Adresse personnelle facultative (Gmail…) : appliquée après confirmation.
+  const [personalEmail, setPersonalEmail] = useState("");
   const [activationCode, setActivationCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -21,12 +28,15 @@ export default function RegisterPage() {
   const [err, setErr] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [requestingCode, setRequestingCode] = useState(false);
+  // Revendication en attente d'une validation par l'administration.
+  const [pendingReview, setPendingReview] = useState(false);
+  const [website, setWebsite] = useState("");
   const navigate = useNavigate();
 
   // Calcul visuel de la force du mot de passe
   function getPasswordStrength(pwd: string): { label: string; color: string; width: string } {
     if (!pwd) return { label: "", color: "transparent", width: "0%" };
-    if (pwd.length < 8) return { label: "Trop court (min. 8)", color: "var(--danger-500)", width: "25%" };
+    if (pwd.length < 8) return { label: "Trop court (min. 8)", color: "var(--danger-600)", width: "25%" };
     
     let score = 0;
     if (pwd.length >= 8) score += 1;
@@ -35,7 +45,7 @@ export default function RegisterPage() {
     if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
 
     if (score <= 2) return { label: "Moyen", color: "var(--warning-500)", width: "60%" };
-    return { label: "Fort", color: "var(--success-500)", width: "100%" };
+    return { label: "Fort", color: "var(--success-600)", width: "100%" };
   }
 
   const pwdStrength = getPasswordStrength(password);
@@ -55,6 +65,9 @@ export default function RegisterPage() {
     if (password.length < 8) return "Le mot de passe doit faire au moins 8 caractères.";
     if (!confirmPassword) return "Confirme ton mot de passe.";
     if (password !== confirmPassword) return "Les deux mots de passe ne correspondent pas.";
+    if (personalEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(personalEmail.trim())) {
+      return "L'adresse e-mail personnelle n'est pas valide.";
+    }
     return null;
   }
 
@@ -75,8 +88,13 @@ export default function RegisterPage() {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         email: email.trim(),
+        website: website || undefined,
       });
-      toast.success("Code envoyé ! Vérifie ta boîte mail.");
+      toast.success(
+        "Si ces informations correspondent à un compte à activer, un code a été envoyé. Rien reçu ? " +
+          "Vérifie le matricule et le nom tels qu'écrits sur la liste de l'école, ou connecte-toi si ton compte est déjà activé.",
+        { duration: 9000 }
+      );
       trackEvent("activation_code_requested");
     } catch (e: unknown) {
       const detail = extractErrorMessage(e, "Impossible d'envoyer le code.");
@@ -98,16 +116,34 @@ export default function RegisterPage() {
     setSubmitting(true);
 
     try {
-      await api.post("/api/auth/register", {
+      const { data } = await api.post("/api/auth/register", {
         matricule: normalizeMatricule(matricule),
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         activation_code: activationCode.trim(),
         password,
         confirm_password: confirmPassword,
+        email: personalEmail.trim() || undefined,
+        website: website || undefined,
       });
 
-      toast.success("Compte activé. Connecte-toi maintenant.");
+      // Une revendication que l'école n'a pas pu rattacher à une adresse
+      // connue attend une validation humaine. Annoncer « compte activé »
+      // enverrait l'étudiant droit vers un refus de connexion qu'il ne
+      // comprendrait pas : mieux vaut lui dire tout de suite ce qui se passe.
+      if (data?.is_active === false) {
+        toast.success("Demande enregistrée.", { duration: 6000 });
+        setPendingReview(true);
+        trackEvent("account_pending_review");
+        return;
+      }
+
+      toast.success(
+        personalEmail.trim()
+          ? `Compte activé. Un lien de confirmation a été envoyé à ${personalEmail.trim()}.`
+          : "Compte activé. Connecte-toi maintenant.",
+        { duration: 7000 }
+      );
       trackEvent("account_activated");
 
       navigate("/login", {
@@ -124,7 +160,11 @@ export default function RegisterPage() {
           "Ce matricule n'existe pas dans le système. Vérifie qu'il a été importé par l'administration."
         );
       } else if (status === 409) {
-        setErr(detail.includes("activé") ? detail : "Ce compte est déjà activé. Va sur la page de connexion.");
+        setErr(
+          detail.includes("activé") || detail.includes("adresse")
+            ? detail
+            : "Ce compte est déjà activé. Va sur la page de connexion."
+        );
       } else if (status === 400 || status === 422 || status === 403) {
         setErr(detail);
       } else if (!status) {
@@ -139,8 +179,49 @@ export default function RegisterPage() {
 
   const matriculeFormatOk = matricule === "" || isValidMatricule(normalizeMatricule(matricule));
 
+  // Écran d'attente : la demande est partie, elle ne se transformera pas en
+  // session tant qu'un administrateur n'aura pas vérifié l'identité. Le dire
+  // en toutes lettres, avec la marche à suivre, évite un aller-retour inutile
+  // vers la page de connexion — où l'étudiant ne récolterait qu'un refus.
+  if (pendingReview) {
+    return (
+      <div
+        className="scene"
+        style={{
+          minHeight: "100vh",
+          display: "grid",
+          placeItems: "center",
+          padding: 24,
+          background: "var(--surface)",
+        }}
+      >
+        <div className="card" style={{ maxWidth: 520, padding: 32, textAlign: "center" }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }} aria-hidden="true">
+            ⏳
+          </div>
+          <h1 style={{ fontSize: 22, marginBottom: 12, color: "var(--navy-900)" }}>
+            Demande enregistrée
+          </h1>
+          <p style={{ color: "var(--ink-700)", lineHeight: 1.6, marginBottom: 16 }}>
+            Ton matricule et ton nom figurent sur les listes de classe : ils ne
+            suffisent pas à prouver que ce compte est bien le tien. La scolarité
+            va vérifier ton identité avant d'ouvrir l'accès.
+          </p>
+          <p style={{ color: "var(--ink-700)", lineHeight: 1.6, marginBottom: 24 }}>
+            Présente-toi au secrétariat avec ta carte d'étudiant, ou écris depuis
+            ton adresse ESATIC. Tu recevras un message dès l'activation.
+          </p>
+          <button className="btn btn-primary" onClick={() => navigate("/login", { replace: true })}>
+            Retour à la connexion
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
+      ref={pageRef}
       className="scene sv-auth-split"
       style={{
         minHeight: "100vh",
@@ -158,46 +239,40 @@ export default function RegisterPage() {
           padding: "48px 56px",
           display: "flex",
           flexDirection: "column",
-          position: "relative",
+          // Collé à la hauteur de l'écran : quand le formulaire dépasse (petit
+          // écran, zoom), le texte du panneau ne glisse plus sous le pli.
+          position: "sticky",
+          top: 0,
+          height: "100vh",
+          alignSelf: "start",
           overflow: "hidden",
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            opacity: 0.06,
-            backgroundImage: "radial-gradient(circle at 20% 20%, white 1px, transparent 1.5px)",
-            backgroundSize: "24px 24px",
-          }}
-        />
-        <div style={{ position: "relative" }}>
+        {/* Rosace guillochée : le fond des documents officiels, à la place
+            d'une trame de points. */}
+        <Rosette size={640} opacity={0.11} style={{ right: -240, bottom: -240 }} />
+        {/* brand-inverse : sans lui, « ESATIC » s'écrivait en marine sur marine. */}
+        <div className="brand-inverse" style={{ position: "relative" }}>
           <Brand />
         </div>
-        <div className="sv-auth-tagline" style={{ position: "relative", marginTop: "auto", maxWidth: 460, textAlign: "left" }}>
-          <div className="h-eyebrow" style={{ color: "var(--orange-400)", textAlign: "left" }}>
-            Inscription
-          </div>
+        <div className="sv-auth-tagline" style={{ position: "relative", margin: "auto", width: "100%", maxWidth: 460, textAlign: "left" }}>
           <h2
             style={{
-              fontSize: 40,
-              fontWeight: 600,
-              letterSpacing: "-0.035em",
+              fontSize: 42,
+              fontWeight: 520,
               lineHeight: 1.05,
-              marginTop: 14,
+              marginTop: 0,
               textAlign: "left",
             }}
           >
-            Activez votre compte
-            <br />
-            étudiant ESATIC.
+            Activez votre compte étudiant
           </h2>
           <p
             style={{
               fontSize: 15,
-              color: "rgba(255,255,255,0.65)",
+              color: "rgba(255,255,255,0.78)",
               lineHeight: 1.6,
-              marginTop: 18,
+              marginTop: 14,
               textAlign: "left",
             }}
           >
@@ -211,11 +286,11 @@ export default function RegisterPage() {
               display: "flex",
               gap: 12,
               alignItems: "center",
-              fontSize: 12,
-              color: "rgba(255,255,255,0.55)",
+              fontSize: 13,
+              color: "rgba(255,255,255,0.78)",
             }}
           >
-            <ShieldCheck size={16} style={{ color: "var(--orange-400)" }} /> Processus de vérification en 2 étapes
+            <ShieldCheck size={16} aria-hidden="true" style={{ color: "var(--orange-400)" }} /> Un code de confirmation vous est envoyé par e-mail
           </div>
         </div>
       </div>
@@ -257,46 +332,60 @@ export default function RegisterPage() {
 
           <form
             onSubmit={submit}
+            noValidate
             style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 16, textAlign: "left" }}
           >
             <div>
-              <label className="label" style={{ textAlign: "left", display: "block" }}>Matricule ESATIC</label>
+              <label className="label" htmlFor="register-f1" style={{ textAlign: "left", display: "block" }}>Matricule ESATIC</label>
               <div className="input-wrap">
                 <span className="input-icon">
                   <User size={16} />
                 </span>
-                <input
+                <input id="register-f1"
                   required
                   className="input has-icon mono"
+                  name="matricule"
+                  autoComplete="username"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                  maxLength={20}
+                  aria-invalid={!matriculeFormatOk}
+                  aria-describedby="register-f1-hint"
                   value={matricule}
                   onChange={(e) => setMatricule(e.target.value.toUpperCase())}
                   placeholder="22-ESATIC0273DN"
                   style={{
-                    borderColor: !matriculeFormatOk ? "var(--danger-500)" : undefined,
+                    borderColor: !matriculeFormatOk ? "var(--danger-600)" : undefined,
                   }}
                 />
               </div>
-              <div className="muted" style={{ fontSize: 11, marginTop: 4, textAlign: "left" }}>
+              <div id="register-f1-hint" className="muted" style={{ fontSize: 11, marginTop: 4, textAlign: "left" }}>
                 Format : {MATRICULE_FORMAT_HUMAN}
               </div>
             </div>
 
             <div className="row gap-3">
               <div style={{ flex: 1 }}>
-                <label className="label" style={{ textAlign: "left", display: "block" }}>Prénom</label>
-                <input
+                <label className="label" htmlFor="register-f2" style={{ textAlign: "left", display: "block" }}>Prénom</label>
+                <input id="register-f2"
                   required
                   className="input"
+                  name="given-name"
+                  autoComplete="given-name"
+                  maxLength={100}
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="Ex: Sékou"
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label className="label" style={{ textAlign: "left", display: "block" }}>Nom</label>
-                <input
+                <label className="label" htmlFor="register-f3" style={{ textAlign: "left", display: "block" }}>Nom</label>
+                <input id="register-f3"
                   required
                   className="input"
+                  name="family-name"
+                  autoComplete="family-name"
+                  maxLength={100}
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="Ex: Bamba"
@@ -305,16 +394,19 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="label" style={{ textAlign: "left", display: "block" }}>Email ESATIC ou Gmail</label>
+              <label className="label" htmlFor="register-f4" style={{ textAlign: "left", display: "block" }}>E-mail pour recevoir le code</label>
               <div className="row gap-2">
                 <div className="input-wrap" style={{ flex: 1 }}>
                   <span className="input-icon">
                     <Mail size={16} />
                   </span>
-                  <input
+                  <input id="register-f4"
                     required
                     type="email"
                     className="input has-icon"
+                    name="email"
+                    autoComplete="email"
+                    maxLength={255}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="nom@esatic.edu.ci"
@@ -322,7 +414,7 @@ export default function RegisterPage() {
                 </div>
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className="btn btn-outline"
                   onClick={requestActivationCode}
                   disabled={requestingCode}
                   style={{ height: "42px", minWidth: "120px" }}
@@ -333,34 +425,41 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="label" style={{ textAlign: "left", display: "block" }}>Code d'activation</label>
+              <label className="label" htmlFor="register-f5" style={{ textAlign: "left", display: "block" }}>Code d'activation</label>
               <div className="input-wrap">
                 <span className="input-icon">
                   <KeyRound size={16} />
                 </span>
-                <input
+                <input id="register-f5"
                   required
                   className="input has-icon mono"
+                  name="one-time-code"
+                  autoComplete="one-time-code"
+                  maxLength={20}
+                  aria-describedby="register-f5-hint"
                   value={activationCode}
                   onChange={(e) => setActivationCode(e.target.value.toUpperCase())}
                   placeholder="CODE REÇU PAR EMAIL"
                 />
               </div>
-              <div className="muted" style={{ fontSize: 11, marginTop: 4, textAlign: "left" }}>
+              <div id="register-f5-hint" className="muted" style={{ fontSize: 11, marginTop: 4, textAlign: "left" }}>
                 Saisis le code secret envoyé à ton adresse email.
               </div>
             </div>
 
             <div>
-              <label className="label" style={{ textAlign: "left", display: "block" }}>Mot de passe</label>
+              <label className="label" htmlFor="register-f6" style={{ textAlign: "left", display: "block" }}>Mot de passe</label>
               <div className="input-wrap">
                 <span className="input-icon">
                   <Lock size={16} />
                 </span>
-                <input
+                <input id="register-f6"
                   required
                   type={show ? "text" : "password"}
                   className="input has-icon"
+                  name="new-password"
+                  autoComplete="new-password"
+                  maxLength={128}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   minLength={8}
@@ -369,9 +468,11 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   className="input-suffix-btn"
+                  aria-label={show ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                  aria-pressed={show}
                   onClick={() => setShow((s) => !s)}
                 >
-                  {show ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {show ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
                 </button>
               </div>
 
@@ -412,15 +513,19 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="label" style={{ textAlign: "left", display: "block" }}>Confirmer le mot de passe</label>
+              <label className="label" htmlFor="register-f7" style={{ textAlign: "left", display: "block" }}>Confirmer le mot de passe</label>
               <div className="input-wrap">
                 <span className="input-icon">
                   <Lock size={16} />
                 </span>
-                <input
+                <input id="register-f7"
                   required
                   type={show ? "text" : "password"}
                   className="input has-icon"
+                  name="confirm-password"
+                  autoComplete="new-password"
+                  maxLength={128}
+                  aria-invalid={!!confirmPassword && confirmPassword !== password}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   minLength={8}
@@ -429,8 +534,32 @@ export default function RegisterPage() {
               </div>
             </div>
 
+            <div>
+              <label className="label" htmlFor="register-personal-email" style={{ textAlign: "left", display: "block" }}>
+                Adresse e-mail personnelle <span style={{ fontWeight: 400, color: "var(--ink-500)" }}>(facultatif)</span>
+              </label>
+              <input
+                id="register-personal-email"
+                type="email"
+                name="personal-email"
+                autoComplete="email"
+                maxLength={255}
+                className="input"
+                value={personalEmail}
+                onChange={(e) => setPersonalEmail(e.target.value)}
+                placeholder="prenom.nom@gmail.com"
+                aria-describedby="register-personal-email-hint"
+              />
+              <div id="register-personal-email-hint" className="muted" style={{ fontSize: 12, marginTop: 4, textAlign: "left" }}>
+                Pour vous connecter avec Google et recevoir vos reçus de vote. Un lien de
+                confirmation y sera envoyé : l'adresse n'est enregistrée qu'après votre clic.
+              </div>
+            </div>
+
+            <Honeypot value={website} onChange={setWebsite} />
+
             {err && (
-              <div
+              <div role="alert"
                 className="row items-center gap-2"
                 style={{
                   padding: "12px 14px",

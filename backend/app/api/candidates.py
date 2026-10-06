@@ -18,8 +18,9 @@ router = APIRouter()
 def list_candidates(
     election_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(get_current_user)],
+    user: Annotated[Student, Depends(get_current_user)],
 ):
+    election_service.get_for_user(db, election_id, user)  # garde d'accès
     return election_service.list_candidates(db, election_id)
 
 
@@ -27,24 +28,27 @@ def list_candidates(
 def get_candidate(
     candidate_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(get_current_user)],
+    user: Annotated[Student, Depends(get_current_user)],
 ):
-    return candidate_service.get_or_404(db, candidate_id)
+    candidate = candidate_service.get_or_404(db, candidate_id)
+    # Un candidat d'une autre classe est « introuvable », comme son élection.
+    election_service.get_for_user(db, candidate.election_id, user)
+    return candidate
 
 
 @router.post("/", response_model=CandidateOut, status_code=201)
 def create_candidate(
     payload: CandidateCreate,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(require_admin)],
+    current: Annotated[Student, Depends(require_admin)],
 ):
-    return candidate_service.create(db, payload)
+    return candidate_service.create(db, payload, actor_id=current.id)
 
 
 @router.delete("/{candidate_id}", status_code=204)
 def delete_candidate(
     candidate_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(require_admin)],
+    current: Annotated[Student, Depends(require_admin)],
 ):
-    candidate_service.delete(db, candidate_id)
+    candidate_service.delete(db, candidate_id, actor_id=current.id)

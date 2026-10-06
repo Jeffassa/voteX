@@ -19,7 +19,7 @@ import unicodedata
 
 
 MATRICULE_PATTERN = re.compile(r"^\d{2}-ESATIC\d{4}[A-Z]{2}$")
-MATRICULE_FORMAT_HUMAN = "XX-ESATICNNNNAA — ex: 22-ESATIC0273DN"
+MATRICULE_FORMAT_HUMAN = "XX-ESATICNNNNAA (exemple : 22-ESATIC0273DN)"
 
 
 def is_valid_matricule(value: str) -> bool:

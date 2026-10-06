@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Path, Request
@@ -7,9 +8,9 @@ from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.rate_limit import limiter
-from app.models import Candidate, Election, Student
+from app.models import Election, Student
 from app.schemas.vote import VoteReceipt, VoteRequest, VoteVerification
-from app.services import email_service, vote_service
+from app.services import anchoring_service, ballot_box, email_service, vote_service
 
 
 router = APIRouter()
@@ -28,33 +29,37 @@ def cast(
         db, user=user, election_id=payload.election_id, candidate_id=payload.candidate_id
     )
 
-    # Récupérer les données nécessaires AVANT de quitter le contexte de session
-    # (sinon Lazy load → DetachedInstanceError dans le background task)
     election = db.query(Election).filter(Election.id == payload.election_id).first()
-    candidate = db.query(Candidate).filter(Candidate.id == payload.candidate_id).first()
-    candidate_student = (
-        db.query(Student).filter(Student.id == candidate.student_id).first()
-        if candidate
-        else None
-    )
+    voted_at = datetime.now(timezone.utc)
 
+    # Le reçu n'énonce JAMAIS le choix : ni dans la réponse, ni dans l'e-mail.
+    # Une boîte mail est lisible par le fournisseur, un tiers ou quelqu'un qui
+    # contraint l'électeur — y écrire le candidat, c'est fabriquer une preuve de
+    # vote transférable.
     background_tasks.add_task(
         email_service.send_vote_receipt_email,
         to_email=user.email,
         voter_name=f"{user.first_name} {user.last_name}",
-        election_title=election.title if election else "—",
-        candidate_name=(
-            f"{candidate_student.first_name} {candidate_student.last_name}"
-            if candidate_student
-            else None
-        ),
+        election_title=election.title if election else "Élection",
         vote_hash=vote.vote_hash,
         tx_hash=vote.tx_hash,
         block_number=vote.block_number,
-        created_at=vote.created_at,
+        created_at=voted_at,
     )
 
-    return vote
+    # Brassage de l'urne (s'il y a assez de bulletins), puis ancrage de ce qui
+    # a été versé, sans attendre le prochain balayage.
+    background_tasks.add_task(ballot_box.mix_in_background, payload.election_id)
+    background_tasks.add_task(anchoring_service.sweep)
+
+    return VoteReceipt(
+        id=vote.id,
+        election_id=vote.election_id,
+        vote_hash=vote.vote_hash,
+        tx_hash=vote.tx_hash,
+        block_number=vote.block_number,
+        created_at=voted_at,
+    )
 
 
 @router.get("/me", response_model=list[VoteReceipt])
@@ -66,7 +71,7 @@ def my_votes(
 
 
 @router.get("/verify/{vote_hash}", response_model=VoteVerification)
-@limiter.limit("10/minute")
+@limiter.limit("30/minute")
 def verify(
     request: Request,
     vote_hash: Annotated[str, Path(pattern=r"^0x[a-fA-F0-9]{64}$")],

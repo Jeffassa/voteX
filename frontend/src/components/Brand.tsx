@@ -9,7 +9,7 @@ export function SmartVoteLogo({ size = 32 }: { size?: number }) {
       className="logo"
       style={{ width: size, height: size, borderRadius: size * 0.28 }}
     >
-      <svg width={size * 0.62} height={size * 0.62} viewBox="0 0 24 24" fill="none">
+      <svg aria-hidden="true" focusable="false" width={size * 0.62} height={size * 0.62} viewBox="0 0 24 24" fill="none">
         <rect x="3" y="4" width="18" height="16" rx="2.5" fill="white" opacity="0.08" />
         <rect
           x="3" y="4" width="18" height="16" rx="2.5"

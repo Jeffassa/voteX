@@ -20,6 +20,10 @@ build/
 .cache/
 *.local
 
+# Cache incrémental de TypeScript — régénéré à chaque compilation, sans valeur
+# partagée, et il salissait le diff après chaque build.
+*.tsbuildinfo
+
 # Hardhat
 contracts/cache/
 contracts/artifacts/
@@ -46,3 +50,8 @@ npm-debug.log*
 # DB
 *.sqlite
 *.db
+
+# Playwright : rapports et artefacts d'exécution
+/frontend/playwright-report/
+/frontend/test-results/
+monitoring/alertmanager/smtp_password

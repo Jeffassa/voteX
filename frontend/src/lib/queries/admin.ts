@@ -12,6 +12,8 @@ export const adminKeys = {
 export interface AuditEvent {
   id: string;
   actor_id: string | null;
+  /** Prénom et nom de l'auteur ; absent si l'action vient du système ou d'un compte supprimé. */
+  actor_name?: string | null;
   action: string;
   target_type: string | null;
   target_id: string | null;
@@ -89,6 +91,24 @@ export function useActivateStudent() {
   const qc = useQueryClient();
   return useMutation<any, Error, string>({
     mutationFn: async (id) => (await api.patch(`/api/admin/activate-student/${id}`)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: adminKeys.pendingStudents });
+      qc.invalidateQueries({ queryKey: ["students"] });
+    },
+  });
+}
+
+/**
+ * Refuse une revendication et libère le compte.
+ *
+ * Pendant naturel de `useActivateStudent` : sans elle, l'administrateur ne
+ * pourrait qu'accepter, et un compte revendiqué à tort resterait bloqué pour
+ * son titulaire légitime.
+ */
+export function useRejectClaim() {
+  const qc = useQueryClient();
+  return useMutation<any, Error, string>({
+    mutationFn: async (id) => (await api.patch(`/api/admin/reject-claim/${id}`)).data,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: adminKeys.pendingStudents });
       qc.invalidateQueries({ queryKey: ["students"] });

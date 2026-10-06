@@ -5,6 +5,7 @@ from app.models.candidate import Candidate
 from app.models.vote import SealedBallot, Vote, VoterRecord
 from app.models.audit import AuditEvent, AuditAction
 from app.models.refresh_token import RefreshToken
+from app.models.maintenance import MaintenanceRun
 
 __all__ = [
     "ClassRoom",
@@ -17,4 +18,5 @@ __all__ = [
     "AuditEvent",
     "AuditAction",
     "RefreshToken",
+    "MaintenanceRun",
 ]

@@ -95,6 +95,37 @@ services:
         uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-server-header --reload --reload-exclude '*.pyc' --reload-exclude '__pycache__/*' 
       "
 
+  # Purge des données arrivées en fin de conservation (politique de
+  # confidentialité) : une fois par mois civil, le 1er à 03:00 UTC, avec
+  # rattrapage si le service était arrêté. Même image que l'API.
+  # En production : PURGE_DATABASE_URL = rôle de migration (smartvote_migration),
+  # le rôle applicatif n'ayant pas le droit de supprimer participations et
+  # journal d'audit.
+  purge:
+    build:
+      context: ./backend
+    container_name: smartvote-purge
+    environment:
+      DATABASE_URL: ${PURGE_DATABASE_URL:-postgresql://smartvote:smartvote@postgres:5432/smartvote}
+      ENVIRONMENT: development
+      JWT_SECRET: ${JWT_SECRET:-Z9k4vPq8rMnL3jH7sB2dX5cF1gW6tY0aQiE4uN8RsoVbPyDmCkJfAhXgZrTwLnQpDEV}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # Le backend applique les migrations au démarrage, dont la table
+      # maintenance_runs dont le planificateur a besoin.
+      backend:
+        condition: service_started
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/scripts:/app/scripts
+    command: python -m scripts.purge_scheduler
+    # Pas de serveur HTTP ici : le healthcheck de l'image (curl /health) ne
+    # s'applique pas.
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./frontend

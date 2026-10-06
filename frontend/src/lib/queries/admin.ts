@@ -12,6 +12,8 @@ export const adminKeys = {
 export interface AuditEvent {
   id: string;
   actor_id: string | null;
+  /** Prénom et nom de l'auteur ; absent si l'action vient du système ou d'un compte supprimé. */
+  actor_name?: string | null;
   action: string;
   target_type: string | null;
   target_id: string | null;

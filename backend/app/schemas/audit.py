@@ -9,6 +9,7 @@ class AuditEventOut(BaseModel):
 
     id: UUID
     actor_id: UUID | None
+    actor_name: str | None = None
     action: str
     target_type: str | None
     target_id: str | None

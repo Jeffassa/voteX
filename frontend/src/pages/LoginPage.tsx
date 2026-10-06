@@ -110,7 +110,12 @@ export default function LoginPage() {
           padding: "48px 56px",
           display: "flex",
           flexDirection: "column",
-          position: "relative",
+          // Collé à la hauteur de l'écran : quand le formulaire dépasse (petit
+          // écran, zoom), le texte du panneau ne glisse plus sous le pli.
+          position: "sticky",
+          top: 0,
+          height: "100vh",
+          alignSelf: "start",
           overflow: "hidden",
         }}
       >
@@ -123,10 +128,11 @@ export default function LoginPage() {
             backgroundSize: "24px 24px",
           }}
         />
-        <div style={{ position: "relative" }}>
+        {/* brand-inverse : sans lui, « ESATIC » s'écrivait en marine sur marine. */}
+        <div className="brand-inverse" style={{ position: "relative" }}>
           <Brand />
         </div>
-        <div className="sv-auth-tagline" style={{ position: "relative", marginTop: "auto", maxWidth: 440, textAlign: "left" }}>
+        <div className="sv-auth-tagline" style={{ position: "relative", margin: "auto", width: "100%", maxWidth: 440, textAlign: "left" }}>
           <h2 style={{ fontSize: 34, fontWeight: 600, letterSpacing: "-0.03em", lineHeight: 1.1, margin: 0 }}>
             Élections des chefs de classe
           </h2>
@@ -157,7 +163,7 @@ export default function LoginPage() {
           <button
             className="btn btn-ghost btn-sm"
             onClick={() => navigate("/")}
-            style={{ marginBottom: 24, marginLeft: -10 }}
+            style={{ marginBottom: 16, marginLeft: -10 }}
           >
             <ArrowLeft size={14} /> Retour à l'accueil
           </button>
@@ -181,7 +187,7 @@ export default function LoginPage() {
           <form
             onSubmit={submit}
             noValidate
-            style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 18, textAlign: "left" }}
+            style={{ marginTop: 24, display: "flex", flexDirection: "column", gap: 16, textAlign: "left" }}
           >
             <div>
               <label className="label" htmlFor="login-f1" style={{ textAlign: "left", display: "block" }}>Matricule</label>
@@ -204,7 +210,16 @@ export default function LoginPage() {
               </div>
             </div>
             <div>
-              <label className="label" htmlFor="login-f2" style={{ textAlign: "left", display: "block" }}>Mot de passe</label>
+              <div className="row items-center" style={{ justifyContent: "space-between" }}>
+                <label className="label" htmlFor="login-f2" style={{ textAlign: "left", display: "block" }}>Mot de passe</label>
+                <Link
+                  to="/forgot-password"
+                  className="label"
+                  style={{ fontWeight: 400, color: "var(--ink-500)", textDecoration: "underline" }}
+                >
+                  Mot de passe oublié ?
+                </Link>
+              </div>
               <div className="input-wrap">
                 <span className="input-icon"><Lock size={16} /></span>
                 <input id="login-f2"
@@ -256,18 +271,13 @@ export default function LoginPage() {
               {login.isPending ? "Authentification…" : (<>Se connecter <ArrowRight size={16} /></>)}
             </button>
 
-            <div style={{ textAlign: "center", marginTop: 4 }}>
-              <Link
-                to="/forgot-password"
-                style={{ fontSize: 13, color: "var(--ink-500)", textDecoration: "underline" }}
-              >
-                Mot de passe oublié ?
-              </Link>
-            </div>
+            {/* Les deux façons d'entrer, l'une sous l'autre ; l'activation,
+                qui ne sert qu'une fois, ferme la page. */}
+            <GoogleSignInButton />
 
             <div
               style={{
-                textAlign: "center", marginTop: 12, paddingTop: 16,
+                textAlign: "center", marginTop: 8, paddingTop: 16,
                 borderTop: "1px solid var(--border)",
               }}
             >
@@ -284,8 +294,6 @@ export default function LoginPage() {
                 Activer mon compte étudiant
               </Link>
             </div>
-
-            <GoogleSignInButton />
           </form>
         </div>
       </div>

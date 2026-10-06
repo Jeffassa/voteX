@@ -238,7 +238,12 @@ export default function RegisterPage() {
           padding: "48px 56px",
           display: "flex",
           flexDirection: "column",
-          position: "relative",
+          // Collé à la hauteur de l'écran : quand le formulaire dépasse (petit
+          // écran, zoom), le texte du panneau ne glisse plus sous le pli.
+          position: "sticky",
+          top: 0,
+          height: "100vh",
+          alignSelf: "start",
           overflow: "hidden",
         }}
       >
@@ -251,10 +256,11 @@ export default function RegisterPage() {
             backgroundSize: "24px 24px",
           }}
         />
-        <div style={{ position: "relative" }}>
+        {/* brand-inverse : sans lui, « ESATIC » s'écrivait en marine sur marine. */}
+        <div className="brand-inverse" style={{ position: "relative" }}>
           <Brand />
         </div>
-        <div className="sv-auth-tagline" style={{ position: "relative", marginTop: "auto", maxWidth: 460, textAlign: "left" }}>
+        <div className="sv-auth-tagline" style={{ position: "relative", margin: "auto", width: "100%", maxWidth: 460, textAlign: "left" }}>
           <h2
             style={{
               fontSize: 34,

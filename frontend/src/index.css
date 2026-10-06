@@ -198,6 +198,8 @@ a { color: inherit; text-decoration: none; }
 .brand-inverse .brand .name { color: white; }
 .brand-inverse .brand .name .tag { color: rgba(255, 255, 255, 0.75); }
 .brand-inverse .brand .logo { background: rgba(255, 255, 255, 0.08); }
+/* Titre du panneau des pages d'accès : deux lignes égales plutôt qu'un mot seul. */
+.sv-auth-tagline h2 { text-wrap: balance; }
 
 /* Buttons */
 .btn {
@@ -238,6 +240,16 @@ a { color: inherit; text-decoration: none; }
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 .input::placeholder { color: var(--ink-400); }
+/* Saisie automatique du navigateur : le champ garde sa couleur. Chrome
+   imposait un fond bleu clair qui jurait avec le reste du formulaire. */
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover {
+  -webkit-text-fill-color: var(--ink-900);
+  caret-color: var(--ink-900);
+  box-shadow: 0 0 0 1000px white inset;
+  transition: background-color 9999s ease-out 0s;
+}
+.input:-webkit-autofill:focus { box-shadow: 0 0 0 1000px white inset, 0 0 0 3px rgba(44, 87, 144, 0.12); }
 .input:focus { outline: none; border-color: var(--navy-600); box-shadow: 0 0 0 3px rgba(44, 87, 144, 0.12); }
 .input.has-icon { padding-left: 40px; }
 .input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-400); pointer-events: none; }
@@ -441,17 +453,23 @@ a { color: inherit; text-decoration: none; }
   /* Pages d'auth (login / register) — split → empilé, panneau navy compacté en bandeau */
   .sv-auth-split {
     grid-template-columns: 1fr !important;
-    min-height: auto;
+    /* !important : la hauteur d'écran posée en ligne laissait un grand vide
+       entre le bandeau et le formulaire, centré dans l'espace restant. */
+    min-height: auto !important;
   }
   .sv-auth-side {
     padding: 24px 20px !important;
     order: -1;
+    /* Bandeau en haut de page : ni collé, ni à la hauteur de l'écran. */
+    position: relative !important;
+    height: auto !important;
   }
   .sv-auth-side .sv-auth-tagline {
     display: none; /* on cache le titre marketing pour libérer de l'espace */
   }
   .sv-auth-form {
     padding: 24px 20px !important;
+    align-items: flex-start !important;
   }
 
   /* Page Résultats — grille 3 cols → empilée */

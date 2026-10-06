@@ -456,22 +456,26 @@ function CreateStudentModal({
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("student12345");
   const [classId, setClassId] = useState(defaultClassId || "");
   const create = useCreateStudent();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     try {
+      const address = email.trim();
       await create.mutateAsync({
         matricule: matricule.trim(),
         first_name: firstName.trim(),
         last_name: lastName.trim(),
-        email: email.trim(),
-        password,
-        class_id: classId || undefined,
+        email: address || undefined,
+        class_id: classId,
       });
-      toast.success("Étudiant inscrit");
+      toast.success(
+        address
+          ? `Compte créé. Le code d'activation a été envoyé à ${address}.`
+          : "Compte créé. Sans adresse, l'étudiant passera par la salle d'attente pour l'activer.",
+        { duration: 6000 }
+      );
       onClose();
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || "Erreur lors de l'inscription");
@@ -498,21 +502,19 @@ function CreateStudentModal({
           </div>
           <div>
             <label className="label" htmlFor="students-f3">Matricule ESATIC</label>
-            <input id="students-f3" required className="input mono" value={matricule} onChange={(e) => setMatricule(e.target.value)} placeholder="20240412" />
+            <input id="students-f3" required className="input mono" value={matricule} onChange={(e) => setMatricule(e.target.value)} placeholder="22-ESATIC0273DN" />
           </div>
           <div>
-            <label className="label" htmlFor="students-f4">Email</label>
-            <input id="students-f4" required type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="prenom.nom@esatic.ci" />
-          </div>
-          <div>
-            <label className="label" htmlFor="students-f5">Mot de passe initial</label>
-            <input id="students-f5" required className="input mono" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} />
-            <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>L'étudiant pourra le changer à sa première connexion.</div>
+            <label className="label" htmlFor="students-f4">E-mail de l'école (facultatif)</label>
+            <input id="students-f4" type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="prenom.nom@esatic.edu.ci" aria-describedby="students-f4-hint" />
+            <div id="students-f4-hint" className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+              Le code d'activation y est envoyé. Aucun mot de passe n'est créé : seul l'étudiant choisit le sien.
+            </div>
           </div>
           <div>
             <label className="label" htmlFor="students-f6">Classe</label>
-            <select id="students-f6" className="input" value={classId} onChange={(e) => setClassId(e.target.value)}>
-              <option value="">Aucune classe</option>
+            <select id="students-f6" required className="input" value={classId} onChange={(e) => setClassId(e.target.value)}>
+              <option value="" disabled>Choisir une classe</option>
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>{c.level} {c.name}</option>
               ))}
@@ -540,23 +542,32 @@ function EditStudentModal({
 }) {
   const [firstName, setFirstName] = useState(student.first_name);
   const [lastName, setLastName] = useState(student.last_name);
-  const [email, setEmail] = useState(student.email);
+  const [email, setEmail] = useState(student.email ?? "");
   const [classId, setClassId] = useState(student.class_id || "");
   const update = useUpdateStudent();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    const address = email.trim();
+    const emailChanged = address !== "" && address.toLowerCase() !== (student.email ?? "").toLowerCase();
     try {
-      await update.mutateAsync({
+      const saved = await update.mutateAsync({
         id: student.id,
         patch: {
           first_name: firstName.trim(),
           last_name: lastName.trim(),
-          email: email.trim(),
+          ...(emailChanged ? { email: address } : {}),
           class_id: classId || null,
         },
       });
-      toast.success("Étudiant mis à jour");
+      // Compte déjà activé : l'adresse ne change qu'une fois confirmée par
+      // son titulaire (elle ouvre la connexion Google et la réinitialisation).
+      toast.success(
+        emailChanged && saved.pending_email
+          ? `Lien de confirmation envoyé à ${saved.pending_email}. L'adresse changera quand son titulaire l'aura confirmée.`
+          : "Étudiant mis à jour",
+        { duration: emailChanged ? 7000 : 4000 }
+      );
       onClose();
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || "Erreur");
@@ -586,7 +597,7 @@ function EditStudentModal({
           </div>
           <div>
             <label className="label" htmlFor="students-f9">Email</label>
-            <input id="students-f9" required type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input id="students-f9" type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div>
             <label className="label" htmlFor="students-f10">Classe</label>

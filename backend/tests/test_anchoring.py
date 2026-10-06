@@ -9,7 +9,7 @@ import pytest
 
 from app.models import Vote
 from app.models.election import ElectionStatus
-from app.services import anchoring_service, blockchain, election_service, vote_service
+from app.services import anchoring_service, ballot_box, blockchain, election_service, vote_service
 from app.services.blockchain import AnchorOutcome
 
 
@@ -31,9 +31,12 @@ def chain(monkeypatch):
 
 
 def _vote(db, voter, election):
-    return vote_service.cast_vote(
+    """Vote, puis brassage de l'urne : l'ancrage porte sur les bulletins versés."""
+    receipt = vote_service.cast_vote(
         db, user=voter, election_id=election.id, candidate_id=election.candidates[0].id
     )
+    ballot_box.mix(db, election.id, final=True)
+    return db.query(Vote).filter(Vote.vote_hash == receipt.vote_hash).one()
 
 
 def test_casting_a_vote_never_touches_the_chain(db, voter, open_election, monkeypatch):

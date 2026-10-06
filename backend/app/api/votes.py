@@ -10,7 +10,7 @@ from app.core.database import get_db
 from app.core.rate_limit import limiter
 from app.models import Election, Student
 from app.schemas.vote import VoteReceipt, VoteRequest, VoteVerification
-from app.services import anchoring_service, email_service, vote_service
+from app.services import anchoring_service, ballot_box, email_service, vote_service
 
 
 router = APIRouter()
@@ -47,8 +47,9 @@ def cast(
         created_at=voted_at,
     )
 
-    # Ancrage sans attendre le prochain balayage ; sans effet si la chaîne n'est
-    # pas configurée.
+    # Brassage de l'urne (s'il y a assez de bulletins), puis ancrage de ce qui
+    # a été versé, sans attendre le prochain balayage.
+    background_tasks.add_task(ballot_box.mix_in_background, payload.election_id)
     background_tasks.add_task(anchoring_service.sweep)
 
     return VoteReceipt(

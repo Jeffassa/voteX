@@ -6,6 +6,7 @@
 - change_password : changement self-service
 """
 
+import hmac
 import logging
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
@@ -54,11 +55,21 @@ def register_student(
                 "« mot de passe oublié »."
             )
         
-        # Le compte existe mais n'est pas activé : c'est un compte importé à revendiquer
+        # Le compte existe mais n'est pas activé : c'est un compte importé à revendiquer.
+        #
+        # Le code (6 caractères) se devinerait en quelques millions d'essais :
+        # la limite par adresse IP ne l'empêche pas, un attaquant en change à
+        # volonté. Les essais sont donc comptés sur le COMPTE, avec les paliers
+        # de la connexion — le compte n'a pas encore de mot de passe, ces
+        # compteurs sont libres. Quelques dizaines d'essais par jour au plus.
+        _raise_if_locked(user, error=ValidationError)
         if user.activation_code:
             if not payload.activation_code:
                 raise ValidationError("Le code d'activation est requis pour ce compte pré-importé.")
-            if user.activation_code != payload.activation_code.strip().upper():
+            if not hmac.compare_digest(
+                user.activation_code.encode(), payload.activation_code.strip().upper().encode()
+            ):
+                _register_failure(db, user)
                 raise ValidationError("Code d'activation invalide.")
                 
         # Vérification du nom
@@ -77,9 +88,17 @@ def register_student(
         # un compte puis répondre 409.
         if payload.email:
             email_change_service.ensure_available(db, payload.email, user_id=user.id)
+        # Adresse choisie par le demandeur pour recevoir le code : le code
+        # revenu prouve qu'il en a l'accès, elle deviendra celle du compte.
+        claimed_email = user.pending_email if user.activation_code and not user.identity_verified else None
+        if claimed_email:
+            email_change_service.ensure_available(db, claimed_email, user_id=user.id)
 
         # Mise à jour du compte importé
         user.password_hash = hash_password(payload.password)
+        user.activation_code = None
+        user.failed_login_count = 0
+        user.locked_until = None
 
         # Le compte ne devient utilisable QUE si l'identité a été confirmée par
         # un canal que l'école contrôle : adresse issue du fichier d'import, ou
@@ -91,6 +110,11 @@ def register_student(
         # une étape manuelle plutôt qu'un compte pris par le premier venu.
         if not user.identity_verified:
             user.is_active = False
+            # Le compte reste en salle d'attente : l'adresse n'ouvre rien tant
+            # qu'un administrateur n'a pas tranché, et un refus la retire.
+            if claimed_email:
+                user.email = claimed_email
+                user.pending_email = None
             logger.info(
                 "register: revendication non vérifiée pour matricule=%s — mise en attente",
                 user.matricule,
@@ -154,30 +178,35 @@ async def send_activation_code(db: Session, payload: ActivationCodeRequest, back
     activation_code = secrets.token_hex(3).upper() # 6 chars
     user.activation_code = activation_code
 
-    # Le code part TOUJOURS vers l'adresse déjà rattachée au compte quand il y
-    # en a une. Sinon, matricule + nom (des informations qui circulent sur les
-    # listes de classe) suffiraient à rediriger le code vers une boîte tierce,
-    # puis à revendiquer le compte via /register : détournement complet.
-    # Un compte fraîchement importé n'a pas d'email : là, on enregistre celui
-    # que l'étudiant fournit.
-    destination = user.email or payload.email
-    if not user.email:
+    # Le code part TOUJOURS vers l'adresse de l'école quand le compte en a une
+    # (fichier d'import, ou saisie par un administrateur). Sinon, matricule +
+    # nom (des informations qui circulent sur les listes de classe)
+    # suffiraient à rediriger le code vers une boîte tierce, puis à revendiquer
+    # le compte via /register : détournement complet.
+    if user.email and user.identity_verified:
+        destination = user.email
+        if email_change_service.normalize(user.email) != email_change_service.normalize(payload.email):
+            logger.warning(
+                "activation: email divergent pour matricule=%s — envoi vers l'adresse en base",
+                user.matricule,
+            )
+        # Recevoir le code prouve l'accès à la boîte que l'école détenait,
+        # donc l'identité.
+        user.pending_email = None
+    else:
         # Aucune adresse connue de l'école : le demandeur choisit la boîte qui
         # recevra le code. Celui-ci ne prouve donc RIEN sur son identité — il
         # prouve seulement qu'il sait lire ses propres messages. La revendication
         # devra être validée par un administrateur.
-        user.email = payload.email
+        #
+        # L'adresse n'est surtout PAS écrite dans `email` : à la demande
+        # suivante, elle y aurait passé pour celle de l'école, et redemander un
+        # code suffisait à obtenir une identité « vérifiée » — donc un compte
+        # activé sans passer par la salle d'attente. Elle attend ici ; /register
+        # la rattache au compte, toujours en attente, quand le code revient.
+        destination = email_change_service.normalize(payload.email)
+        user.pending_email = destination
         user.identity_verified = False
-    elif user.email.lower() != payload.email.lower():
-        logger.warning(
-            "activation: email divergent pour matricule=%s — envoi vers l'adresse en base",
-            user.matricule,
-        )
-        # Le code part vers l'adresse que l'école détenait : le recevoir prouve
-        # l'accès à cette boîte, donc l'identité.
-        user.identity_verified = True
-    else:
-        user.identity_verified = True
 
     db.commit()
 
@@ -223,6 +252,19 @@ def _register_failure(db: Session, user: Student) -> None:
     db.commit()
 
 
+def _raise_if_locked(user: Student, *, error: type[Exception] = UnauthorizedError) -> None:
+    """Refuse toute tentative tant que le verrou du compte court."""
+    locked_until = user.locked_until
+    if locked_until is None:
+        return
+    if locked_until.tzinfo is None:  # SQLite rend un datetime naïf
+        locked_until = locked_until.replace(tzinfo=timezone.utc)
+    if locked_until > datetime.now(timezone.utc):
+        reste = int((locked_until - datetime.now(timezone.utc)).total_seconds() // 60) + 1
+        hint = ", ou utilisez « mot de passe oublié »" if error is UnauthorizedError else ""
+        raise error(f"Trop de tentatives. Réessayez dans {reste} minute(s){hint}.")
+
+
 def authenticate(db: Session, matricule: str, password: str) -> Student:
     """Authentifie un utilisateur — messages d'erreur différenciés.
 
@@ -243,16 +285,7 @@ def authenticate(db: Session, matricule: str, password: str) -> Student:
     # Le verrou porte sur le COMPTE visé, pas sur l'adresse IP : dans une salle
     # informatique, toute une promotion sort par la même IP publique. Une limite
     # par IP y punirait les voisins de l'attaquant plutôt que l'attaquant.
-    locked_until = user.locked_until
-    if locked_until is not None:
-        if locked_until.tzinfo is None:  # SQLite rend un datetime naïf
-            locked_until = locked_until.replace(tzinfo=timezone.utc)
-        if locked_until > datetime.now(timezone.utc):
-            reste = int((locked_until - datetime.now(timezone.utc)).total_seconds() // 60) + 1
-            raise UnauthorizedError(
-                f"Trop de tentatives. Réessayez dans {reste} minute(s), "
-                "ou utilisez « mot de passe oublié »."
-            )
+    _raise_if_locked(user)
 
     if not user.is_active:
         raise ForbiddenError("Compte désactivé. Contacte l'administration.")

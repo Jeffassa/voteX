@@ -117,8 +117,8 @@ async def test_a_code_sent_to_a_self_chosen_address_proves_nothing(db, classroom
 
 
 async def test_a_code_sent_to_the_known_address_proves_identity(db, classroom):
-    """Adresse déjà en base : recevoir le code prouve l'accès à cette boîte."""
-    _importe(db, classroom, email="aicha@esatic.edu.ci")
+    """Adresse issue de l'import : recevoir le code prouve l'accès à cette boîte."""
+    _importe(db, classroom, email="aicha@esatic.edu.ci", identity_verified=True)
 
     await auth_service.send_activation_code(
         db,
@@ -138,6 +138,54 @@ async def test_a_code_sent_to_the_known_address_proves_identity(db, classroom):
         db, _revendication(activation_code=cible.activation_code)
     )
     assert user.is_active is True
+
+
+async def test_asking_twice_for_a_code_does_not_skip_the_waiting_room(db, classroom):
+    """L'attaque de l'audit : deux demandes avec sa propre adresse, puis le code.
+
+    Avant correction, la seconde demande trouvait l'adresse du pirate « déjà en
+    base », la prenait pour celle de l'école, et le compte s'activait sans
+    validation humaine.
+    """
+    _importe(db, classroom, email=None, code="ZZZZZZ")
+    demande = ActivationCodeRequest(
+        matricule="22-ESATIC0273DN", first_name="Aïcha", last_name="N'Guessan",
+        email="pirate@gmail.com",
+    )
+    await auth_service.send_activation_code(db, demande, BackgroundTasks())
+    await auth_service.send_activation_code(db, demande, BackgroundTasks())
+    cible = db.query(Student).filter(Student.matricule == "22-ESATIC0273DN").first()
+
+    user = auth_service.register_student(db, _revendication(activation_code=cible.activation_code))
+
+    assert user.is_active is False, "la revendication doit attendre un administrateur"
+    assert user.identity_verified is False
+    # Le code revenu prouve l'accès à cette boîte : elle devient l'adresse du
+    # compte, qui n'ouvre rien tant que le compte reste en attente.
+    assert user.email == "pirate@gmail.com"
+
+
+def test_guessing_the_activation_code_locks_the_account(db, classroom):
+    """Le code se devinerait : les essais sont comptés sur le compte, pas par IP."""
+    from app.core.exceptions import ValidationError
+
+    _importe(db, classroom, email="aicha@esatic.edu.ci", identity_verified=True, code="ABC123")
+    for essai in range(5):
+        with pytest.raises(ValidationError, match="invalide"):
+            auth_service.register_student(db, _revendication(activation_code=f"00000{essai}"))
+
+    # Verrouillé : même le bon code est refusé tant que le verrou court.
+    with pytest.raises(ValidationError, match="Trop de tentatives"):
+        auth_service.register_student(db, _revendication(activation_code="ABC123"))
+
+    cible = db.query(Student).filter(Student.matricule == "22-ESATIC0273DN").first()
+    assert cible.password_hash is None
+    cible.locked_until = datetime.now(timezone.utc) - timedelta(seconds=1)
+    db.commit()
+    user = auth_service.register_student(db, _revendication(activation_code="abc123"))
+    assert user.is_active is True
+    assert user.activation_code is None, "un code consommé ne doit pas rester en base"
+    assert user.failed_login_count == 0 and user.locked_until is None
 
 
 # ───────────────────────── essais répétés ─────────────────────────

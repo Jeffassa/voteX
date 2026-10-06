@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, Uuid, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -52,3 +52,27 @@ class Vote(Base):
 
     election = relationship("Election", back_populates="votes")
     candidate = relationship("Candidate", back_populates="votes")
+
+
+class SealedBallot(Base):
+    """Bulletin chiffré, déposé dans l'urne en attendant le brassage.
+
+    Il est écrit dans la même transaction que la participation (`VoterRecord`),
+    ce qui garantit qu'aucun électeur n'est compté sans son bulletin, ni
+    l'inverse. Mais PostgreSQL marque chaque ligne de l'identifiant de la
+    transaction qui l'a écrite (colonne système `xmin`) : un bulletin écrit en
+    clair à côté de la participation restait relié à son auteur par une simple
+    jointure. Ici, le choix et le hachage sont chiffrés ; `ballot_box` les
+    déchiffre plus tard, par lots tirés au hasard, dans une autre transaction.
+
+    Aucune date, aucun ordre : rien ne doit permettre de suivre un bulletin
+    de l'urne jusqu'à la table `votes`.
+    """
+
+    __tablename__ = "sealed_ballots"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    election_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("elections.id"), nullable=False, index=True
+    )
+    sealed: Mapped[str] = mapped_column(Text, nullable=False)

@@ -133,8 +133,9 @@ export default function ResultsPage() {
               <div className="mt-6 flex items-start gap-3 rounded-xl border border-border bg-muted p-4 text-sm text-[var(--ink-700)]">
                 <EyeOff size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-[var(--ink-500)]" />
                 <p className="m-0 leading-relaxed">
-                  Les scores restent masqués tant que le scrutin est ouvert, pour ne pas influencer
-                  ceux qui n'ont pas encore voté. Ils seront publiés à la clôture.
+                  Les scores restent masqués pour tous, administrateurs compris, tant que le scrutin
+                  est ouvert : ils ne doivent ni influencer ceux qui n'ont pas encore voté, ni révéler
+                  le choix de ceux qui viennent de voter. Ils seront publiés à la clôture.
                 </p>
               </div>
             ) : rows.length === 0 ? (

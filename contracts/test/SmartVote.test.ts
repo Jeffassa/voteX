@@ -64,6 +64,15 @@ describe("SmartVote", () => {
     expect(await sv.verifyVote(1, h)).to.equal(true);
   });
 
+  it("refuse de rouvrir une élection close", async () => {
+    const { sv } = await deploy();
+    const now = await time.latest();
+    await sv.createElection("Test", now, now + 3600);
+    await sv.openElection(1);
+    await sv.closeElection(1);
+    await expect(sv.openElection(1)).to.be.revertedWith("SmartVote: election closed");
+  });
+
   it("refuse tout hachage une fois l'élection close", async () => {
     const { sv } = await deploy();
     const now = await time.latest();

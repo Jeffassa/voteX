@@ -5,7 +5,10 @@ import { authKeys } from "@/lib/queries/auth";
 import type { ImportReport, Me, StudentBrief, UserRole } from "@/types/api";
 
 export interface AdminStudent extends StudentBrief {
-  email: string;
+  email: string | null;
+  /** Nouvelle adresse en attente de confirmation par son titulaire. */
+  pending_email?: string | null;
+  is_activated?: boolean;
   role: UserRole;
   class_id: string | null;
   is_active: boolean;
@@ -38,19 +41,22 @@ export function useStudents({ class_id, search, enabled = true }: ListFilters = 
   });
 }
 
-interface RegisterPayload {
+/**
+ * Compte créé par un administrateur, comme une ligne d'import : sans mot de
+ * passe. L'étudiant l'active avec le code envoyé à l'adresse de l'école.
+ */
+interface CreateStudentPayload {
   matricule: string;
   first_name: string;
   last_name: string;
-  email: string;
-  password: string;
-  class_id?: string;
+  email?: string;
+  class_id: string;
 }
 
 export function useCreateStudent() {
   const qc = useQueryClient();
-  return useMutation<AdminStudent, Error, RegisterPayload>({
-    mutationFn: async (payload) => (await api.post("/api/auth/register", payload)).data,
+  return useMutation<AdminStudent, Error, CreateStudentPayload>({
+    mutationFn: async (payload) => (await api.post("/api/students/", payload)).data,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: studentKeys.all });
     },

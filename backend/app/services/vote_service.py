@@ -1,7 +1,8 @@
 import logging
 import secrets
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -11,14 +12,29 @@ from app.models import Candidate, Election, Student, Vote, VoterRecord
 from app.models.election import ElectionStatus
 from app.models.audit import AuditAction
 from app.schemas.vote import VoteVerification
-from app.services import audit_service
+from app.services import audit_service, ballot_box
 from app.services.blockchain import compute_vote_hash
 
 
 logger = logging.getLogger(__name__)
 
 
-def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UUID | None = None) -> Vote:
+@dataclass(frozen=True)
+class CastBallot:
+    """Ce que l'électeur reçoit : de quoi vérifier son bulletin, rien de son choix.
+
+    `id` est un identifiant de reçu, propre à cette réponse : il ne désigne
+    aucune ligne en base (le bulletin, lui, attend dans l'urne chiffrée).
+    """
+
+    id: UUID
+    election_id: UUID
+    vote_hash: str
+    tx_hash: str | None = None
+    block_number: int | None = None
+
+
+def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UUID | None = None) -> CastBallot:
     election = db.query(Election).filter(Election.id == election_id).first()
     if not election:
         raise NotFoundError("Élection introuvable")
@@ -61,23 +77,17 @@ def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UU
     # et ne laisse plus de hachage sans bulletin.
     vote_hash = compute_vote_hash(str(user.id), str(election_id), str(candidate_id), nonce)
 
-    # Transaction atomique : VoterRecord + Vote créés ensemble ou rien du tout
+    # Transaction atomique : la participation et le bulletin, ensemble ou rien.
+    # Le bulletin part CHIFFRÉ dans l'urne, pas dans `votes` : écrit en clair
+    # dans la même transaction que la participation, il en partageait le
+    # `xmin` PostgreSQL, et une jointure sur cette colonne désignait son
+    # auteur. Le brassage (ballot_box.mix) le versera plus tard dans `votes`.
     try:
         with db.begin_nested():
-            # 1. Enregistre la participation (découplée de l'opinion exprimée)
-            voter_record = VoterRecord(
-                election_id=election_id,
-                student_id=user.id,
+            db.add(VoterRecord(election_id=election_id, student_id=user.id))
+            ballot_box.deposit(
+                db, election_id=election_id, candidate_id=candidate_id, vote_hash=vote_hash
             )
-            db.add(voter_record)
-
-            # 2. Enregistre le bulletin anonyme
-            vote = Vote(
-                election_id=election_id,
-                candidate_id=candidate_id,
-                vote_hash=vote_hash,
-            )
-            db.add(vote)
 
         db.commit()
     except IntegrityError as exc:
@@ -89,8 +99,6 @@ def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UU
             "vote refusé pour user=%s election=%s : %s", user.id, election_id, exc.orig
         )
         raise ConflictError("Vous avez déjà voté pour cette élection")
-
-    db.refresh(vote)
 
     # Audit (best-effort — on ne trace que le fait de voter, rien qui identifie le bulletin)
     audit_service.record(
@@ -104,7 +112,7 @@ def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UU
         # l'électeur à son choix.
         details=None,
     )
-    return vote
+    return CastBallot(id=uuid4(), election_id=election_id, vote_hash=vote_hash)
 
 
 def has_voted(db: Session, *, user: Student, election_id: UUID) -> bool:
@@ -145,6 +153,16 @@ def list_for_user(db: Session, user: Student) -> list[dict]:
 def verify_vote_by_hash(db: Session, *, vote_hash: str) -> VoteVerification:
     vote = db.query(Vote).filter(Vote.vote_hash == vote_hash).first()
     if not vote:
+        pending = ballot_box.find_pending(db, vote_hash)
+        if pending:
+            election = db.query(Election).filter(Election.id == pending.election_id).first()
+            return VoteVerification(
+                valid=True,
+                vote_hash=vote_hash,
+                election_title=election.title if election else None,
+                anchored=False,
+                message="Bulletin enregistré. Il rejoindra le décompte au plus tard à la clôture du scrutin.",
+            )
         return VoteVerification(
             valid=False, vote_hash=vote_hash, message="Aucun vote trouvé pour ce hash"
         )

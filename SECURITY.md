@@ -39,9 +39,15 @@ sécurité, pas une évolution.
    permet de recoller les deux : pas de colonne commune, pas d'horodatage sur
    le bulletin (PostgreSQL fige `now()` par transaction, une jointure sur l'heure
    suffisait), pas de hachage dans le journal d'audit, pas de candidat dans le
-   reçu ni dans l'e-mail, et scores masqués aux électeurs tant que le scrutin est
-   ouvert. Vérifié par `tests/test_schema_migrations.py` et
-   `tests/test_ballot_secrecy.py`.
+   reçu ni dans l'e-mail, et scores masqués à tous, administrateurs compris,
+   tant que le scrutin est ouvert (scores en direct et liste des non-votants
+   désignaient ensemble l'auteur de chaque bulletin). Le bulletin n'est pas
+   non plus écrit dans la transaction de la participation : PostgreSQL marque
+   chaque ligne de l'identifiant de sa transaction (`xmin`), et une jointure
+   sur cette colonne suffisait. Il part chiffré dans une urne, puis un
+   brassage le verse dans `votes` par lots tirés au hasard (voir
+   `services/ballot_box.py`). Vérifié par `tests/test_schema_migrations.py`,
+   `tests/test_ballot_secrecy.py` et `tests/test_ballot_box.py`.
 2. **Unicité du vote.** Un électeur ne peut déposer qu'un bulletin par scrutin,
    garanti par une contrainte d'unicité en base — pas seulement par un contrôle
    applicatif.
@@ -59,8 +65,11 @@ sécurité, pas une évolution.
    par un canal que l'école contrôle — adresse issue du fichier d'import, ou
    code envoyé à une adresse déjà connue d'elle. Sinon, elle attend une décision
    humaine. Un refus **libère** le compte au lieu de le geler, pour que la
-   tentative d'un tiers ne prive pas le titulaire de son scrutin. Vérifié par
-   `tests/test_account_takeover.py`.
+   tentative d'un tiers ne prive pas le titulaire de son scrutin. L'adresse
+   qu'un demandeur fournit pour recevoir le code n'est jamais prise pour celle
+   de l'école, même s'il redemande un code. Les essais de code d'activation
+   sont comptés sur le compte, avec les paliers de l'invariant 7. Vérifié par
+   `tests/test_account_takeover.py` et `tests/test_activation_code.py`.
 7. **Les essais répétés sont sanctionnés par compte, pas par adresse IP.** Sur
    un campus, une promotion entière sort par la même IP : n'y limiter que le
    débit punirait tout le monde sans gêner un attaquant patient. Le compte visé
@@ -86,6 +95,17 @@ sécurité, pas une évolution.
    clic sur le lien envoyé à cette adresse, et la changer depuis le profil exige
    le mot de passe actuel. L'ancienne adresse est prévenue du changement.
    Vérifié par `tests/test_email_change.py`.
+
+11. **Un administrateur gère la liste électorale, pas les comptes des autres.**
+   Il ne modifie, ne désactive ni ne supprime un compte administrateur : seul
+   un super-administrateur le peut. Il ne crée aucun mot de passe (un compte
+   créé à la main s'active par code, comme une ligne d'import), et la nouvelle
+   adresse qu'il saisit sur un compte déjà activé attend la confirmation de son
+   titulaire. Un scrutin ouvert ne se modifie plus : candidats figés, statut qui
+   n'avance que dans un sens (le contrat refuse aussi de rouvrir). Reste hors
+   de portée du code : un administrateur peut importer des électeurs. La revue
+   du journal d'audit, à plusieurs, est la parade. Vérifié par
+   `tests/test_admin_powers.py` et `tests/test_election_integrity.py`.
 
 ## Acheminement des emails — à vérifier avant toute campagne
 
@@ -116,7 +136,8 @@ forme. Le problème disparaît avec un domaine vérifié.
 
 ```bash
 ENVIRONMENT=production      # active les gardes de démarrage
-JWT_SECRET=$(openssl rand -hex 32)
+JWT_SECRET=$(openssl rand -hex 32)   # ne pas changer pendant un scrutin ouvert :
+                                     # il chiffre aussi l'urne (ballot_box)
 COOKIE_SECURE=true          # cookies réservés à HTTPS
 DATABASE_URL=postgresql://…  # jamais SQLite
 METRICS_TOKEN=$(openssl rand -hex 32)   # si METRICS_ENABLED=true

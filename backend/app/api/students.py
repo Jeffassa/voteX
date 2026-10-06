@@ -12,6 +12,7 @@ from app.models import Student
 from app.models.student import UserRole
 from app.schemas.student import (
     MeResponse,
+    StudentCreate,
     StudentOut,
     StudentRoleUpdate,
     StudentSelfUpdate,
@@ -49,6 +50,17 @@ def list_students(
     return q.order_by(Student.last_name, Student.first_name).limit(limit).all()
 
 
+@router.post("/", response_model=StudentOut, status_code=201)
+def create_student(
+    payload: StudentCreate,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[Student, Depends(require_admin)],
+    background_tasks: BackgroundTasks,
+):
+    """Crée un compte à activer ; le code part à l'adresse de l'école."""
+    return student_service.create(db, payload, actor=current, background_tasks=background_tasks)
+
+
 @router.get("/{student_id}", response_model=StudentOut)
 def get_student(
     student_id: UUID,
@@ -64,8 +76,11 @@ def update_student(
     payload: StudentUpdate,
     db: Annotated[Session, Depends(get_db)],
     current: Annotated[Student, Depends(require_admin)],
+    background_tasks: BackgroundTasks,
 ):
-    return student_service.update(db, student_id, payload, actor_id=current.id)
+    return student_service.update(
+        db, student_id, payload, actor=current, background_tasks=background_tasks
+    )
 
 
 @router.delete("/{student_id}", status_code=204)

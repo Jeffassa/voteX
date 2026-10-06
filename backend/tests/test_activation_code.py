@@ -41,19 +41,33 @@ def _request(email: str) -> ActivationCodeRequest:
     )
 
 
-async def test_first_request_registers_the_email(db, imported_student):
+async def test_first_request_keeps_the_address_pending(db, imported_student):
+    """L'adresse du demandeur reçoit le code, mais n'est pas rattachée au compte."""
     tasks = BackgroundTasks()
-    await auth_service.send_activation_code(db, _request("aicha@gmail.com"), tasks)
+    await auth_service.send_activation_code(db, _request("Aicha@gmail.com"), tasks)
 
     db.refresh(imported_student)
-    assert imported_student.email == "aicha@gmail.com"
+    assert imported_student.email is None
+    assert imported_student.pending_email == "aicha@gmail.com"
+    assert imported_student.identity_verified is False
     assert imported_student.activation_code
     assert tasks.tasks[0].kwargs["to_email"] == "aicha@gmail.com"
 
 
+async def test_asking_again_never_turns_the_requester_address_into_a_school_one(db, imported_student):
+    """Redemander un code ne fait pas passer l'adresse du demandeur pour celle de l'école."""
+    for _ in range(3):
+        await auth_service.send_activation_code(db, _request("pirate@gmail.com"), BackgroundTasks())
+
+    db.refresh(imported_student)
+    assert imported_student.email is None
+    assert imported_student.identity_verified is False
+
+
 async def test_code_never_goes_to_an_attacker_supplied_address(db, imported_student):
-    """Compte déjà rattaché : le code part vers l'adresse en base, pas la saisie."""
+    """Adresse issue de l'import : le code part vers elle, pas vers la saisie."""
     imported_student.email = "aicha@esatic.edu.ci"
+    imported_student.identity_verified = True  # ce que fait l'import quand le fichier donne l'adresse
     db.commit()
 
     tasks = BackgroundTasks()

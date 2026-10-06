@@ -68,6 +68,9 @@ REVOKE TEMPORARY ON DATABASE smartvote_db FROM smartvote_app;
 REVOKE UPDATE, DELETE ON TABLE votes FROM smartvote_app;
 REVOKE UPDATE, DELETE ON TABLE voter_records FROM smartvote_app;
 REVOKE UPDATE, DELETE ON TABLE audit_events FROM smartvote_app;
+-- L'urne chiffrée (sealed_ballots) : le brassage y supprime les bulletins
+-- qu'il verse dans `votes`, mais aucun bulletin n'y est jamais réécrit.
+REVOKE UPDATE ON TABLE sealed_ballots FROM smartvote_app;
 
 -- 8. Création d'un rôle de migration séparé (pour Alembic en CI/CD uniquement)
 DO $$

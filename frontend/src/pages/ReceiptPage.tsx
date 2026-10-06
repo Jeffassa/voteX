@@ -170,7 +170,7 @@ export default function ReceiptPage() {
                 <HashChip value={txHash} />
               ) : (
                 <span className="muted">
-                  {anchoring ? "ancrage en cours…" : "hors chaîne"}
+                  {anchoring ? "ancrage en cours…" : "en attente, au plus tard à la clôture"}
                 </span>
               )}
             </div>
@@ -207,7 +207,7 @@ export default function ReceiptPage() {
               </a>
             ) : (
               <button className="btn btn-outline btn-sm" disabled>
-                <ExternalLink size={14} /> Hors chaîne
+                <ExternalLink size={14} /> Pas encore ancré
               </button>
             )}
             <button

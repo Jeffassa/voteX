@@ -63,7 +63,8 @@ def test_student_sees_only_turnout_while_election_is_open(db, voter, open_electi
     assert res.total_votes == 1  # la participation reste publique
 
 
-def test_admin_sees_live_scores(db, voter, open_election):
+def test_admin_does_not_see_live_scores_either(db, voter, open_election):
+    """Scores en direct + liste des non-votants = qui vient de voter, et pour qui."""
     vote_service.cast_vote(
         db, user=voter, election_id=open_election.id,
         candidate_id=open_election.candidates[0].id,
@@ -71,8 +72,9 @@ def test_admin_sees_live_scores(db, voter, open_election):
     voter.role = UserRole.ADMIN
     db.commit()
     res = election_service.results_for_user(db, open_election.id, voter)
-    assert res.scores_hidden is False
-    assert sum(c.votes for c in res.candidates) == 1
+    assert res.scores_hidden is True
+    assert res.candidates == [] and res.blank_votes == 0
+    assert res.total_votes == 1  # la participation suffit à superviser
 
 
 def test_student_sees_scores_once_closed(db, voter, open_election):

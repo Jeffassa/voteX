@@ -7,12 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import require_admin
 from app.core.database import get_db
-from app.models import ClassRoom, Election, Student, Vote
+from app.models import ClassRoom, Election, Student, VoterRecord
 from app.models.election import ElectionStatus
 from app.models.audit import AuditAction
 from app.schemas.audit import AuditEventOut
 from app.schemas.student import StudentOut
-from app.services import audit_service
+from app.services import audit_service, ballot_box, student_service
 from app.services.email_service import send_account_activated_email
 
 
@@ -25,14 +25,16 @@ def dashboard(
     _: Annotated[Student, Depends(require_admin)],
 ):
     active = db.query(func.count(Election.id)).filter(Election.status == ElectionStatus.OPEN).scalar() or 0
-    total_votes = db.query(func.count(Vote.id)).scalar() or 0
+    total_votes = ballot_box.cast_count(db)
     total_students = db.query(func.count(Student.id)).scalar() or 0
     total_classes = db.query(func.count(ClassRoom.id)).scalar() or 0
 
+    # La participation se lit dans voter_records : les bulletins, eux, peuvent
+    # encore attendre dans l'urne chiffrée.
     participation_by_class = (
-        db.query(ClassRoom.name, ClassRoom.level, func.count(Vote.id))
+        db.query(ClassRoom.name, ClassRoom.level, func.count(VoterRecord.id))
         .outerjoin(Election, Election.class_id == ClassRoom.id)
-        .outerjoin(Vote, Vote.election_id == Election.id)
+        .outerjoin(VoterRecord, VoterRecord.election_id == Election.id)
         .group_by(ClassRoom.id)
         .all()
     )
@@ -81,6 +83,7 @@ def activate_student(
     
     if student.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Le compte de cet étudiant est déjà activé")
+    student_service.ensure_can_manage(current, student)
 
     student.is_active = True
     student.deactivated_at = None
@@ -142,10 +145,12 @@ def reject_claim(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ce compte n'est pas en attente : il n'y a rien à rejeter.",
         )
+    student_service.ensure_can_manage(current, student)
 
     matricule = student.matricule
     student.password_hash = None
     student.activation_code = None
+    student.pending_email = None
     # Toute session ou lien de réinitialisation émis pour cette revendication
     # cesse d'être valable.
     student.password_version += 1

@@ -19,7 +19,7 @@ from app.models.election import ElectionStatus
 from app.models.student import UserRole
 from app.models.audit import AuditAction
 from app.schemas.election import CandidateResult, ElectionCreate, ElectionResults, ElectionUpdate
-from app.services import anchoring_service, audit_service, blockchain
+from app.services import anchoring_service, audit_service, ballot_box, blockchain
 
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,11 @@ logger = logging.getLogger(__name__)
 
 def list_for_user(db: Session, user: Student) -> list[Election]:
     q = db.query(Election)
-    if user.role == UserRole.STUDENT and user.class_id is not None:
+    if user.role == UserRole.STUDENT:
+        # Un étudiant sans classe ne voit rien : la condition ne portait que
+        # sur les étudiants rattachés, et les autres recevaient toute la liste.
+        if user.class_id is None:
+            return []
         q = q.filter(Election.class_id == user.class_id)
     return q.order_by(Election.starts_at.desc()).all()
 
@@ -139,9 +143,7 @@ def delete(db: Session, election_id: UUID, *, actor_id: UUID | None = None) -> N
         raise ConflictError(
             "Impossible de supprimer une élection ouverte. Clôturez-la d'abord."
         )
-    has_votes = (
-        db.query(Vote).filter(Vote.election_id == election_id).first() is not None
-    )
+    has_votes = ballot_box.cast_count(db, election_id) > 0
     if has_votes:
         raise ConflictError(
             "Impossible de supprimer une élection avec des votes enregistrés"
@@ -165,6 +167,17 @@ def delete(db: Session, election_id: UUID, *, actor_id: UUID | None = None) -> N
     )
 
 
+# Le scrutin ne fait qu'avancer. Rouvrir un scrutin clos, c'était laisser
+# voter après publication des scores ; revenir au brouillon, pouvoir changer
+# les candidats d'un scrutin déjà entamé.
+ALLOWED_TRANSITIONS = {
+    ElectionStatus.DRAFT: {ElectionStatus.OPEN},
+    ElectionStatus.OPEN: {ElectionStatus.CLOSED},
+    ElectionStatus.CLOSED: {ElectionStatus.PUBLISHED},
+    ElectionStatus.PUBLISHED: set(),
+}
+
+
 def set_status(
     db: Session,
     election_id: UUID,
@@ -179,14 +192,21 @@ def set_status(
     """
     election = get_or_404(db, election_id)
     previous = election.status
+    if status == previous:
+        return election
+    if status not in ALLOWED_TRANSITIONS[previous]:
+        raise ConflictError(
+            f"Un scrutin {previous.value} ne peut pas passer à {status.value} : "
+            "un scrutin clos ne se rouvre pas."
+        )
+
+    # À la clôture, l'urne est vidée : les résultats publiés comptent tout.
+    if status == ElectionStatus.CLOSED:
+        ballot_box.mix(db, election.id, final=True)
 
     # Après `closeElection`, le contrat refuse tout nouveau hachage : on ancre
     # d'abord les bulletins encore en attente.
-    if (
-        status == ElectionStatus.CLOSED
-        and previous != ElectionStatus.CLOSED
-        and election.blockchain_id is not None
-    ):
+    if status == ElectionStatus.CLOSED and election.blockchain_id is not None:
         anchoring_service.flush_election(db, election.id)
 
     election.status = status
@@ -260,9 +280,9 @@ def compute_results(db: Session, election_id: UUID) -> ElectionResults:
         .scalar()
         or 0
     )
-    total_votes = (
-        db.query(func.count(Vote.id)).filter(Vote.election_id == election_id).scalar() or 0
-    )
+    # Participation : bulletins brassés plus ceux encore dans l'urne. Les
+    # scores par candidat, eux, ne sont publiés qu'à la clôture, urne vidée.
+    total_votes = ballot_box.cast_count(db, election_id)
 
     blank_votes = (
         db.query(func.count(Vote.id))
@@ -322,16 +342,26 @@ def compute_results(db: Session, election_id: UUID) -> ElectionResults:
 def results_for_user(db: Session, election_id: UUID, user: Student) -> ElectionResults:
     """Résultats visibles par `user`.
 
-    Tant que le scrutin n'est pas clos, un électeur ne voit que la
-    participation. Les scores en direct pèsent sur ceux qui n'ont pas encore
-    voté (effet de meute, vote « utile », pression sur un candidat en retard).
-    Les administrateurs gardent la vue complète pour superviser.
+    Tant que le scrutin n'est pas clos, personne ne voit les scores, pas même
+    les administrateurs : seulement la participation.
+
+    - Pour les électeurs : les scores en direct pèsent sur ceux qui n'ont pas
+      encore voté (effet de meute, vote « utile »).
+    - Pour les administrateurs : relever les scores à intervalles rapprochés
+      tout en suivant la liste des non-votants montrait quel électeur venait
+      de voter, et pour qui. Le secret du vote n'admet pas d'exception de
+      supervision ; la participation suffit à superviser.
     """
     election = get_for_user(db, election_id, user)
+    closed = election.status in (ElectionStatus.CLOSED, ElectionStatus.PUBLISHED)
+    # Un bulletin arrivé pendant la clôture est encore dans l'urne : on la
+    # vide avant de publier, sinon le décompte affiché serait incomplet.
+    if closed and ballot_box.pending_count(db, election_id):
+        ballot_box.mix(db, election_id, final=True)
+        cache_delete(key_election_results(str(election_id)))
     results = compute_results(db, election_id)
 
-    is_admin = user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN)
-    if is_admin or election.status in (ElectionStatus.CLOSED, ElectionStatus.PUBLISHED):
+    if closed:
         return results
 
     return results.model_copy(update={"candidates": [], "blank_votes": 0, "scores_hidden": True})

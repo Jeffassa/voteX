@@ -21,6 +21,11 @@ contract SmartVote {
     mapping(uint256 => Election) public elections;
     mapping(uint256 => mapping(bytes32 => bool)) public voteRecorded;
     mapping(uint256 => uint256) public voteCount;
+    // Une élection close l'est pour de bon : sans cela, la rouvrir rendait
+    // la chaîne prête à accepter des bulletins après publication des scores.
+    // Mapping séparé plutôt que champ de la structure, pour garder l'ABI de
+    // getElection.
+    mapping(uint256 => bool) public closed;
 
     event ElectionCreated(uint256 indexed id, string title, uint256 startsAt, uint256 endsAt);
     event ElectionOpened(uint256 indexed id);
@@ -54,6 +59,7 @@ contract SmartVote {
     function openElection(uint256 electionId) external onlyOwner {
         Election storage e = elections[electionId];
         require(e.id != 0, "SmartVote: unknown election");
+        require(!closed[electionId], "SmartVote: election closed");
         e.open = true;
         emit ElectionOpened(electionId);
     }
@@ -62,6 +68,7 @@ contract SmartVote {
         Election storage e = elections[electionId];
         require(e.id != 0, "SmartVote: unknown election");
         e.open = false;
+        closed[electionId] = true;
         emit ElectionClosed(electionId);
     }
 

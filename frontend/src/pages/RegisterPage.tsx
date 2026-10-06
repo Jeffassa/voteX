@@ -89,7 +89,11 @@ export default function RegisterPage() {
         email: email.trim(),
         website: website || undefined,
       });
-      toast.success("Si ces informations correspondent à un compte, un code a été envoyé. Vérifie ta boîte mail.");
+      toast.success(
+        "Si ces informations correspondent à un compte à activer, un code a été envoyé. Rien reçu ? " +
+          "Vérifie le matricule et le nom tels qu'écrits sur la liste de l'école, ou connecte-toi si ton compte est déjà activé.",
+        { duration: 9000 }
+      );
       trackEvent("activation_code_requested");
     } catch (e: unknown) {
       const detail = extractErrorMessage(e, "Impossible d'envoyer le code.");

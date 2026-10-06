@@ -116,7 +116,7 @@ interface SelfUpdatePayload {
   last_name?: string;
   email?: string;
   matricule?: string;
-  photo_url?: string;
+  photo_url?: string | null;
 }
 
 export function useUpdateMyProfile() {

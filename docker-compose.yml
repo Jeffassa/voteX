@@ -22,7 +22,10 @@ services:
       POSTGRES_PASSWORD: smartvote
       POSTGRES_DB: smartvote
     ports:
-      - "5432:5432"
+      # Boucle locale seulement : sur le Wi-Fi du campus, la base et son mot de
+      # passe de développement étaient joignables par n'importe quel voisin.
+      # POSTGRES_HOST_PORT : autre port si un PostgreSQL local occupe déjà 5432.
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

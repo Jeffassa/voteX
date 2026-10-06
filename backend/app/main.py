@@ -10,7 +10,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.core.config import SECURITY_HEADERS, settings
-from app.core.csrf import needs_csrf_check, verify_csrf
+from app.core.csrf import CSRF_PROTECTED_METHODS, needs_csrf_check, origin_allowed, verify_csrf
 from app.core.exceptions import DomainError
 from app.core.rate_limit import limiter
 
@@ -87,7 +87,13 @@ _SECURITY_HEADERS = SECURITY_HEADERS
 
 @app.middleware("http")
 async def csrf_protection(request: Request, call_next):
-    """Vérifie le double-submit CSRF sur les méthodes mutatives."""
+    """Vérifie l'origine, puis le jeton CSRF, des requêtes mutatives."""
+    if request.method in CSRF_PROTECTED_METHODS and not origin_allowed(request):
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "Origine de la requête non autorisée."},
+            headers=_SECURITY_HEADERS,
+        )
     if needs_csrf_check(request):
         if not verify_csrf(request):
             return JSONResponse(

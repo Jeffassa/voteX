@@ -71,7 +71,7 @@ def my_votes(
 
 
 @router.get("/verify/{vote_hash}", response_model=VoteVerification)
-@limiter.limit("10/minute")
+@limiter.limit("30/minute")
 def verify(
     request: Request,
     vote_hash: Annotated[str, Path(pattern=r"^0x[a-fA-F0-9]{64}$")],

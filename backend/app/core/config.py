@@ -88,6 +88,10 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
 
+    # Hébergeurs autorisés pour les photos (profil, candidats), séparés par des
+    # virgules. Vide = aucune photo extérieure : voir app/core/photos.py.
+    PHOTO_ALLOWED_HOSTS: str = ""
+
     # CORS
     FRONTEND_URL: str = "http://localhost:5173"
     EXTRA_CORS_ORIGINS: str = ""
@@ -146,6 +150,10 @@ class Settings(BaseSettings):
     @property
     def force_https(self) -> bool:
         return self.is_production if self.FORCE_HTTPS is None else self.FORCE_HTTPS
+
+    @property
+    def photo_hosts(self) -> list[str]:
+        return [h.strip().lower() for h in self.PHOTO_ALLOWED_HOSTS.split(",") if h.strip()]
 
     @property
     def cors_origins(self) -> list[str]:

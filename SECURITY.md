@@ -74,15 +74,22 @@ sécurité, pas une évolution.
    un campus, une promotion entière sort par la même IP : n'y limiter que le
    débit punirait tout le monde sans gêner un attaquant patient. Le compte visé
    se verrouille par paliers (5 échecs → 1 min, 8 → 5 min, 12 → 30 min) ; la
-   limite par IP demeure, mais comme protection de l'infrastructure. Une
-   réinitialisation de mot de passe lève le verrou — le message qui la propose
-   doit dire vrai.
+   limite par IP demeure, large (30 par minute), comme protection de
+   l'infrastructure. Une réinitialisation de mot de passe lève le verrou — le
+   message qui la propose doit dire vrai. Les e-mails déclenchés sans session
+   (code d'activation, lien de réinitialisation) sont limités par compte :
+   1 par minute, 5 par heure. La demande de code répond la même chose quel que
+   soit l'état du compte. Assumé : un tiers peut tenir un compte verrouillé ;
+   la réinitialisation par e-mail et la connexion Google restent ouvertes.
 
 8. **Aucun traceur sans accord, aucun tiers.** La page ne charge ni script ni
    police d'un tiers (CSP `script-src 'self'; font-src 'self'`). La mesure
    d'audience n'a lieu qu'après consentement, sans identifiant, et le serveur
-   ignore toute mesure arrivée sans le cookie de consentement. Vérifié par
-   `tests/test_public_site.py`.
+   ignore toute mesure arrivée sans le cookie de consentement. Les photos ne
+   viennent que d'hébergeurs autorisés par l'école (`PHOTO_ALLOWED_HOSTS`, vide
+   par défaut ; même liste dans la CSP `img-src`) : une image hébergée ailleurs
+   transmettait l'adresse IP de chaque visiteur. Vérifié par
+   `tests/test_public_site.py` et `tests/test_hardening.py`.
 9. **HTTPS seulement en production.** Redirection 308 et HSTS côté API et côté
    nginx ; le démarrage refuse une origine frontend en clair. Les en-têtes de
    sécurité du frontend sont inclus dans chaque bloc `location` de nginx — un
@@ -106,6 +113,14 @@ sécurité, pas une évolution.
    de portée du code : un administrateur peut importer des électeurs. La revue
    du journal d'audit, à plusieurs, est la parade. Vérifié par
    `tests/test_admin_powers.py` et `tests/test_election_integrity.py`.
+
+12. **Une requête qui modifie des données vient du frontend.** Toute requête
+   POST, PUT, PATCH ou DELETE portant un en-tête `Origin` étranger est refusée,
+   y compris sur les routes sans jeton CSRF (connexion, inscription) : une page
+   tierce ne peut plus connecter un électeur au compte de l'attaquant. Codes et
+   liens qui ouvrent un compte n'apparaissent jamais dans les journaux en
+   production. Vérifié par `tests/test_hardening.py` et
+   `tests/test_startup_checks.py`.
 
 ## Acheminement des emails — à vérifier avant toute campagne
 
@@ -141,9 +156,16 @@ JWT_SECRET=$(openssl rand -hex 32)   # ne pas changer pendant un scrutin ouvert 
 COOKIE_SECURE=true          # cookies réservés à HTTPS
 DATABASE_URL=postgresql://…  # jamais SQLite
 METRICS_TOKEN=$(openssl rand -hex 32)   # si METRICS_ENABLED=true
+FORWARDED_ALLOW_IPS=<IP du reverse proxy>   # sinon toutes les requêtes semblent venir de lui
 ```
 
-Le backend s'arrête au démarrage si l'une de ces conditions n'est pas remplie.
+Le backend s'arrête au démarrage si l'une de ces conditions n'est pas remplie
+(sauf FORWARDED_ALLOW_IPS et SMTP, signalés par un avertissement).
+
+La pile de supervision (`docker-compose.monitoring.yml`) n'écoute que sur
+127.0.0.1 et exige `GRAFANA_ADMIN_PASSWORD` : Loki contient les journaux,
+Prometheus les métriques, et un administrateur Grafana peut ajouter une source
+de données PostgreSQL.
 
 ## Dépendances
 

@@ -78,15 +78,59 @@ async def test_code_never_goes_to_an_attacker_supplied_address(db, imported_stud
     assert tasks.tasks[0].kwargs["to_email"] == "aicha@esatic.edu.ci"
 
 
-async def test_name_mismatch_is_rejected(db, imported_student):
+async def test_name_mismatch_sends_nothing_and_says_nothing(db, imported_student):
+    """Même réponse qu'un succès : le nom n'est pas confirmé, rien ne part."""
     payload = ActivationCodeRequest(
         matricule="22-ESATIC0273DN",
         first_name="Imposteur",
         last_name="Quelqun",
         email="pirate@gmail.com",
     )
-    with pytest.raises(ValidationError, match="ne correspond pas"):
-        await auth_service.send_activation_code(db, payload, BackgroundTasks())
+    tasks = BackgroundTasks()
+    await auth_service.send_activation_code(db, payload, tasks)
+    db.refresh(imported_student)
+    assert tasks.tasks == [] and imported_student.activation_code is None
+
+
+async def test_the_answer_does_not_reveal_the_account_state(client, db, imported_student, classroom):
+    """Matricule inconnu, compte déjà activé, compte à activer : une seule réponse."""
+    db.add(Student(
+        matricule="22-ESATIC0274DN", first_name="Yao", last_name="Konan", password_hash="x",
+        role=UserRole.STUDENT, class_id=classroom.id, is_active=True,
+    ))
+    db.commit()
+    bodies = []
+    for matricule, first, last in (
+        ("99-ESATIC9999ZZ", "Personne", "Inconnu"),  # n'existe pas
+        ("22-ESATIC0274DN", "Yao", "Konan"),          # déjà activé
+        ("22-ESATIC0273DN", "Aïcha", "N'Guessan"),    # à activer
+    ):
+        r = client.post(
+            "/api/auth/request-activation-code",
+            json={"matricule": matricule, "first_name": first, "last_name": last, "email": "x@gmail.com"},
+        )
+        bodies.append((r.status_code, r.json()))
+    assert bodies[0] == bodies[1] == bodies[2]
+
+
+async def test_codes_are_limited_per_account(db, imported_student):
+    """Un envoi par minute pour un même compte, quelle que soit l'adresse IP."""
+    from app.core.rate_limit import limiter
+
+    limiter.enabled = True
+    limiter.reset()
+    try:
+        first, second = BackgroundTasks(), BackgroundTasks()
+        await auth_service.send_activation_code(db, _request("aicha@gmail.com"), first)
+        db.refresh(imported_student)
+        code = imported_student.activation_code
+        await auth_service.send_activation_code(db, _request("aicha@gmail.com"), second)
+        db.refresh(imported_student)
+    finally:
+        limiter.enabled = False
+        limiter.reset()
+    assert len(first.tasks) == 1 and second.tasks == []
+    assert imported_student.activation_code == code, "le code ne doit pas tourner"
 
 
 async def test_foreign_email_domain_is_rejected(db, imported_student):

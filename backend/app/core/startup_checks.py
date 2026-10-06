@@ -13,6 +13,7 @@ Vérifications effectuées :
 """
 
 import logging
+import os
 import sys
 
 from app.core.config import settings
@@ -27,6 +28,10 @@ PUBLISHED_DEV_SECRETS = frozenset(
     {
         "Z9k4vPq8rMnL3jH7sB2dX5cF1gW6tY0aQiE4uN8RsoVbPyDmCkJfAhXgZrTwLnQp",
         "Z9k4vPq8rMnL3jH7sB2dX5cF1gW6tY0aQiE4uN8RsoVbPyDmCkJfAhXgZrTwLnQpE2vSBuY1",
+        # Valeur par défaut actuelle de docker-compose.yml. Elle manquait ici :
+        # un déploiement qui oubliait JWT_SECRET démarrait avec un secret
+        # public. tests/test_startup_checks.py relit désormais les fichiers.
+        "Z9k4vPq8rMnL3jH7sB2dX5cF1gW6tY0aQiE4uN8RsoVbPyDmCkJfAhXgZrTwLnQpDEV",
         "ci-testing-secret-long-enough-for-hs256-validation-purposes",
     }
 )
@@ -126,12 +131,48 @@ def _check_https_origins() -> None:
         logger.warning("FORCE_HTTPS=false en production : le trafic en clair n'est pas redirigé.")
 
 
-def _check_resend_in_production() -> None:
-    """En production, l'envoi d'emails doit être configuré."""
-    if _is_production() and not settings.RESEND_API_KEY:
+def _check_mail_in_production() -> None:
+    """En production, l'envoi d'e-mails doit être configuré.
+
+    Tous les e-mails partent par SMTP (MAIL_*). La garde vérifiait
+    RESEND_API_KEY, que l'envoi n'utilise pas : un serveur sans SMTP démarrait
+    sans un mot, et aucun code d'activation ne partait.
+    """
+    if _is_production() and not (
+        settings.MAIL_SERVER and settings.MAIL_USERNAME and settings.MAIL_PASSWORD
+    ):
+        logger.critical(
+            "AVERTISSEMENT : SMTP non configuré en production (MAIL_SERVER, "
+            "MAIL_USERNAME, MAIL_PASSWORD). Codes d'activation, liens de "
+            "réinitialisation et reçus ne partiront pas."
+        )
+
+
+def _check_metrics_token() -> None:
+    """En production, /metrics exige un jeton.
+
+    Sans lui, n'importe qui lisait le rythme des votes et toute la surface de
+    l'API. Prometheus envoie le jeton (monitoring/prometheus/prometheus.yml).
+    """
+    if _is_production() and settings.METRICS_ENABLED and not settings.METRICS_TOKEN:
+        _fail(
+            "SÉCURITÉ : METRICS_ENABLED=true sans METRICS_TOKEN. Générez-en un : "
+            "openssl rand -hex 32, et donnez-le aussi à Prometheus."
+        )
+
+
+def _check_forwarded_ips() -> None:
+    """Derrière un reverse proxy, uvicorn doit savoir à qui se fier.
+
+    Sans FORWARDED_ALLOW_IPS, uvicorn ignore X-Forwarded-For venu d'une autre
+    adresse que 127.0.0.1 : toutes les requêtes semblent alors venir du proxy,
+    les limites par adresse IP deviennent communes à toute l'école, et le
+    journal d'audit n'enregistre qu'une seule adresse.
+    """
+    if _is_production() and not os.environ.get("FORWARDED_ALLOW_IPS"):
         logger.warning(
-            "AVERTISSEMENT : RESEND_API_KEY non défini en production. "
-            "Les emails de confirmation de vote ne seront pas envoyés."
+            "FORWARDED_ALLOW_IPS non défini : derrière un reverse proxy, toutes les "
+            "requêtes sembleront venir de lui. Indiquez l'adresse du proxy."
         )
 
 
@@ -155,5 +196,7 @@ def run_startup_checks() -> None:
     _check_https_origins()
     _check_database_not_test()
     _check_database_connection()
-    _check_resend_in_production()
+    _check_mail_in_production()
+    _check_metrics_token()
+    _check_forwarded_ips()
     logger.info("Vérifications de sécurité : toutes passées ✓")

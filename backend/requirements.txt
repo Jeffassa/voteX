@@ -5,7 +5,12 @@ psycopg2-binary==2.9.10
 alembic==1.14.0
 pydantic>=2.10.1,<3.0.0
 pydantic-settings>=2.6.1,<3.0.0
-python-jose[cryptography]==3.5.0
+# PyJWT plutôt que python-jose : ce dernier tirait `ecdsa` (avis de sécurité
+# sans correctif) et acceptait un jeton sans `aud` même quand on l'exigeait.
+PyJWT==2.15.1
+# Chiffrement de l'urne (services/ballot_box.py).
+# 50.x : la plage qu'exige fastapi-mail 1.6.8.
+cryptography==50.0.2
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 python-multipart==0.0.32

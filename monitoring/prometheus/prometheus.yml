@@ -19,8 +19,9 @@ scrape_configs:
       - targets: ['localhost:9090']
 
   # API SmartVote. Le backend n'expose /metrics que si METRICS_ENABLED=true.
-  # Si METRICS_TOKEN est défini côté backend, décommenter le bloc authorization
-  # et monter le fichier de jeton dans le conteneur Prometheus.
+  # En production, METRICS_TOKEN est obligatoire (le backend refuse de démarrer
+  # sans lui) : décommenter le bloc authorization et monter le fichier de jeton
+  # dans le conteneur Prometheus.
   - job_name: 'backend'
     static_configs:
       - targets: ['smartvote-backend:8000']

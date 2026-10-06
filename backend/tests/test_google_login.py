@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlparse
 
 import pytest
-from jose import jwt
+import jwt
 
 from app.core.config import settings
 from app.models import AuditEvent
@@ -31,7 +31,7 @@ def _id_token(**overrides):
     }
     claims.update(overrides)
     # Signature quelconque : le jeton arrive du point de terminaison token.
-    return jwt.encode(claims, "cle-google-factice", algorithm="HS256")
+    return jwt.encode(claims, "cle-google-factice-assez-longue-pour-hs256", algorithm="HS256")
 
 
 def _start(client):
@@ -53,9 +53,9 @@ def _callback(client, monkeypatch, state, token_claims, returned_state=None):
 
 
 def test_button_is_hidden_until_google_is_configured(client, monkeypatch):
-    assert client.get("/api/auth/providers").json() == {"google": True}
+    assert client.get("/api/auth/providers").json()["google"] is True
     monkeypatch.setattr(settings, "GOOGLE_CLIENT_ID", "")
-    assert client.get("/api/auth/providers").json() == {"google": False}
+    assert client.get("/api/auth/providers").json()["google"] is False
     assert client.get("/api/auth/google/start", follow_redirects=False).status_code == 404
 
 

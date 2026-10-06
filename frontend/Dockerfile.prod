@@ -29,6 +29,9 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Origine de l'API, injectée dans la CSP au démarrage du conteneur.
 # À surcharger : docker run -e API_ORIGIN="https://api.smartvote.esatic.ci"
 ENV API_ORIGIN="http://localhost:8000"
+# Origines des photos autorisées (même liste que PHOTO_ALLOWED_HOSTS côté API,
+# avec le schéma : https://photos.esatic.ci). Vide = aucune image extérieure.
+ENV PHOTO_ORIGINS=""
 
 # nginx:alpine passe /etc/nginx/templates/*.template dans envsubst au
 # démarrage (vers conf.d/), ce qui injecte API_ORIGIN sans rebuild.

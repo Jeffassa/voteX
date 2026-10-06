@@ -33,6 +33,18 @@ def _header_safe(value: str) -> str:
     return " ".join(str(value).split())
 
 
+def loggable(secret: str) -> str:
+    """Un code ou un lien qui ouvre un compte, tel qu'il peut figurer au journal.
+
+    Sans SMTP, en développement, le journal est le seul chemin pour récupérer
+    un code d'activation ou un lien de réinitialisation. En production, jamais :
+    quiconque lit les journaux (Loki, Sentry, l'hébergeur) ouvrirait le compte.
+    """
+    if settings.is_production or settings.COOKIE_SECURE:
+        return "[masqué en production]"
+    return secret
+
+
 def _is_configured() -> bool:
     return bool(settings.MAIL_USERNAME and settings.MAIL_PASSWORD and settings.MAIL_SERVER)
 
@@ -129,7 +141,7 @@ async def send_password_reset_email(
     config = _config()
     if not config:
         EMAILS_TOTAL.labels(kind="password_reset", outcome="not_configured").inc()
-        logger.info("email: SMTP not configured — reset link for %s : %s", to_email, reset_url)
+        logger.info("email: SMTP not configured — reset link for %s : %s", to_email, loggable(reset_url))
         return
 
     html = f"""
@@ -232,7 +244,9 @@ async def send_activation_code_email(
     config = _config()
     if not config:
         EMAILS_TOTAL.labels(kind="activation_code", outcome="not_configured").inc()
-        logger.info("email: SMTP not configured — activation code for %s : %s", to_email, activation_code)
+        logger.info(
+            "email: SMTP not configured — activation code for %s : %s", to_email, loggable(activation_code)
+        )
         return
 
     html = f"""

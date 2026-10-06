@@ -26,7 +26,11 @@ export default function LoginPage() {
   const [show, setShow] = useState(false);
   // Retour d'une connexion Google refusée : /login?erreur=google_…
   const googleError = new URLSearchParams(location.search).get("erreur");
-  const [err, setErr] = useState(googleError ? GOOGLE_ERRORS[googleError] ?? "" : "");
+  // Object.hasOwn : un code comme « __proto__ » ne doit pas remonter le
+  // prototype de l'objet (la page plantait sur /login?erreur=__proto__).
+  const [err, setErr] = useState(
+    googleError && Object.hasOwn(GOOGLE_ERRORS, googleError) ? GOOGLE_ERRORS[googleError] : ""
+  );
   const [website, setWebsite] = useState("");
   // Champ en faute, pour y placer le focus et l'annoncer aux lecteurs d'écran.
   const [errField, setErrField] = useState<"matricule" | "password" | null>(null);

@@ -1,9 +1,10 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.core.matricule import validate_matricule
+from app.core.photos import check_photo_url
 from app.schemas.class_ import ClassOut
 
 
@@ -90,8 +91,13 @@ class StudentUpdate(BaseModel):
     last_name: str | None = None
     email: EmailStr | None = None
     class_id: UUID | None = None
-    photo_url: HttpUrl | None = None
+    photo_url: str | None = Field(default=None, max_length=500)
     is_active: bool | None = None
+
+    @field_validator("photo_url")
+    @classmethod
+    def _photo(cls, v: str | None) -> str | None:
+        return check_photo_url(v)
 
 
 class StudentRoleUpdate(BaseModel):
@@ -109,7 +115,12 @@ class StudentSelfUpdate(BaseModel):
     """
 
     email: EmailStr | None = None
-    photo_url: HttpUrl | None = None
+    photo_url: str | None = Field(default=None, max_length=500)
     # Exigé pour changer d'adresse : une session restée ouverte ne doit pas
     # suffire à rattacher une autre boîte (et donc un autre compte Google).
     current_password: str | None = Field(default=None, max_length=128)
+
+    @field_validator("photo_url")
+    @classmethod
+    def _photo(cls, v: str | None) -> str | None:
+        return check_photo_url(v)

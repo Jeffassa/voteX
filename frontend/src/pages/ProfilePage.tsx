@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Clock, Lock, Mail, Save, User } from "lucide-react";
 import toast from "react-hot-toast";
+import { useQuery } from "@tanstack/react-query";
 
 import { useReveal } from "@/hooks/useReveal";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar, getInitials } from "@/components/Avatar";
+import { api } from "@/lib/api";
 import { useChangePassword, useMe, useUpdateMyProfile } from "@/lib/queries";
 
 export default function ProfilePage() {
@@ -56,6 +58,16 @@ function ProfileForm() {
   const { data: me } = useMe();
   const update = useUpdateMyProfile();
   const [photoUrl, setPhotoUrl] = useState("");
+  // Une photo hébergée ailleurs enverrait l'adresse IP de chaque visiteur à cet
+  // hébergeur : le champ n'existe que si l'école en a autorisé un.
+  const { data: providers } = useQuery({
+    queryKey: ["auth", "providers"],
+    queryFn: async () =>
+      (await api.get<{ google: boolean; photo_hosts?: string[] }>("/api/auth/providers")).data,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const photoHosts = providers?.photo_hosts ?? [];
 
   useEffect(() => {
     if (me) setPhotoUrl(me.photo_url || "");
@@ -66,7 +78,7 @@ function ProfileForm() {
     try {
       // Matricule, nom et prénom viennent de l'import administratif : le
       // serveur les refuse ici (schemas/student.py). On ne les envoie pas.
-      await update.mutateAsync({ photo_url: photoUrl.trim() || undefined });
+      await update.mutateAsync({ photo_url: photoUrl.trim() || null });
       toast.success("Profil mis à jour");
     } catch (err: any) {
       toast.error(err?.response?.data?.detail || "Erreur");
@@ -103,24 +115,32 @@ function ProfileForm() {
           </div>
         </div>
 
-        <div>
-          <label className="label" htmlFor="profile-photo">URL de la photo (facultatif)</label>
-          <input id="profile-photo"
-            className="input"
-            type="url"
-            value={photoUrl}
-            onChange={(e) => setPhotoUrl(e.target.value)}
-            placeholder="https://…"
-          />
-        </div>
+        {photoHosts.length > 0 && (
+          <div>
+            <label className="label" htmlFor="profile-photo">URL de la photo (facultatif)</label>
+            <input id="profile-photo"
+              className="input"
+              type="url"
+              value={photoUrl}
+              onChange={(e) => setPhotoUrl(e.target.value)}
+              placeholder={`https://${photoHosts[0]}/…`}
+              aria-describedby="profile-photo-hint"
+            />
+            <div id="profile-photo-hint" className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+              Hébergeurs acceptés : {photoHosts.join(", ")}.
+            </div>
+          </div>
+        )}
       </div>
 
-      <div style={{ marginTop: 20 }}>
-        <button type="submit" className="btn btn-primary" disabled={update.isPending}>
-          <Save size={16} aria-hidden="true" />
-          {update.isPending ? "Enregistrement…" : "Enregistrer"}
-        </button>
-      </div>
+      {photoHosts.length > 0 && (
+        <div style={{ marginTop: 20 }}>
+          <button type="submit" className="btn btn-primary" disabled={update.isPending}>
+            <Save size={16} aria-hidden="true" />
+            {update.isPending ? "Enregistrement…" : "Enregistrer"}
+          </button>
+        </div>
+      )}
     </form>
   );
 }

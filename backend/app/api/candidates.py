@@ -28,9 +28,12 @@ def list_candidates(
 def get_candidate(
     candidate_id: UUID,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(get_current_user)],
+    user: Annotated[Student, Depends(get_current_user)],
 ):
-    return candidate_service.get_or_404(db, candidate_id)
+    candidate = candidate_service.get_or_404(db, candidate_id)
+    # Un candidat d'une autre classe est « introuvable », comme son élection.
+    election_service.get_for_user(db, candidate.election_id, user)
+    return candidate
 
 
 @router.post("/", response_model=CandidateOut, status_code=201)

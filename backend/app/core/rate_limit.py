@@ -21,6 +21,7 @@ en le disant dans les journaux.
 
 import logging
 
+from limits import parse
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -54,3 +55,28 @@ def _build_limiter() -> Limiter:
 
 
 limiter = _build_limiter()
+
+
+# Limites PAR COMPTE pour les envois d'e-mails déclenchés sans session (code
+# d'activation, lien de réinitialisation). Sur un campus, la limite par IP est
+# commune à toute une promotion : elle doit rester large. C'est la limite par
+# compte qui empêche d'inonder la boîte d'un étudiant ou de faire tourner son
+# code à volonté.
+EMAIL_PER_ACCOUNT = ("1/minute", "5/hour")
+
+
+def allow(scope: str, key: str, limits: tuple[str, ...] = EMAIL_PER_ACCOUNT) -> bool:
+    """Compte une action pour `key` ; False si l'une des limites est atteinte.
+
+    Même stockage que slowapi : partagé entre les processus quand Redis est
+    configuré.
+    """
+    if not limiter.enabled:
+        return True
+    items = [parse(spec) for spec in limits]
+    strategy = limiter.limiter
+    if not all(strategy.test(item, scope, key) for item in items):
+        return False
+    for item in items:
+        strategy.hit(item, scope, key)
+    return True

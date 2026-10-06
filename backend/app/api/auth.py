@@ -73,8 +73,11 @@ def _set_session_cookies(
     return access_token
 
 
+# Limites par IP larges : un campus sort par une seule adresse, et 3 demandes
+# par minute y bloquaient toute l'école le jour de l'activation. La protection
+# des comptes est ailleurs : verrou par compte, envois limités par compte.
 @router.post("/request-activation-code", status_code=status.HTTP_202_ACCEPTED)
-@limiter.limit("3/minute")
+@limiter.limit("30/minute")
 async def request_activation_code(
     request: Request,
     payload: ActivationCodeRequest,
@@ -87,7 +90,7 @@ async def request_activation_code(
 
 
 @router.post("/register", response_model=StudentOut, status_code=status.HTTP_201_CREATED)
-@limiter.limit("5/minute")
+@limiter.limit("30/minute")
 def register(
     request: Request,
     payload: RegisterRequest,
@@ -224,7 +227,7 @@ def me(
 
 
 @router.post("/password-reset/request", status_code=202)
-@limiter.limit("3/minute")
+@limiter.limit("30/minute")
 def request_password_reset(
     request: Request,
     payload: PasswordResetRequest,
@@ -239,7 +242,9 @@ def request_password_reset(
 
 
 @router.post("/password-reset/confirm", status_code=200)
+@limiter.limit("30/minute")
 def confirm_password_reset(
+    request: Request,
     payload: PasswordResetConfirm,
     db: Annotated[Session, Depends(get_db)],
 ):
@@ -305,6 +310,12 @@ def revoke_all_sessions(
 ):
     """Force la déconnexion de tous les appareils (panic button)."""
     refresh_token_service.revoke_all_for_user(db, user_id=current.id)
+    # Les jetons d'accès déjà émis restaient valables jusqu'à 15 minutes : un
+    # appareil volé gardait la main. Changer de version les invalide tous
+    # (deps.get_current_user compare `pwd_v`), comme un changement de mot de
+    # passe — liens de réinitialisation en cours compris.
+    current.password_version += 1
+    db.commit()
     clear_auth_cookies(response)
 
 
@@ -313,8 +324,8 @@ def revoke_all_sessions(
 
 @router.get("/providers")
 def providers():
-    """Fournisseurs d'identité disponibles, pour afficher (ou non) leurs boutons."""
-    return {"google": google_oauth.is_enabled()}
+    """Fournisseurs d'identité disponibles, et hébergeurs de photos autorisés."""
+    return {"google": google_oauth.is_enabled(), "photo_hosts": settings.photo_hosts}
 
 
 @router.get("/google/start")

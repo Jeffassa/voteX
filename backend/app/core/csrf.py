@@ -34,9 +34,11 @@ un en-tête CSRF n'ajouterait aucune sécurité tout en cassant ces clients.
 import hmac
 import logging
 import secrets
+from urllib.parse import urlsplit
 
 from fastapi import Request
 
+from app.core.config import settings
 from app.core.cookies import ACCESS_COOKIE, CSRF_HEADER
 from app.core.security import decode_token
 
@@ -98,6 +100,25 @@ def verify_csrf(request: Request) -> bool:
         return False
 
     return hmac.compare_digest(str(expected), header_value)
+
+
+def origin_allowed(request: Request) -> bool:
+    """Refuse une requête mutative émise depuis une page d'un autre site.
+
+    Les routes sans session (connexion, inscription…) échappent au jeton CSRF :
+    une page tierce pouvait donc poster un formulaire de connexion avec les
+    identifiants de l'attaquant, et l'électeur se retrouvait dans SON compte
+    (il y aurait voté à sa place). Les navigateurs joignent l'en-tête Origin à
+    toute requête POST/PUT/PATCH/DELETE : on le compare aux origines du
+    frontend, ou à celle de l'API elle-même (pages de documentation en dev).
+    Sans en-tête Origin (client en ligne de commande), rien à vérifier.
+    """
+    origin = request.headers.get("origin")
+    if origin is None:
+        return True
+    if origin in settings.cors_origins:
+        return True
+    return urlsplit(origin).netloc == request.headers.get("host", "")
 
 
 def needs_csrf_check(request: Request) -> bool:

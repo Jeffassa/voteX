@@ -35,7 +35,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
 import httpx
-from jose import JWTError, jwt
+import jwt
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -124,9 +124,13 @@ def _open_state(cookie: str | None, returned_state: str | None) -> dict:
         raise GoogleLoginError("session", "cookie d'état ou paramètre state absent")
     try:
         data = jwt.decode(
-            cookie, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM], audience=_STATE_AUDIENCE
+            cookie,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM],
+            audience=_STATE_AUDIENCE,
+            options={"require": ["exp", "aud"]},
         )
-    except JWTError as exc:
+    except jwt.InvalidTokenError as exc:
         raise GoogleLoginError("session", f"cookie d'état invalide : {exc}") from exc
     if not secrets.compare_digest(str(data.get("state", "")), returned_state):
         raise GoogleLoginError("session", "state différent : requête forgée ou rejouée")
@@ -154,8 +158,10 @@ def exchange_code(code: str, code_verifier: str) -> dict:
 
 def _verified_email(id_token: str, expected_nonce: str) -> str:
     try:
-        claims = jwt.get_unverified_claims(id_token)
-    except JWTError as exc:
+        # Signature non vérifiée, voir l'en-tête du module (OIDC Core § 3.1.3.7) ;
+        # les revendications le sont toutes ci-dessous.
+        claims = jwt.decode(id_token, options={"verify_signature": False})
+    except jwt.InvalidTokenError as exc:
         raise GoogleLoginError("google", f"id_token illisible : {exc}") from exc
 
     if claims.get("iss") not in GOOGLE_ISSUERS:

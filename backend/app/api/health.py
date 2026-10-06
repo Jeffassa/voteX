@@ -1,6 +1,8 @@
 """Endpoints de santé (Health & Readiness Probes) pour Kubernetes, Docker et le monitoring."""
 
+import logging
 from typing import Annotated
+
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -8,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Health"])
 
 
@@ -31,8 +34,11 @@ def readiness(db: Annotated[Session, Depends(get_db)]) -> JSONResponse:
             status_code=status.HTTP_200_OK,
             content={"status": "ready", "database": "connected"},
         )
-    except Exception as exc:
+    except Exception:
+        # Le détail (hôte, utilisateur, message du pilote) reste au journal :
+        # la sonde est publique.
+        logger.exception("readyz: base de données injoignable")
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"status": "not_ready", "database": f"error: {str(exc)}"},
+            content={"status": "not_ready", "database": "unavailable"},
         )

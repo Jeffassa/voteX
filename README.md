@@ -150,14 +150,19 @@ Sans les optionnels : pas de realtime (polling 5s), pas de hash on-chain, pas d'
 
 ```bash
 docker compose up -d                                  # l'app crée le réseau votex-network
+export GRAFANA_ADMIN_PASSWORD=$(openssl rand -base64 18)   # obligatoire, aucun défaut
 docker compose -f docker-compose.monitoring.yml up -d  # s'y raccroche
 ```
 
-- Prometheus : http://localhost:9090 — Grafana : http://localhost:3000
+- Prometheus : http://localhost:9090 — Grafana : http://localhost:3000 (compte
+  `admin`, mot de passe `GRAFANA_ADMIN_PASSWORD`).
+- Tous les ports de la supervision n'écoutent que sur la machine (127.0.0.1) :
+  Loki contient les journaux, Prometheus les métriques. Pour y accéder à
+  distance, passez par un tunnel SSH ou un reverse proxy authentifié.
 - Le backend n'expose `/metrics` que si `METRICS_ENABLED=true` (déjà positionné
-  dans `docker-compose.yml`). En production, protégez-le avec `METRICS_TOKEN` et
-  renseignez le bloc `authorization` du job `backend` dans
-  `monitoring/prometheus/prometheus.yml`.
+  dans `docker-compose.yml`). En production, `METRICS_TOKEN` est obligatoire
+  (le backend refuse de démarrer sans lui) : renseignez aussi le bloc
+  `authorization` du job `backend` dans `monitoring/prometheus/prometheus.yml`.
 - Les deux stacks sont des projets Compose distincts : démarrez l'application en
   premier, sinon le réseau `votex-network` n'existe pas encore.
 

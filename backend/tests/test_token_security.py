@@ -18,7 +18,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
-from jose import jwt
+import jwt
 
 from app.api.deps import get_current_user
 from app.core.config import JWT_AUDIENCE, JWT_ISSUER, settings

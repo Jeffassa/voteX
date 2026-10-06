@@ -11,7 +11,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from jose import JWTError, jwt
+import jwt
 from sqlalchemy.orm import Session
 
 from fastapi import BackgroundTasks
@@ -19,7 +19,6 @@ from app.core.config import settings
 from app.core.exceptions import (
     ConflictError,
     ForbiddenError,
-    NotFoundError,
     UnauthorizedError,
     ValidationError,
 )
@@ -152,26 +151,37 @@ def register_student(
 
 
 async def send_activation_code(db: Session, payload: ActivationCodeRequest, background_tasks: BackgroundTasks) -> None:
-    """Vérifie le matricule et le nom, valide l'email esatic.edu.ci, génère un code et l'envoie."""
-    user = db.query(Student).filter(Student.matricule == payload.matricule).first()
-    if not user:
-        raise NotFoundError("Matricule inconnu.")
+    """Envoie un code d'activation si le matricule et le nom désignent un compte à activer.
 
-    if not user.is_active:
-        raise ForbiddenError("Compte désactivé.")
-
-    if user.is_activated:
-        raise ConflictError("Ce compte est déjà activé. Connectez-vous.")
-
-    # Vérification du nom
-    expected_full = f"{user.first_name} {user.last_name}"
-    submitted_full = f"{payload.first_name} {payload.last_name}"
-    if not names_match(expected_full, submitted_full):
-        raise ValidationError("Le nom saisi ne correspond pas à celui enregistré.")
-
-    # Vérification du domaine de l'email
+    La réponse est la même dans tous les cas (« si les informations
+    correspondent… ») : des erreurs distinctes disaient si un matricule
+    existait, s'il était déjà activé et si le nom était juste, de quoi repérer
+    les comptes encore à prendre. Seule la règle publique sur le domaine de
+    l'adresse est signalée, avant toute recherche.
+    """
     if not (payload.email.endswith("@esatic.edu.ci") or payload.email.endswith("@gmail.com")):
         raise ValidationError("Vous devez utiliser votre adresse email ESATIC (@esatic.edu.ci) ou Gmail (@gmail.com).")
+
+    user = db.query(Student).filter(Student.matricule == payload.matricule).first()
+    expected_full = f"{user.first_name} {user.last_name}" if user else ""
+    submitted_full = f"{payload.first_name} {payload.last_name}"
+    if (
+        user is None
+        or not user.is_active
+        or user.is_activated
+        or not names_match(expected_full, submitted_full)
+    ):
+        logger.info("activation: demande sans suite pour matricule=%s", payload.matricule)
+        return
+
+    # Un envoi par minute et cinq par heure pour un même compte : sans cela,
+    # n'importe qui inondait la boîte d'un étudiant et changeait son code
+    # avant qu'il ait pu le saisir.
+    from app.core.rate_limit import allow
+
+    if not allow("activation-code", str(user.id)):
+        logger.info("activation: envoi limité pour matricule=%s", user.matricule)
+        return
 
     # Génération du code
     import secrets
@@ -337,12 +347,10 @@ def _decode_reset_token(token: str) -> tuple[UUID, int | None]:
             settings.JWT_SECRET,
             algorithms=[settings.JWT_ALGORITHM],
             audience=RESET_TOKEN_AUDIENCE,
+            options={"require": ["sub", "exp", "aud"]},
         )
-        sub = payload.get("sub")
-        if not sub:
-            raise ValidationError("Token invalide")
-        return UUID(sub), payload.get("pwd_v")
-    except JWTError as exc:
+        return UUID(payload["sub"]), payload.get("pwd_v")
+    except (jwt.InvalidTokenError, ValueError) as exc:
         raise ValidationError("Token de réinitialisation invalide ou expiré") from exc
 
 
@@ -357,6 +365,13 @@ def request_password_reset(
     """
     user = db.query(Student).filter(Student.email == email).first()
     if not user or not user.is_active or not user.is_activated:
+        return None
+    # Même limite par compte que le code d'activation : la réponse reste
+    # neutre, mais la boîte n'est pas inondée.
+    from app.core.rate_limit import allow
+
+    if not allow("password-reset", str(user.id)):
+        logger.info("password reset: envoi limité pour user=%s", user.id)
         return None
 
     token = _create_reset_token(user.id, user.password_version)
@@ -376,7 +391,9 @@ def request_password_reset(
             reset_url=reset_url,
         )
     else:
-        logger.info("password reset (aucun canal d'envoi) pour %s : %s", email, reset_url)
+        logger.info(
+            "password reset (aucun canal d'envoi) pour %s : %s", email, email_service.loggable(reset_url)
+        )
 
     return token
 

@@ -20,7 +20,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import BackgroundTasks
-from jose import JWTError, jwt
+import jwt
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -91,7 +91,7 @@ def request_change(
             confirm_url=url,
         )
     else:
-        logger.info("confirmation d'adresse (aucun canal d'envoi) : %s", url)
+        logger.info("confirmation d'adresse (aucun canal d'envoi) : %s", email_service.loggable(url))
     return True
 
 
@@ -102,11 +102,15 @@ def confirm(db: Session, *, token: str) -> tuple[Student, str | None]:
     )
     try:
         data = jwt.decode(
-            token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM], audience=TOKEN_AUDIENCE
+            token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM],
+            audience=TOKEN_AUDIENCE,
+            options={"require": ["sub", "exp", "aud"]},
         )
         user_id = UUID(str(data["sub"]))
         email = normalize(str(data["email"]))
-    except (JWTError, KeyError, ValueError) as exc:
+    except (jwt.InvalidTokenError, KeyError, ValueError) as exc:
         raise invalid from exc
 
     user = db.query(Student).filter(Student.id == user_id).first()

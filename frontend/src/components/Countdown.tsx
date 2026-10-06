@@ -54,10 +54,11 @@ function Block({ v, l }: { v: number; l: string }) {
   return (
     <div className="sv-countdown-block" aria-hidden="true" style={{ textAlign: "center", minWidth: 64 }}>
       <div
-        className="mono sv-countdown-value"
+        className="sv-countdown-value"
         style={{
-          fontSize: 36, fontWeight: 600, color: "var(--navy-900)",
-          letterSpacing: "-0.03em", lineHeight: 1,
+          fontFamily: "var(--font-display)", fontVariantNumeric: "lining-nums tabular-nums",
+          fontSize: 46, fontWeight: 480, color: "var(--navy-900)",
+          letterSpacing: "-0.01em", lineHeight: 0.95,
         }}
       >
         {String(v).padStart(2, "0")}
@@ -74,5 +75,5 @@ function Block({ v, l }: { v: number; l: string }) {
 }
 
 function Sep() {
-  return <span aria-hidden="true" style={{ color: "var(--ink-300)", fontSize: 24 }}>:</span>;
+  return <span aria-hidden="true" style={{ color: "var(--ink-300)", fontSize: 32, fontFamily: "var(--font-display)" }}>:</span>;
 }

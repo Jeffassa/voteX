@@ -12,6 +12,9 @@ import { HERO_POSTER, loadBallotBoxScene, wantsHero3d } from "./components/three
 // l'adresse IP de chaque visiteur à un tiers, sans consentement.
 import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
+// Serif des titres et des chiffres ; l'italique sert aux slogans des candidats.
+import "@fontsource-variable/newsreader";
+import "@fontsource-variable/newsreader/wght-italic.css";
 import "./index.css";
 
 // Accueil : l'image de l'urne et la 3D partent dès maintenant, en même temps

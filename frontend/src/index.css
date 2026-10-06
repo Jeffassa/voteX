@@ -96,6 +96,9 @@
 :root {
   --font-ui: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+  /* Serif des documents officiels (bulletin, procès-verbal) : titres, numéros,
+     chiffres clés. Le texte courant reste en Geist. */
+  --font-display: "Newsreader Variable", "Iowan Old Style", Georgia, serif;
 
   --navy-900: #0a2540;
   --navy-800: #133158;
@@ -113,17 +116,20 @@
   --orange-100: #ffe9d4;
   --orange-50: #fff5eb;
 
-  --bg: #fafafa;
+  /* Fond « papier » et gris chauds : le gris neutre de Tailwind donnait à
+     toutes les pages l'air d'un gabarit. Contrastes vérifiés (AA) sur --bg
+     comme sur --surface-2. */
+  --bg: #f4f1ea;
   --surface: #ffffff;
-  --surface-2: #f4f4f5;
-  --border: #e4e4e7;
-  --border-strong: #d4d4d8;
-  --ink-900: #18181b;
-  --ink-700: #3f3f46;
-  --ink-500: #5f5f6b;
-  /* Utilisée pour du texte (aides, placeholders) : #94a3b8 plafonnait à 2,6:1. */
-  --ink-400: #6b6b75;
-  --ink-300: #d4d4d8;
+  --surface-2: #efebe2;
+  --border: #e0dbcf;
+  --border-strong: #cbc4b5;
+  --ink-900: #141821;
+  --ink-700: #3a3e49;
+  --ink-500: #5b5f6b;
+  /* Utilisée pour du texte (aides, placeholders) : 4,7:1 sur le fond papier. */
+  --ink-400: #676b76;
+  --ink-300: #d3cdc0;
 
   --success-600: #15803d;
   --success-500: #22c55e;
@@ -139,17 +145,18 @@
   --info-600: #1d4ed8;
   --info-50: #eff6ff;
 
-  --r-sm: 8px;
-  --r-md: 10px;
-  --r-lg: 14px;
-  --r-xl: 18px;
-  --r-2xl: 20px;
+  /* Angles de papier découpé plutôt que de bulles : 3 à 12 px. */
+  --r-sm: 3px;
+  --r-md: 5px;
+  --r-lg: 7px;
+  --r-xl: 9px;
+  --r-2xl: 12px;
   --r-pill: 999px;
 
-  --shadow-sm: 0 1px 2px rgba(24, 24, 27, 0.05);
-  --shadow-md: 0 2px 8px rgba(24, 24, 27, 0.06), 0 1px 2px rgba(24, 24, 27, 0.04);
-  --shadow-lg: 0 10px 30px rgba(24, 24, 27, 0.08), 0 2px 6px rgba(24, 24, 27, 0.04);
-  --shadow-xl: 0 24px 60px rgba(24, 24, 27, 0.12), 0 6px 16px rgba(24, 24, 27, 0.05);
+  --shadow-sm: 0 1px 0 rgba(20, 24, 33, 0.04);
+  --shadow-md: 0 1px 0 rgba(20, 24, 33, 0.04), 0 8px 18px -10px rgba(20, 24, 33, 0.18);
+  --shadow-lg: 0 18px 40px -18px rgba(20, 24, 33, 0.28), 0 2px 6px rgba(20, 24, 33, 0.05);
+  --shadow-xl: 0 30px 70px -22px rgba(10, 37, 64, 0.38), 0 4px 12px rgba(20, 24, 33, 0.06);
   --shadow-orange: 0 1px 2px rgba(24, 24, 27, 0.08);
 }
 
@@ -185,7 +192,7 @@ a { color: inherit; text-decoration: none; }
 /* Brand */
 .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -0.02em; }
 .brand .logo {
-  width: 32px; height: 32px; border-radius: 9px;
+  width: 32px; height: 32px; border-radius: 5px;
   background: var(--navy-900);
   display: grid; place-items: center; flex-shrink: 0;
   position: relative; overflow: hidden;
@@ -199,7 +206,14 @@ a { color: inherit; text-decoration: none; }
 .brand-inverse .brand .name .tag { color: rgba(255, 255, 255, 0.75); }
 .brand-inverse .brand .logo { background: rgba(255, 255, 255, 0.08); }
 /* Titre du panneau des pages d'accès : deux lignes égales plutôt qu'un mot seul. */
-.sv-auth-tagline h2 { text-wrap: balance; }
+.sv-auth-tagline h2 { text-wrap: balance; font-family: var(--font-display); font-weight: 500; letter-spacing: -0.01em; }
+
+/* Titres de page : la serif des documents officiels. */
+h1, .h-title, .h-display, .sv-display {
+  font-family: var(--font-display);
+  font-variant-numeric: lining-nums;
+}
+h1 { letter-spacing: -0.012em; text-wrap: balance; }
 
 /* Buttons */
 .btn {
@@ -214,14 +228,14 @@ a { color: inherit; text-decoration: none; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 /* Bouton principal : marine plein (15:1). L'orange de la marque est réservé
    aux accents ; en fond de bouton, il n'offrait que 2,6:1 au texte blanc. */
-.btn-primary { background: var(--navy-900); color: #fff; box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
+.btn-primary { background: var(--navy-900); color: #fff; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.08); }
 .btn-primary:not(:disabled):hover { background: var(--navy-800); }
 .btn-primary:not(:disabled):active { transform: translateY(1px); }
-.btn-accent { background: var(--orange-500); color: var(--navy-900); font-weight: 600; }
+.btn-accent { background: var(--orange-500); color: var(--navy-900); font-weight: 600; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18); }
 .btn-accent:not(:disabled):hover { background: var(--orange-400); }
 .btn-navy { background: var(--navy-900); color: white; }
 .btn-navy:not(:disabled):hover { background: var(--navy-800); }
-.btn-outline { background: var(--surface); color: var(--ink-900); border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
+.btn-outline { background: var(--surface); color: var(--ink-900); border-color: var(--border-strong); box-shadow: inset 0 -1px 0 rgba(20, 24, 33, 0.06); }
 .btn-outline:not(:disabled):hover { background: var(--surface-2); border-color: var(--ink-300); }
 .btn-ghost { background: transparent; color: var(--ink-700); }
 .btn-ghost:hover { background: var(--surface-2); color: var(--ink-900); }
@@ -270,18 +284,20 @@ a { color: inherit; text-decoration: none; }
 }
 .card-pad { padding: 24px; }
 
-/* Badges */
+/* Badges : des tampons (cadre net, angles à peine cassés), pas des pilules. */
 .badge {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 3px 10px; border-radius: var(--r-pill);
-  font-size: 12px; font-weight: 500;
+  padding: 1px 7px; border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  font-size: 12px; font-weight: 600; line-height: 1.6; letter-spacing: 0.005em;
+  white-space: nowrap;
 }
-.badge-open { background: var(--success-50); color: var(--success-600); }
-.badge-open .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success-500); animation: sv-pulse 2s infinite; }
-.badge-closed { background: var(--ink-300); color: var(--ink-700); opacity: 0.9; }
-.badge-draft { background: var(--warn-50); color: #92400e; }
-.badge-orange { background: var(--orange-50); color: var(--orange-600); }
-.badge-navy { background: var(--navy-50); color: var(--navy-700); }
+.badge-open { background: var(--success-50); color: var(--success-600); border-color: #b7e0c4; }
+.badge-open .dot { width: 6px; height: 6px; border-radius: 1px; background: var(--success-500); animation: sv-pulse 2s infinite; }
+.badge-closed { background: var(--surface-2); color: var(--ink-700); border-color: var(--border-strong); }
+.badge-draft { background: var(--warn-50); color: #92400e; border-color: #f0d59c; }
+.badge-orange { background: var(--orange-50); color: var(--orange-600); border-color: #f5cba1; }
+.badge-navy { background: var(--navy-50); color: var(--navy-700); border-color: #cbd8ea; }
 
 @keyframes sv-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
@@ -291,7 +307,7 @@ a { color: inherit; text-decoration: none; }
 /* Avatar */
 .avatar {
   display: inline-grid; place-items: center;
-  border-radius: 50%;
+  border-radius: 4px;
   background: var(--navy-100); color: var(--navy-700);
   font-weight: 600; font-size: 14px; letter-spacing: -0.01em;
   position: relative; overflow: hidden; flex-shrink: 0;
@@ -302,10 +318,10 @@ a { color: inherit; text-decoration: none; }
 .hash-chip {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 6px 10px 6px 12px;
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   background: var(--navy-50); color: var(--navy-800);
   font-family: var(--font-mono); font-size: 12px;
-  border: 1px solid var(--navy-100);
+  border: 1px dashed #b4c4da;
 }
 .hash-chip button {
   border: 0; background: transparent; padding: 4px;
@@ -318,8 +334,8 @@ a { color: inherit; text-decoration: none; }
 /* Libellé de section : casse normale, sans espacement de lettres ni couleur
    criarde. Les capitales espacées en orange partout faisaient « gabarit ». */
 .h-eyebrow { font-size: 13px; font-weight: 500; color: var(--ink-500); letter-spacing: 0; }
-.h-title { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; color: var(--navy-900); line-height: 1.15; }
-.h-display { font-size: 64px; font-weight: 600; letter-spacing: -0.035em; color: var(--navy-900); line-height: 1.0; }
+.h-title { font-size: 32px; font-weight: 560; letter-spacing: -0.015em; color: var(--navy-900); line-height: 1.12; }
+.h-display { font-size: 64px; font-weight: 520; letter-spacing: -0.025em; color: var(--navy-900); line-height: 1.0; }
 .muted { color: var(--ink-500); }
 .mono { font-family: var(--font-mono); }
 
@@ -330,8 +346,8 @@ a { color: inherit; text-decoration: none; }
 /* App header */
 .app-header {
   position: sticky; top: 0; z-index: 50;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: saturate(180%) blur(12px);
+  background: rgba(244, 241, 234, 0.88);
+  backdrop-filter: saturate(160%) blur(12px);
   border-bottom: 1px solid var(--border);
 }
 .app-header-inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 32px; }
@@ -396,7 +412,7 @@ a { color: inherit; text-decoration: none; }
 
 /* Skeletons */
 .skel {
-  background: linear-gradient(90deg, #eef2f7 0%, #f7f9fc 50%, #eef2f7 100%);
+  background: linear-gradient(90deg, #ebe6dc 0%, #f5f2ec 50%, #ebe6dc 100%);
   background-size: 200% 100%;
   animation: sv-skel 1.4s infinite ease-in-out;
   border-radius: var(--r-sm);
@@ -604,24 +620,25 @@ a { color: inherit; text-decoration: none; }
 .sv-legal-header { background: var(--surface); border-bottom: 1px solid var(--border); }
 .sv-legal-header-inner { display: flex; align-items: center; justify-content: space-between; padding-top: 14px; padding-bottom: 14px; }
 .sv-legal-main { padding-top: 48px; padding-bottom: 72px; flex: 1; }
-.sv-legal-main h1 { font-size: 34px; letter-spacing: -0.03em; color: var(--navy-900); margin: 0 0 8px; line-height: 1.15; }
+.sv-legal-main h1 { font-size: 42px; font-weight: 540; color: var(--navy-900); margin: 0 0 8px; line-height: 1.1; }
 .sv-legal-updated { color: var(--ink-500); font-size: 13px; margin: 0 0 32px; }
 .sv-legal-body { color: var(--ink-700); font-size: 15px; line-height: 1.7; }
-.sv-legal-body h2 { font-size: 20px; color: var(--navy-900); letter-spacing: -0.015em; margin: 36px 0 10px; scroll-margin-top: 24px; }
+.sv-legal-body h2 { font-family: var(--font-display); font-size: 24px; font-weight: 560; color: var(--navy-900); letter-spacing: -0.01em; margin: 40px 0 10px; scroll-margin-top: 24px; }
 .sv-legal-body a { color: var(--navy-700); text-decoration: underline; }
 .sv-legal-body ul { padding-left: 22px; }
 .sv-legal-body li { margin: 4px 0; }
 .sv-table-wrap { overflow-x: auto; margin: 12px 0; }
 .sv-legal-body table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 14px; background: var(--surface); }
-.sv-legal-body th, .sv-legal-body td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
-.sv-legal-body th { background: var(--navy-50); color: var(--navy-900); font-weight: 600; }
+.sv-legal-body th, .sv-legal-body td { border-bottom: 1px solid var(--border); padding: 9px 12px 9px 0; text-align: left; vertical-align: top; }
+.sv-legal-body th { color: var(--navy-900); font-weight: 600; font-size: 13px; border-bottom: 1.5px solid var(--navy-900); }
+.sv-legal-body table { background: transparent !important; }
 .sv-legal-body code { font-family: var(--font-mono); font-size: 13px; background: var(--navy-50); padding: 1px 5px; border-radius: 4px; }
 .sv-legal-body .sv-link-button { font-size: 15px; color: var(--navy-700); }
 .sv-to-fill { background: var(--warn-50); color: var(--warn-600); border: 1px dashed #d97706; border-radius: 4px; padding: 0 4px; font-weight: 500; }
 
 .sv-notfound { flex: 1; max-width: 560px; margin: 0 auto; padding: 64px 24px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; }
-.sv-notfound-icon { width: 80px; height: 80px; border-radius: 50%; background: var(--navy-50); color: var(--navy-700); display: grid; place-items: center; margin-top: 40px; }
-.sv-notfound h1 { font-size: 32px; letter-spacing: -0.03em; color: var(--navy-900); margin: 0; }
+.sv-notfound-icon { width: 76px; height: 76px; border-radius: var(--r-md); border: 1.5px dashed var(--border-strong); color: var(--navy-700); display: grid; place-items: center; margin-top: 40px; }
+.sv-notfound h1 { font-size: 40px; font-weight: 540; color: var(--navy-900); margin: 0; }
 .sv-notfound p { margin: 0; line-height: 1.6; }
 .sv-notfound code { font-family: var(--font-mono); font-size: 13px; background: var(--navy-50); padding: 1px 6px; border-radius: 4px; word-break: break-all; }
 .sv-notfound-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 12px; }
@@ -652,6 +669,216 @@ a { color: inherit; text-decoration: none; }
 /* Une grille laisse ses colonnes grandir jusqu'à leur contenu le plus large
    (min-width: auto) : un tableau large poussait toute la page hors écran. */
 .sv-admin-layout > * { min-width: 0; }
+
+/* ── Administration ─────────────────────────────────────────────────────── */
+.sv-admin-page { padding: 32px 40px 80px; max-width: 1240px; }
+.sv-admin-page-narrow { max-width: 1040px; }
+.sv-page-head {
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+  gap: 16px; margin-bottom: 24px;
+}
+.sv-page-head h1 { margin: 0; }
+.sv-page-sub { margin: 6px 0 0; font-size: 14px; color: var(--ink-500); line-height: 1.5; }
+.sv-page-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.sv-back { margin: 0 0 12px -10px; }
+
+/* Menu latéral : états au survol et au focus, impossibles en style en ligne. */
+.sv-admin-nav a {
+  position: relative; display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: var(--r-md);
+  color: rgba(255, 255, 255, 0.72); font-size: 14px; font-weight: 500;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.sv-admin-nav a:hover { background: rgba(255, 255, 255, 0.06); color: white; }
+.sv-admin-nav a.active { background: rgba(255, 255, 255, 0.1); color: white; }
+.sv-admin-nav a.active::before {
+  content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px;
+  border-radius: 3px; background: var(--orange-500);
+}
+.sv-nav-count {
+  margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill);
+  background: var(--orange-500); color: var(--navy-900);
+  font-size: 11px; font-weight: 700; display: inline-grid; place-items: center;
+  font-variant-numeric: tabular-nums;
+}
+.sv-admin-profile-link { flex: 1; min-width: 0; border-radius: 6px; }
+.sv-admin-profile-link:hover .sv-admin-profile-name { text-decoration: underline; text-underline-offset: 2px; }
+.sv-admin-logout {
+  background: transparent; color: rgba(255, 255, 255, 0.75); border: 0;
+  padding: 6px; border-radius: 6px; display: grid; place-items: center;
+}
+.sv-admin-logout:hover { background: rgba(255, 255, 255, 0.1); color: white; }
+
+/* Badges complémentaires (les couleurs « green-100 », « red-100 »… employées
+   jusqu'ici n'existaient pas : les badges s'affichaient sans fond). */
+.badge-success { background: var(--success-50); color: var(--success-600); border-color: #b7e0c4; }
+.badge-danger { background: var(--danger-50); color: var(--danger-600); border-color: var(--danger-200); }
+.badge-warn { background: var(--warn-50); color: var(--warn-600); border-color: #f0d59c; }
+.badge-muted { background: var(--surface-2); color: var(--ink-500); border-color: var(--border); }
+
+/* Tableaux : un vrai <table>, lu comme tel par les lecteurs d'écran. */
+.sv-table-scroll { overflow-x: auto; }
+.sv-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+/* En-tête souligné d'un filet marine, lignes au trait fin : un registre. */
+.sv-table th {
+  text-align: left; font-size: 12px; font-weight: 500; color: var(--ink-500);
+  padding: 10px 16px; background: transparent; border-bottom: 1.5px solid var(--navy-900);
+  white-space: nowrap;
+}
+.sv-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--ink-700); }
+.sv-table tbody tr:last-child td { border-bottom: 0; }
+.sv-table tbody tr { transition: background-color 120ms ease; }
+.sv-table tbody tr:hover { background: #faf8f4; }
+.sv-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.sv-table .actions { text-align: right; white-space: nowrap; width: 1%; }
+.sv-row-link { cursor: pointer; }
+/* Titre de groupe (un jour du journal d'audit). */
+.sv-table .sv-day-row th {
+  background: var(--surface-2); color: var(--ink-700); font-weight: 600;
+  padding: 8px 16px; border-top: 1px solid var(--border);
+}
+.sv-table tbody tr.sv-day-row:hover { background: none; }
+.sv-cell-title { font-weight: 600; color: var(--navy-900); }
+.sv-cell-sub { font-size: 12px; color: var(--ink-500); margin-top: 2px; }
+.sv-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sv-table-foot {
+  padding: 10px 16px; border-top: 1px solid var(--border); background: var(--bg);
+  font-size: 12px; color: var(--ink-500);
+}
+
+/* Barre d'outils en tête de carte : recherche, filtres. */
+.sv-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+}
+.sv-toolbar .input { padding-top: 9px; padding-bottom: 9px; }
+.sv-toolbar .sv-search { flex: 1 1 260px; }
+
+/* Onglets compacts. */
+/* Onglets d'index : texte souligné, compteurs en chiffres de machine. */
+.sv-segmented { display: inline-flex; flex-wrap: wrap; gap: 2px 20px; }
+.sv-segmented button {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 0; border-bottom: 2px solid transparent; background: transparent;
+  padding: 7px 0 5px; border-radius: 0;
+  font-size: 13.5px; font-weight: 500; color: var(--ink-500);
+  transition: color 150ms ease, border-color 150ms ease;
+}
+.sv-segmented button:hover { color: var(--ink-900); border-bottom-color: var(--border-strong); }
+.sv-segmented button[aria-pressed="true"] { color: var(--navy-900); border-bottom-color: var(--navy-900); }
+.sv-seg-count { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-400); font-variant-numeric: tabular-nums; }
+.sv-seg-count.alert {
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--r-pill);
+  background: var(--orange-500); color: var(--navy-900); font-weight: 700; font-size: 11px;
+  display: inline-grid; place-items: center;
+}
+
+/* État vide. */
+.sv-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 48px 24px; text-align: center; font-size: 14px; color: var(--ink-500);
+}
+.sv-empty-icon {
+  width: 48px; height: 48px; border-radius: var(--r-md); margin-bottom: 6px;
+  border: 1px dashed var(--border-strong); color: var(--ink-400); display: grid; place-items: center;
+}
+.sv-empty strong { color: var(--navy-900); font-family: var(--font-display); font-size: 19px; font-weight: 560; }
+.sv-empty p { margin: 0; max-width: 420px; line-height: 1.5; }
+.sv-empty .btn { margin-top: 10px; }
+
+/* Bouton icône (actions de ligne). */
+.btn-icon { padding: 0; width: 32px; height: 32px; border-radius: var(--r-sm); }
+.btn-icon.danger { color: var(--danger-600); }
+.btn-icon.danger:hover { background: var(--danger-50); color: var(--danger-600); }
+
+/* Menu d'actions : positionné sur l'écran, il n'est plus rogné par la carte. */
+.sv-menu {
+  position: fixed; z-index: 150; min-width: 220px; padding: 4px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-md); box-shadow: var(--shadow-lg);
+  animation: sv-fade-in 140ms ease both;
+}
+.sv-menu-item {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border: 0; border-radius: 6px; background: transparent;
+  color: var(--ink-900); font-size: 13px; text-align: left;
+}
+.sv-menu-item:hover, .sv-menu-item:focus-visible { background: var(--navy-50); outline: none; }
+.sv-menu-item.danger { color: var(--danger-600); }
+.sv-menu-item.danger:hover, .sv-menu-item.danger:focus-visible { background: var(--danger-50); }
+.sv-menu-sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+/* Barre de progression. */
+.sv-progress { height: 8px; border-radius: 1px; background: var(--surface-2); overflow: hidden; box-shadow: inset 0 0 0 1px var(--border); }
+.sv-progress > span { display: block; height: 100%; border-radius: inherit; background: var(--navy-900); transition: width 400ms ease; }
+
+/* Chiffres clés : une seule bande, cellules séparées par des filets, comme
+   les totaux en bas d'un procès-verbal (et non quatre cartes à icône). */
+.sv-ledger {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+}
+.sv-ledger-cell {
+  display: flex; flex-direction: column; gap: 12px; padding: 16px 22px 20px;
+  border-left: 1px solid var(--border); color: inherit; min-width: 0;
+}
+.sv-ledger-cell:first-child { border-left: 0; }
+a.sv-ledger-cell { transition: background-color 150ms ease; }
+a.sv-ledger-cell:hover { background: #faf8f4; }
+a.sv-ledger-cell:hover .sv-ledger-go { color: var(--navy-900); transform: translateX(2px); }
+.sv-ledger-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--ink-500); }
+.sv-ledger-go { color: var(--ink-300); transition: color 150ms ease, transform 150ms ease; }
+.sv-ledger-value {
+  font-family: var(--font-display); font-size: 46px; font-weight: 480; line-height: 0.9;
+  letter-spacing: -0.02em; color: var(--navy-900); font-variant-numeric: lining-nums tabular-nums;
+}
+
+.sv-card-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+}
+.sv-card-head h2 { margin: 0; font-family: var(--font-display); font-size: 19px; font-weight: 560; color: var(--navy-900); letter-spacing: -0.01em; }
+.sv-card-link { font-size: 13px; color: var(--navy-700); font-weight: 500; display: inline-flex; align-items: center; gap: 4px; }
+.sv-card-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+
+/* Bandeau d'action (comptes à valider…). */
+.sv-callout {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 14px 16px; border-radius: var(--r-md);
+  background: var(--orange-50); border: 1px solid #f5cba1; color: var(--ink-900);
+  font-size: 14px;
+}
+.sv-callout-icon { width: 32px; height: 32px; border-radius: var(--r-sm); background: var(--orange-100); color: var(--orange-600); display: grid; place-items: center; flex-shrink: 0; }
+
+/* Étapes du cycle d'une élection. */
+.sv-steps { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.sv-step { display: inline-flex; align-items: center; gap: 8px; color: rgba(255, 255, 255, 0.55); }
+.sv-step-dot {
+  width: 22px; height: 22px; border-radius: 3px; display: grid; place-items: center;
+  border: 1.5px solid rgba(255, 255, 255, 0.35); font-size: 11px; font-weight: 600;
+}
+.sv-step.done { color: rgba(255, 255, 255, 0.85); }
+.sv-step.done .sv-step-dot { background: rgba(255, 255, 255, 0.16); border-color: transparent; }
+.sv-step.current { color: white; font-weight: 600; }
+.sv-step.current .sv-step-dot { background: var(--orange-500); border-color: var(--orange-500); color: var(--navy-900); }
+.sv-step-line { width: 28px; height: 1.5px; background: rgba(255, 255, 255, 0.25); }
+
+@media (max-width: 768px) {
+  .sv-admin-page { padding: 20px 16px 64px; }
+  .sv-ledger { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sv-ledger-cell:nth-child(3) { border-left: 0; }
+  .sv-ledger-cell:nth-child(n + 3) { border-top: 1px solid var(--border); }
+  .sv-ledger-value { font-size: 38px; }
+  .sv-page-head { align-items: flex-start; margin-bottom: 18px; }
+  .sv-page-actions { width: 100%; }
+  .sv-page-actions > .btn { flex: 1; }
+  .sv-hide-mobile { display: none; }
+  .sv-step-line { width: 12px; }
+  .sv-election-hero { padding: 20px 18px !important; }
+  .sv-election-actions { padding: 12px 18px !important; }
+  /* Barre d'outils empilée : recherche et filtres sur toute la largeur. */
+  .sv-toolbar > .sv-search, .sv-toolbar > select { flex: 1 1 100% !important; width: 100% !important; }
+}
 
 .dark {
   --chart-1: oklch(1 0 none);
@@ -686,3 +913,240 @@ a { color: inherit; text-decoration: none; }
   animation: sv-spin 0.8s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) { .sv-spinner { animation-duration: 2.4s; } }
+
+/* ── Identité : bulletin, registre, impression sécurisée ───────────────────
+   Le vocabulaire visuel vient des objets d'une élection : le bulletin et son
+   talon perforé, la case où l'on trace sa croix, le tampon « A voté », les
+   fonds guillochés des documents infalsifiables, les chiffres du procès-verbal. */
+
+/* Référence imprimée : « N° 01 », « Réf. », horodatages. */
+.sv-ref { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-500); font-variant-numeric: tabular-nums; }
+.sv-quote { font-family: var(--font-display); font-style: italic; font-weight: 420; }
+
+/* Motif guilloché (SecurityPattern) posé dans un panneau sombre. */
+.sv-pattern { position: absolute; pointer-events: none; color: white; }
+
+/* Microtexte de sécurité, en bordure de bulletin ou de reçu. */
+.sv-microtext {
+  overflow: hidden; white-space: nowrap; pointer-events: none; user-select: none;
+  font-family: var(--font-mono); font-size: 7px; letter-spacing: 0.14em; line-height: 1;
+  color: var(--ink-400); opacity: 0.7;
+}
+
+/* Ligne de perforation, avec ses deux encoches sur les bords de la feuille. */
+.sv-perf { position: relative; height: 0; border-top: 1.5px dashed var(--border-strong); margin: 0 16px; }
+.sv-perf::before, .sv-perf::after {
+  content: ""; position: absolute; top: -9px; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--perf-bg, var(--bg)); box-shadow: inset 0 0 0 1px var(--border);
+}
+.sv-perf::before { left: -25px; }
+.sv-perf::after { right: -25px; }
+
+/* Fiche de candidat : un bulletin et son talon numéroté. */
+.sv-slip {
+  position: relative; display: grid; grid-template-columns: 62px minmax(0, 1fr);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+  overflow: hidden; transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+.sv-slip-no {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 16px 0;
+  border-right: 1.5px dashed var(--border-strong);
+  background:
+    repeating-linear-gradient(135deg, rgba(10, 37, 64, 0.045) 0 1px, transparent 1px 6px),
+    #faf8f3;
+}
+.sv-slip-no small { font-family: var(--font-mono); font-size: 10px; color: var(--ink-400); }
+.sv-slip-no b {
+  font-family: var(--font-display); font-size: 30px; font-weight: 500; line-height: 1;
+  color: var(--navy-900); font-variant-numeric: lining-nums tabular-nums;
+}
+/* Encoches de perforation en haut et en bas du talon. */
+.sv-slip::before, .sv-slip::after {
+  content: ""; position: absolute; left: 53px; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--perf-bg, var(--bg)); box-shadow: inset 0 0 0 1px var(--border); z-index: 1;
+}
+.sv-slip::before { top: -10px; }
+.sv-slip::after { bottom: -10px; }
+.sv-slip-body { padding: 16px 18px 18px; min-width: 0; }
+.sv-slip-name {
+  margin: 0; font-family: var(--font-display); font-size: 21px; font-weight: 560;
+  line-height: 1.15; color: var(--navy-900); letter-spacing: -0.01em;
+}
+.sv-slip-slogan {
+  margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--border);
+  font-family: var(--font-display); font-style: italic; font-size: 16px; line-height: 1.4; color: var(--ink-700);
+}
+.sv-slip-slogan.empty { font-family: var(--font-ui); font-style: normal; font-size: 13px; color: var(--ink-400); }
+
+/* Case du bulletin : la croix orange s'y trace quand on choisit. */
+.sv-ballot-box {
+  width: 34px; height: 34px; flex-shrink: 0; border: 2px solid var(--navy-900); border-radius: 3px;
+  background: white; display: grid; place-items: center; color: var(--orange-500);
+}
+.sv-ballot-box svg { animation: sv-cross-in 220ms cubic-bezier(.2, .9, .3, 1.3); }
+@keyframes sv-cross-in { from { transform: scale(0.55) rotate(-12deg); } to { transform: none; } }
+
+/* Bulletin de vote sélectionnable (salle de vote). */
+.sv-slip-choice { cursor: pointer; }
+.sv-slip-choice:hover { border-color: var(--border-strong); box-shadow: var(--shadow-md); }
+.sv-slip-choice:has(input:focus-visible) { outline: 3px solid var(--navy-600); outline-offset: 2px; }
+.sv-slip-choice.is-selected { border-color: var(--navy-900); box-shadow: 0 0 0 1px var(--navy-900), var(--shadow-md); background: #fffcf7; }
+.sv-slip-choice.is-selected .sv-slip-no { background: repeating-linear-gradient(135deg, rgba(255, 122, 0, 0.09) 0 1px, transparent 1px 6px), #fff6ec; }
+
+/* Tampon « A voté », comme celui de l'assesseur. */
+.sv-stamp {
+  display: inline-flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 18px 7px; color: var(--orange-600);
+  border: 3px solid currentColor; border-radius: 6px;
+  outline: 1px solid currentColor; outline-offset: 3px;
+  font-family: var(--font-display); font-weight: 700; font-size: 30px; line-height: 1;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  transform: rotate(-7deg); opacity: 0.92;
+  animation: sv-stamp-in 380ms cubic-bezier(.2, .9, .3, 1.2) 250ms backwards;
+}
+.sv-stamp small { font-family: var(--font-mono); font-weight: 500; font-size: 10px; letter-spacing: 0.08em; }
+.sv-stamp.sm { font-size: 18px; padding: 5px 11px 4px; border-width: 2px; outline-offset: 2px; }
+@keyframes sv-stamp-in { from { transform: rotate(-7deg) scale(1.35); } to { transform: rotate(-7deg) scale(1); } }
+
+/* Registre d'émargement : une case par électeur inscrit. */
+.sv-register { display: flex; flex-wrap: wrap; gap: 3px; }
+.sv-register span { width: 12px; height: 12px; border-radius: 1px; border: 1px solid var(--border-strong); background: white; }
+.sv-register span.on { background: var(--navy-900); border-color: var(--navy-900); }
+
+/* Panneau marine des documents (en-têtes d'élection, reçus, accueil). */
+.sv-navy-panel { position: relative; overflow: hidden; background: var(--navy-900); color: white; isolation: isolate; }
+.sv-navy-panel > .sv-pattern { z-index: -1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sv-stamp, .sv-ballot-box svg { animation: none; }
+}
+
+/* Bulletin unique de la salle de vote. */
+.sv-ballot { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow-md); }
+.sv-ballot-head { border-bottom: 1.5px solid var(--navy-900); background: #fdfcf9; }
+.sv-ballot-title { margin: 6px 0 0; font-size: 38px; font-weight: 540; line-height: 1.08; color: var(--navy-900); }
+.sv-ballot-rules {
+  list-style: none; margin: 16px 0 0; padding: 0; counter-reset: rule;
+  display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 13px; color: var(--ink-700);
+}
+.sv-ballot-rules li { counter-increment: rule; }
+.sv-ballot-rules li::before {
+  content: counter(rule) "."; margin-right: 6px;
+  font-family: var(--font-display); font-weight: 650; color: var(--orange-600);
+}
+.sv-ballot-entry { position: relative; border-top: 1px solid var(--border); transition: background-color 150ms ease; }
+/* Talon numéroté sur toute la hauteur de la ligne, lien « Programme » compris. */
+.sv-ballot-entry::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 72px; pointer-events: none;
+  border-right: 1.5px dashed var(--border-strong);
+  background: repeating-linear-gradient(135deg, rgba(10, 37, 64, 0.045) 0 1px, transparent 1px 6px), #faf8f3;
+}
+.sv-ballot-entry.is-selected::before {
+  background: repeating-linear-gradient(135deg, rgba(255, 122, 0, 0.1) 0 1px, transparent 1px 6px), #fff3e6;
+}
+.sv-ballot-choice, .sv-ballot-more { position: relative; }
+.sv-ballot-entry:first-of-type { border-top: 0; }
+.sv-ballot-entry:hover { background: #fcfaf6; }
+.sv-ballot-entry.is-selected { background: #fff8ef; }
+.sv-ballot-choice {
+  display: grid; grid-template-columns: 72px 60px minmax(0, 1fr) 34px; gap: 0 18px; align-items: center;
+  padding: 18px 26px 18px 0; cursor: pointer;
+}
+fieldset:disabled .sv-ballot-choice { cursor: not-allowed; }
+.sv-ballot-choice:has(input:focus-visible) { outline: 3px solid var(--navy-600); outline-offset: -3px; }
+.sv-ballot-no {
+  align-self: stretch; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 30px; font-weight: 500; line-height: 1; color: var(--navy-900);
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.sv-ballot-no small { font-family: var(--font-mono); font-size: 10px; font-weight: 400; color: var(--ink-400); margin-bottom: 3px; }
+.sv-ballot-entry.is-selected .sv-ballot-no { color: var(--orange-600); }
+.sv-ballot-name { display: block; font-family: var(--font-display); font-size: 23px; font-weight: 560; line-height: 1.15; color: var(--navy-900); letter-spacing: -0.01em; }
+.sv-ballot-slogan { display: block; margin-top: 7px; font-family: var(--font-display); font-style: italic; font-size: 16px; line-height: 1.4; color: var(--ink-700); }
+.sv-ballot-blank {
+  width: 60px; height: 60px; border-radius: 5px; border: 1.5px dashed var(--border-strong);
+  background: repeating-linear-gradient(135deg, rgba(10, 37, 64, 0.06) 0 1px, transparent 1px 7px);
+}
+.sv-ballot-more {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin: -10px 0 16px calc(72px + 18px + 60px + 18px); padding: 2px 0;
+  border: 0; background: none; font-size: 13px; font-weight: 500; color: var(--navy-700);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.sv-ballot-more:hover { color: var(--navy-900); }
+
+/* Barre de confirmation : un bandeau marine, comme l'isoloir qu'on quitte. */
+.sv-confirm-dock {
+  position: fixed; left: 0; right: 0; bottom: 20px; z-index: 30;
+  display: flex; justify-content: center; padding: 0 16px; pointer-events: none;
+}
+.sv-confirm-bar {
+  pointer-events: auto; width: 100%; max-width: 760px;
+  display: flex; align-items: center; gap: 16px; padding: 12px 12px 12px 22px;
+  background: var(--navy-900); color: white; border-radius: var(--r-xl); box-shadow: var(--shadow-xl);
+}
+.sv-confirm-choice { flex: 1; min-width: 0; }
+.sv-confirm-bar .btn:disabled { opacity: 1; background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.55); box-shadow: none; }
+.sv-confirm-choice small { display: block; font-family: var(--font-mono); font-size: 11px; color: rgba(255, 255, 255, 0.6); }
+.sv-confirm-choice strong {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--font-display); font-size: 19px; font-weight: 560;
+}
+
+@media (max-width: 640px) {
+  .sv-ballot-title { font-size: 28px; }
+  .sv-ballot-choice { grid-template-columns: 48px 48px minmax(0, 1fr) 30px; gap: 0 12px; padding-right: 14px; }
+  .sv-ballot-no { font-size: 22px; }
+  .sv-ballot-entry::before { width: 48px; }
+  .sv-ballot-name { font-size: 19px; }
+  .sv-ballot-slogan { font-size: 14.5px; }
+  .sv-ballot-blank { width: 48px; height: 48px; }
+  .sv-ballot-choice .avatar { width: 48px !important; height: 48px !important; font-size: 19px !important; }
+  .sv-ballot-more { margin-left: calc(48px + 12px + 48px + 12px); }
+  .sv-ballot-box { width: 30px; height: 30px; }
+  .sv-confirm-dock { bottom: 10px; padding: 0 10px; }
+}
+
+/* Reçu de vote : un ticket et son talon. */
+.sv-ticket {
+  max-width: 720px; margin: 36px auto 0; text-align: left;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+  overflow: hidden; box-shadow: var(--shadow-lg);
+}
+.sv-ticket-head { padding: 22px 26px; }
+.sv-ticket-fields { display: grid; grid-template-columns: 180px minmax(0, 1fr); margin: 0; padding: 4px 26px 14px; }
+.sv-ticket-fields dt, .sv-ticket-fields dd { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.sv-ticket-fields dt { font-size: 13px; color: var(--ink-500); }
+.sv-ticket-fields dd { margin: 0; min-width: 0; font-size: 13.5px; color: var(--navy-900); }
+.sv-ticket-fields dt:nth-last-of-type(1), .sv-ticket-fields dd:last-of-type { border-bottom: 0; }
+.sv-ticket-stub {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 18px 26px 20px; background: #fdfcf9;
+}
+.hash-chip > span { word-break: break-all; }
+@media (max-width: 640px) {
+  .sv-ticket-fields { grid-template-columns: 1fr; padding: 4px 18px 12px; }
+  .sv-ticket-fields dt { border-bottom: 0; padding-bottom: 2px; }
+  .sv-ticket-head, .sv-ticket-stub { padding-left: 18px; padding-right: 18px; }
+}
+
+/* Résultats tant que l'urne est fermée. */
+.sv-sealed {
+  display: flex; gap: 14px; align-items: flex-start; padding: 18px;
+  border: 1.5px dashed var(--border-strong); border-radius: var(--r-md);
+  background: repeating-linear-gradient(135deg, rgba(10, 37, 64, 0.035) 0 1px, transparent 1px 7px), #fcfaf6;
+}
+.sv-sealed-icon {
+  width: 36px; height: 36px; flex-shrink: 0; display: grid; place-items: center;
+  border: 2px solid var(--navy-900); border-radius: 3px; color: var(--navy-900); background: white;
+}
+.sv-progress-blank > span { background: repeating-linear-gradient(135deg, var(--ink-400) 0 2px, transparent 2px 5px) !important; }
+
+/* Certificat de vérification. */
+.sv-certificate {
+  display: flex; gap: 18px; flex-wrap: wrap; margin-top: 18px; padding: 18px 20px;
+  border: 1px solid #b7e0c4; border-radius: var(--r-md); background: var(--success-50);
+}
+.sv-certificate-fields { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; margin: 10px 0 0; font-size: 13.5px; }
+.sv-certificate-fields dt { color: var(--ink-500); }
+.sv-certificate-fields dd { margin: 0; color: var(--navy-900); min-width: 0; }

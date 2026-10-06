@@ -52,7 +52,7 @@ export class ErrorBoundary extends Component<Props, State> {
               width: "100%",
               background: "white",
               padding: 36,
-              borderRadius: 16,
+              borderRadius: 8,
               boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01)",
               border: "1px solid #E2E8F0",
               textAlign: "center",
@@ -62,7 +62,7 @@ export class ErrorBoundary extends Component<Props, State> {
               style={{
                 width: 56,
                 height: 56,
-                borderRadius: "50%",
+                borderRadius: 6,
                 background: "#FEF2F2",
                 color: "#EF4444",
                 display: "grid",

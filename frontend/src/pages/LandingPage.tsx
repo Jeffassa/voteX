@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -12,15 +12,17 @@ import {
 } from "lucide-react";
 
 import { Brand } from "@/components/Brand";
+import { HERO_POSTER, loadBallotBoxScene, wantsHero3d } from "@/components/three/heroScene";
 import { Reveal } from "@/components/Reveal";
 import SpotlightCards, { type SpotlightItem } from "@/components/kokonutui/spotlight-cards";
 import { useConsentStore } from "@/lib/consent";
 
 /**
  * Scène 3D chargée à la demande : Three.js n'est téléchargé que par la page
- * d'accueil, jamais par la salle de vote ni par l'administration.
+ * d'accueil, jamais par la salle de vote ni par l'administration. En attendant,
+ * l'image fixe de sa première image tient la place (voir heroScene.ts).
  */
-const BallotBoxScene = lazy(() => import("@/components/three/BallotBoxScene"));
+const BallotBoxScene = lazy(loadBallotBoxScene);
 
 const STEPS = [
   {
@@ -85,6 +87,8 @@ const GUARANTEES = [
 
 export default function LandingPage() {
   const reopenConsent = useConsentStore((s) => s.reopen);
+  const [want3d] = useState(wantsHero3d);
+  const [sceneReady, setSceneReady] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -158,9 +162,32 @@ export default function LandingPage() {
               className="absolute inset-6 rounded-full opacity-60 blur-3xl"
               style={{ background: "radial-gradient(circle, rgba(74,119,176,0.18), transparent 70%)" }}
             />
-            <Suspense fallback={null}>
-              <BallotBoxScene className="absolute inset-0" />
-            </Suspense>
+            {/* Image fixe d'abord, affichée dès le premier rendu ; la 3D se
+                fond par-dessus quand sa première image, identique, est prête. */}
+            <img
+              src={HERO_POSTER.src}
+              srcSet={HERO_POSTER.srcSet}
+              sizes={HERO_POSTER.sizes}
+              width={HERO_POSTER.width}
+              height={HERO_POSTER.height}
+              alt=""
+              aria-hidden="true"
+              decoding="async"
+              {...{ fetchpriority: "high" }}
+              className={`absolute inset-0 h-full w-full object-contain transition-opacity duration-500 ${
+                sceneReady ? "opacity-0" : "opacity-100"
+              }`}
+            />
+            {want3d && (
+              <Suspense fallback={null}>
+                <BallotBoxScene
+                  onReady={() => setSceneReady(true)}
+                  className={`absolute inset-0 transition-opacity duration-500 ${
+                    sceneReady ? "opacity-100" : "opacity-0"
+                  }`}
+                />
+              </Suspense>
+            )}
           </div>
         </div>
       </section>

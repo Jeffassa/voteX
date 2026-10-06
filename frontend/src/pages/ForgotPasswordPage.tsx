@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Mail } from "lucide-react";
+import { ArrowLeft, Mail } from "lucide-react";
 
 import { useReveal } from "@/hooks/useReveal";
 import { Brand } from "@/components/Brand";
+import { Stamp } from "@/components/SecurityPattern";
 import { Honeypot } from "@/components/Honeypot";
 import { useRequestPasswordReset } from "@/lib/queries";
 
@@ -41,19 +42,14 @@ export default function ForgotPasswordPage() {
 
         {sent ? (
           <div style={{ textAlign: "center" }}>
-            <div
-              style={{
-                width: 64, height: 64, margin: "0 auto 20px",
-                borderRadius: "50%", background: "var(--success-50)",
-                display: "grid", placeItems: "center", color: "var(--success-500)",
-              }}
-            >
-              <CheckCircle2 size={28} />
+            {/* Un cachet postal plutôt qu'une coche dans un rond. */}
+            <div style={{ margin: "8px 0 26px" }}>
+              <Stamp small style={{ color: "var(--navy-700)" }}>Envoyé</Stamp>
             </div>
             <h1
               style={{
-                fontSize: 22, fontWeight: 600, color: "var(--navy-900)",
-                margin: "0 0 8px", letterSpacing: "-0.02em",
+                fontSize: 28, fontWeight: 560, color: "var(--navy-900)",
+                margin: "0 0 8px",
               }}
             >
               Email envoyé
@@ -70,8 +66,8 @@ export default function ForgotPasswordPage() {
           <form onSubmit={submit}>
             <h1
               style={{
-                fontSize: 24, fontWeight: 600, color: "var(--navy-900)",
-                margin: "0 0 8px", letterSpacing: "-0.025em",
+                fontSize: 30, fontWeight: 560, color: "var(--navy-900)",
+                margin: "0 0 8px",
               }}
             >
               Mot de passe oublié ?

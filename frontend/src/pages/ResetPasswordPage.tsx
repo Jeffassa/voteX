@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AlertCircle, CheckCircle2, Eye, EyeOff, Lock } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, Lock } from "lucide-react";
 
 import { useReveal } from "@/hooks/useReveal";
 import { Brand } from "@/components/Brand";
+import { Stamp } from "@/components/SecurityPattern";
 import { useConfirmPasswordReset } from "@/lib/queries";
 
 /**
@@ -104,16 +105,10 @@ export default function ResetPasswordPage() {
 
         {done ? (
           <div style={{ textAlign: "center" }}>
-            <div
-              style={{
-                width: 64, height: 64, margin: "0 auto 20px",
-                borderRadius: "50%", background: "var(--success-50)",
-                display: "grid", placeItems: "center", color: "var(--success-500)",
-              }}
-            >
-              <CheckCircle2 size={28} />
+            <div style={{ margin: "8px 0 26px" }}>
+              <Stamp small style={{ color: "var(--success-600)" }}>Modifié</Stamp>
             </div>
-            <h1 style={{ fontSize: 22, fontWeight: 600, color: "var(--navy-900)", margin: "0 0 8px" }}>
+            <h1 style={{ fontSize: 28, fontWeight: 560, color: "var(--navy-900)", margin: "0 0 8px" }}>
               Mot de passe modifié !
             </h1>
             <p className="muted" style={{ fontSize: 14 }}>

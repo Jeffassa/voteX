@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 
 import { useReveal } from "@/hooks/useReveal";
 import { Brand } from "@/components/Brand";
+import { Rosette } from "@/components/SecurityPattern";
 import { Honeypot } from "@/components/Honeypot";
 import { api } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
@@ -247,15 +248,9 @@ export default function RegisterPage() {
           overflow: "hidden",
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            opacity: 0.06,
-            backgroundImage: "radial-gradient(circle at 20% 20%, white 1px, transparent 1.5px)",
-            backgroundSize: "24px 24px",
-          }}
-        />
+        {/* Rosace guillochée : le fond des documents officiels, à la place
+            d'une trame de points. */}
+        <Rosette size={640} opacity={0.11} style={{ right: -240, bottom: -240 }} />
         {/* brand-inverse : sans lui, « ESATIC » s'écrivait en marine sur marine. */}
         <div className="brand-inverse" style={{ position: "relative" }}>
           <Brand />
@@ -263,10 +258,9 @@ export default function RegisterPage() {
         <div className="sv-auth-tagline" style={{ position: "relative", margin: "auto", width: "100%", maxWidth: 460, textAlign: "left" }}>
           <h2
             style={{
-              fontSize: 34,
-              fontWeight: 600,
-              letterSpacing: "-0.03em",
-              lineHeight: 1.1,
+              fontSize: 42,
+              fontWeight: 520,
+              lineHeight: 1.05,
               marginTop: 0,
               textAlign: "left",
             }}

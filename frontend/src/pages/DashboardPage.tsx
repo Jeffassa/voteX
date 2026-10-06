@@ -1,12 +1,14 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, CheckCircle2, Clock, Hash, History, Shield } from "lucide-react";
+import { ArrowRight, Hash } from "lucide-react";
 
 import { useReveal } from "@/hooks/useReveal";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar, getInitials } from "@/components/Avatar";
 import { Countdown } from "@/components/Countdown";
 import { HashChip } from "@/components/HashChip";
+import { Rosette, Stamp } from "@/components/SecurityPattern";
+import { formatDateTime } from "@/lib/dates";
 import { useElections, useMe, useMyVotes } from "@/lib/queries";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -42,23 +44,19 @@ export default function DashboardPage() {
   return (
     <div>
       <AppHeader />
-      <div ref={pageRef} className="container" style={{ padding: "40px 32px 80px" }}>
-        <div className="row items-center gap-4" style={{ marginBottom: 36 }}>
+      <div ref={pageRef} className="container" style={{ padding: "36px 32px 80px" }}>
+        <div className="row items-center gap-4" style={{ marginBottom: 28 }}>
           <Avatar
             initials={getInitials(me?.first_name, me?.last_name)} name={`${me?.first_name ?? ""} ${me?.last_name ?? ""}`}
-            size={56}
-            color="#0A2540"
+            size={60}
+            src={me?.photo_url || undefined}
           />
-          <div>
-            <h1
-              style={{
-                margin: 0, fontSize: 24, fontWeight: 600, letterSpacing: "-0.025em",
-                color: "var(--navy-900)",
-              }}
-            >
+          <div style={{ minWidth: 0 }}>
+            <div className="sv-ref">Espace électeur</div>
+            <h1 style={{ margin: "2px 0 0", fontSize: 34, fontWeight: 540, color: "var(--navy-900)", lineHeight: 1.1 }}>
               {meLoading ? "…" : me?.first_name ? `Bonjour, ${me.first_name}.` : "Bonjour."}
             </h1>
-            <div className="muted" style={{ fontSize: 14, marginTop: 2 }}>
+            <div className="muted" style={{ fontSize: 14, marginTop: 4 }}>
               <span className="mono">{me?.matricule ?? ""}</span> · {classLabel}
             </div>
           </div>
@@ -72,8 +70,13 @@ export default function DashboardPage() {
             isOpen={activeElection.status === "open"}
           />
         ) : (
-          <div className="card card-pad text-center muted">
-            Aucune élection en cours pour votre classe.
+          <div className="card" style={{ padding: 32 }}>
+            <p className="sv-display" style={{ margin: 0, fontSize: 22, fontWeight: 540, color: "var(--navy-900)" }}>
+              Aucune élection en cours pour votre classe.
+            </p>
+            <p className="muted" style={{ margin: "6px 0 0", fontSize: 14 }}>
+              Vous serez convoqué ici dès l'ouverture d'un scrutin.
+            </p>
           </div>
         )}
 
@@ -81,7 +84,7 @@ export default function DashboardPage() {
           className="sv-dashboard-lower"
           style={{
             display: "grid",
-            gridTemplateColumns: "1.2fr 1fr",
+            gridTemplateColumns: "1.3fr 1fr",
             gap: 20,
             marginTop: 20,
           }}
@@ -102,95 +105,78 @@ function ActiveElectionCard({
   hasVoted: boolean;
   isOpen: boolean;
 }) {
+  // Un compte à rebours figé sur 00:00:00 ne dit rien : on l'explique.
+  const overdue = targetEnd < Date.now();
   return (
-    <div className="card" style={{ padding: 0, overflow: "hidden", position: "relative" }}>
-      <div
-        style={{
-          padding: "28px 32px",
-          background: "var(--navy-900)",
-          color: "white",
-          position: "relative", overflow: "hidden",
-        }}
-      >
-        <div className="row items-center gap-2" style={{ marginBottom: 12 }}>
+    <section aria-labelledby="active-election" className="card" style={{ padding: 0, overflow: "hidden" }}>
+      {/* Convocation : en-tête guilloché, comme un document officiel. */}
+      <div className="sv-navy-panel" style={{ padding: "26px 32px 28px" }}>
+        <Rosette size={440} style={{ right: -130, top: -150 }} />
+        <div className="row items-center gap-3" style={{ flexWrap: "wrap" }}>
           <span
-            className="badge badge-open"
-            style={{ background: "rgba(34, 197, 94, 0.18)", color: "#86EFAC" }}
+            className="badge"
+            style={{
+              background: isOpen ? "rgba(34,197,94,0.14)" : "rgba(255,255,255,0.08)",
+              borderColor: isOpen ? "rgba(134,239,172,0.45)" : "rgba(255,255,255,0.3)",
+              color: isOpen ? "#a7f3c0" : "white",
+            }}
           >
-            <span className="dot" style={{ background: "#86EFAC" }} />
+            {isOpen && <span className="dot" style={{ background: "#86EFAC", width: 6, height: 6, borderRadius: 1 }} />}
             {STATUS_LABEL[election.status] ?? election.status}
           </span>
+          <span className="sv-ref" style={{ color: "rgba(255,255,255,0.6)" }}>Convocation au scrutin</span>
         </div>
-        <h2
-          style={{
-            fontSize: 28, fontWeight: 600, letterSpacing: "-0.025em",
-            margin: 0, position: "relative",
-          }}
-        >
+        <h2 id="active-election" className="sv-display" style={{ fontSize: 34, fontWeight: 540, margin: "14px 0 0", lineHeight: 1.1, maxWidth: 680 }}>
           {election.title}
         </h2>
-        <div
-          style={{
-            marginTop: 6, fontSize: 13,
-            color: "rgba(255,255,255,0.6)", position: "relative",
-          }}
-        >
-          Du {new Date(election.starts_at).toLocaleString("fr-FR")} au{" "}
-          {new Date(election.ends_at).toLocaleString("fr-FR")}
+        <div style={{ marginTop: 8, fontSize: 13.5, color: "rgba(255,255,255,0.7)" }}>
+          Du {formatDateTime(election.starts_at)} au {formatDateTime(election.ends_at)}
         </div>
       </div>
 
       <div
         className="sv-dashboard-active"
         style={{
-          padding: 32, display: "grid",
+          padding: "26px 32px 28px", display: "grid",
           gridTemplateColumns: "1fr auto", gap: 32, alignItems: "center",
-          position: "relative",
         }}
       >
         <div>
-          <div className="row items-center gap-2">
-            <Clock size={18} aria-hidden="true" style={{ color: "var(--ink-500)" }} />
-            <span className="h-eyebrow">Clôture du scrutin dans</span>
+          <div style={{ fontSize: 13, color: "var(--ink-500)" }}>
+            {!isOpen ? "Scrutin clos" : overdue ? "Date de fin passée" : "Clôture du scrutin dans"}
           </div>
-          <div style={{ marginTop: 14 }}>
-            <Countdown targetMs={targetEnd} />
-          </div>
+          {isOpen && !overdue && (
+            <div style={{ marginTop: 10 }}>
+              <Countdown targetMs={targetEnd} />
+            </div>
+          )}
+          {isOpen && overdue && (
+            <p className="sv-display" style={{ margin: "6px 0 0", fontSize: 20, color: "var(--navy-900)" }}>
+              Le scrutin va être clôturé par l'administration.
+            </p>
+          )}
         </div>
         <div className="col gap-3" style={{ alignItems: "flex-end" }}>
           {hasVoted ? (
             <>
-              <div
-                className="row items-center gap-2"
-                style={{ color: "var(--success-600)", fontWeight: 500, fontSize: 14 }}
-              >
-                <CheckCircle2 size={18} /> Vous avez voté
-              </div>
-              <Link
-                to={`/elections/${election.id}/results`}
-                className="btn btn-outline"
-              >
+              <Stamp small>A voté</Stamp>
+              <span className="sr-only">Vous avez voté.</span>
+              <Link to={`/elections/${election.id}/results`} className="btn btn-outline" style={{ marginTop: 6 }}>
                 Suivre la participation <ArrowRight size={16} aria-hidden="true" />
               </Link>
             </>
           ) : isOpen ? (
-            <Link
-              to={`/elections/${election.id}/vote`}
-              className="btn btn-primary btn-lg"
-            >
-              Voter maintenant <ArrowRight size={16} />
+            <Link to={`/elections/${election.id}/vote`} className="btn btn-primary btn-lg">
+              Voter maintenant <ArrowRight size={16} aria-hidden="true" />
             </Link>
           ) : (
-            <Link
-              to={`/elections/${election.id}/results`}
-              className="btn btn-outline"
-            >
-              Voir les résultats <ArrowRight size={16} />
+            <Link to={`/elections/${election.id}/results`} className="btn btn-outline">
+              Voir les résultats <ArrowRight size={16} aria-hidden="true" />
             </Link>
           )}
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -201,80 +187,56 @@ function VoteHistoryCard({
   elections: NonNullable<ReturnType<typeof useElections>["data"]>;
 }) {
   return (
-    <div className="card card-pad">
-      <div className="row items-center gap-2" style={{ marginBottom: 18 }}>
-        <History size={18} style={{ color: "var(--ink-500)" }} />
-        <div
-          style={{
-            fontWeight: 600, color: "var(--navy-900)", letterSpacing: "-0.01em",
-          }}
-        >
-          Historique de mes votes
-        </div>
+    <section aria-labelledby="my-receipts" className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="sv-card-head">
+        <h2 id="my-receipts">Mes reçus de vote</h2>
+        <span className="sv-ref">{votes.length}</span>
       </div>
-      <div className="col gap-2">
-        {votes.length === 0 ? (
-          <div className="muted" style={{ fontSize: 13 }}>
-            Aucun vote pour l'instant.
-          </div>
-        ) : (
-          votes.map((v) => (
-            <div
+      {votes.length === 0 ? (
+        <p className="muted" style={{ fontSize: 13.5, margin: 0, padding: "18px 20px 22px" }}>
+          Aucun vote pour l'instant. Chaque vote vous laissera ici un reçu et son empreinte.
+        </p>
+      ) : (
+        <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+          {votes.map((v, i) => (
+            <li
               key={v.id}
-              className="row items-center justify-between"
-              style={{
-                padding: "14px 16px",
-                borderRadius: "var(--r-md)",
-                background: "var(--surface-2)",
-                border: "1px solid var(--border)",
-              }}
+              className="row items-center justify-between gap-3"
+              style={{ padding: "14px 20px", borderTop: i ? "1.5px dashed var(--border)" : undefined, flexWrap: "wrap" }}
             >
-              <div>
-                <div
-                  style={{
-                    fontSize: 14, fontWeight: 500, color: "var(--navy-900)",
-                  }}
-                >
+              <div style={{ minWidth: 0 }}>
+                <div className="sv-display" style={{ fontSize: 17, fontWeight: 560, color: "var(--navy-900)" }}>
                   {elections.find((e) => e.id === v.election_id)?.title || "Vote"}
                 </div>
-                <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+                <div className="sv-ref" style={{ marginTop: 3 }}>
                   {new Date(v.created_at).toLocaleDateString("fr-FR")}
                 </div>
               </div>
               <HashChip value={v.vote_hash} />
-            </div>
-          ))
-        )}
-      </div>
-    </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
 function VerificationPanel() {
   return (
-    <div className="card card-pad">
-      <div className="row items-center gap-2" style={{ marginBottom: 18 }}>
-        <Shield size={18} style={{ color: "var(--ink-500)" }} />
-        <div
-          style={{
-            fontWeight: 600, color: "var(--navy-900)", letterSpacing: "-0.01em",
-          }}
-        >
-          Vérification
-        </div>
+    <section aria-labelledby="verify-title" className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <div className="sv-card-head">
+        <h2 id="verify-title">Vérifier un reçu</h2>
       </div>
-      <p className="muted" style={{ fontSize: 13, lineHeight: 1.55, margin: 0 }}>
-        Chaque vote produit un hash unique. Vous pouvez à tout moment vérifier
-        qu'il a bien été enregistré sur la blockchain, sans dévoiler pour qui
-        vous avez voté.
-      </p>
-      <Link
-        to="/verify"
-        className="btn btn-outline"
-        style={{ marginTop: 16, width: "100%" }}
-      >
-        <Hash size={16} /> Vérifier un hash
-      </Link>
-    </div>
+      <div style={{ padding: "16px 20px 20px" }}>
+        <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.55, margin: 0 }}>
+          Chaque vote produit une empreinte unique. Vous pouvez à tout moment vérifier
+          qu'elle a bien été enregistrée sur la blockchain, sans dévoiler pour qui
+          vous avez voté.
+        </p>
+        <Link to="/verify" className="btn btn-outline" style={{ marginTop: 16, width: "100%" }}>
+          <Hash size={16} aria-hidden="true" /> Vérifier une empreinte
+        </Link>
+      </div>
+    </section>
   );
 }

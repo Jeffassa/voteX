@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { AlertCircle, ArrowLeft, Check, ChevronRight, Lock } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, ChevronRight, Lock } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { useReveal } from "@/hooks/useReveal";
@@ -8,6 +8,8 @@ import { AppHeader } from "@/components/AppHeader";
 import { Avatar } from "@/components/Avatar";
 import { CandidateProfileModal } from "@/components/CandidateProfileModal";
 import { ConfirmVoteModal } from "@/components/ConfirmVoteModal";
+import { BallotCross, Microtext, WaveBand } from "@/components/SecurityPattern";
+import { formatDateTime } from "@/lib/dates";
 import { useCandidates, useCastVote, useElection, useMe } from "@/lib/queries";
 import { colorFor, fullNameOf, initialsOf } from "@/lib/palette";
 import type { Candidate } from "@/types/api";
@@ -45,7 +47,10 @@ export default function VotingRoomPage() {
     ? `${me.classroom.level} ${me.classroom.name}`
     : undefined;
 
-  const selectedCandidate = candidates.find((c) => c.id === selected);
+  const selectedIndex = candidates.findIndex((c) => c.id === selected);
+  const selectedCandidate = selectedIndex >= 0 ? candidates[selectedIndex] : undefined;
+  const isOpen = election?.status === "open";
+  const numberOf = (c: Candidate) => candidates.findIndex((x) => x.id === c.id) + 1;
 
   return (
     <div>
@@ -53,202 +58,99 @@ export default function VotingRoomPage() {
       <div
         ref={pageRef}
         className="container container-narrow scene"
-        style={{ padding: "32px 32px 120px" }}
+        style={{ padding: "28px 32px 150px" }}
       >
-        <button
-          className="btn btn-ghost btn-sm"
-          onClick={() => navigate("/")}
-          style={{ marginLeft: -10 }}
-        >
-          <ArrowLeft size={14} /> Retour au tableau de bord
-        </button>
-        <div style={{ marginTop: 16 }}>
-          <div className="h-eyebrow">
-            Salle de vote{classLabel && ` · ${classLabel}`}
-          </div>
-          <h1 className="h-title" style={{ marginTop: 10, fontSize: 36 }}>
-            {election?.title || "Élection"}
-          </h1>
-        </div>
+        <Link to="/" className="btn btn-ghost btn-sm" style={{ marginLeft: -10 }}>
+          <ArrowLeft size={14} aria-hidden="true" /> Tableau de bord
+        </Link>
 
-        <div
-          className="card"
-          style={{
-            marginTop: 20, padding: 18,
-            background: "var(--orange-50)", borderColor: "#FFE0BD",
-          }}
-        >
-          <div className="row items-start gap-3">
-            <AlertCircle size={18} style={{ color: "var(--orange-600)", marginTop: 2 }} />
-            <div>
-              <div style={{ fontWeight: 600, color: "var(--navy-900)", fontSize: 14 }}>
-                Règles du scrutin
-              </div>
-              <ul
-                style={{
-                  margin: "6px 0 0", padding: 0, listStyle: "none",
-                  fontSize: 13, color: "var(--ink-700)",
-                  display: "flex", gap: 18, flexWrap: "wrap",
-                }}
-              >
-                {RULES.map((r, i) => (
-                  <li key={i} className="row items-center gap-2">
-                    <span
-                      style={{
-                        width: 4, height: 4, borderRadius: "50%",
-                        background: "var(--orange-500)",
-                      }}
-                    />
-                    {r}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <div
-          className="sv-vote-grid"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
-            gap: 20,
-            marginTop: 24,
-          }}
-        >
-          {isLoading && (
-            <>
-              <div className="card card-pad skel" style={{ height: 280 }} />
-              <div className="card card-pad skel" style={{ height: 280 }} />
-            </>
-          )}
-          {!isLoading && candidates.length === 0 && (
-            <div className="card card-pad muted" style={{ gridColumn: "1 / -1" }}>
-              Aucun candidat enregistré pour cette élection.
-            </div>
-          )}
-          {candidates.map((c) => (
-            <CandidateCard
-              key={c.id}
-              c={c}
-              selected={selected === c.id}
-              onSelect={() => setSelected(c.id)}
-              onProfile={() => setProfile(c)}
-            />
-          ))}
-          {/* Option Vote Neutre */}
-          {!isLoading && candidates.length > 0 && (
-            <div
-              onClick={() => setSelected("neutral")}
-              className="card"
-              style={{
-                padding: 24, cursor: "pointer",
-                borderColor: selected === "neutral" ? "var(--orange-500)" : "var(--border)",
-                borderWidth: selected === "neutral" ? 2 : 1,
-                boxShadow: selected === "neutral"
-                  ? "0 0 0 4px var(--orange-50), var(--shadow-md)"
-                  : "var(--shadow-sm)",
-                transition: "all 200ms ease",
-                position: "relative",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexDirection: "column",
-                gap: 12,
-                minHeight: 200,
-              }}
-            >
-              {selected === "neutral" && (
-                <div
-                  style={{
-                    position: "absolute", top: 16, right: 16,
-                    width: 28, height: 28, borderRadius: "50%",
-                    background: "var(--orange-500)", color: "var(--navy-900)",
-                    display: "grid", placeItems: "center",
-                    animation: "sv-fade-in 240ms ease",
-                  }}
-                >
-                  <Check size={16} strokeWidth={3} />
-                </div>
+        {/* Un bulletin unique : chaque candidat sur sa ligne, avec son numéro
+            et la case où l'électeur trace sa croix. */}
+        <article className="sv-ballot" aria-labelledby="ballot-title" style={{ marginTop: 14 }}>
+          <header className="sv-ballot-head">
+            <WaveBand height={22} />
+            <div style={{ padding: "18px 28px 20px" }}>
+              <div className="sv-ref">Bulletin de vote{classLabel && ` · ${classLabel}`}</div>
+              <h1 id="ballot-title" className="sv-ballot-title">
+                {election?.title || "Élection"}
+              </h1>
+              {election && (
+                <p style={{ margin: "8px 0 0", fontSize: 14, color: "var(--ink-500)" }}>
+                  {isOpen
+                    ? `Scrutin ouvert jusqu'au ${formatDateTime(election.ends_at)}.`
+                    : "Ce scrutin n'est pas ouvert : le bulletin est présenté pour information."}
+                </p>
               )}
-              <div style={{ fontSize: 40 }}>⚪</div>
-              <div style={{ fontWeight: 600, fontSize: 18, color: "var(--navy-900)" }}>
-                Vote Neutre / Blanc
-              </div>
-              <p className="muted text-center" style={{ fontSize: 13, margin: 0 }}>
-                Choisissez cette option si vous ne souhaitez voter pour aucun candidat.
-              </p>
+              <ol className="sv-ballot-rules">
+                {RULES.map((r) => (
+                  <li key={r}>{r}</li>
+                ))}
+              </ol>
             </div>
-          )}
-        </div>
+            <Microtext style={{ padding: "0 28px 8px" }} />
+          </header>
 
-        <div
-          style={{
-            position: "fixed",
-            bottom: 24, left: 0, right: 0,
-            display: "flex", justifyContent: "center",
-            pointerEvents: "none", zIndex: 30,
-          }}
-        >
-          <div
-            className="sv-confirm-bar"
-            style={{
-              pointerEvents: "auto",
-              background: "white",
-              padding: "14px 16px 14px 24px",
-              borderRadius: "var(--r-pill)",
-              boxShadow: "var(--shadow-xl)",
-              border: "1px solid var(--border)",
-              display: "flex", alignItems: "center", gap: 16,
-            }}
-          >
-            {selected === "neutral" ? (
-              <>
-                <div
-                  style={{
-                    width: 32, height: 32, borderRadius: "50%",
-                    background: "var(--ink-300)", display: "grid", placeItems: "center",
-                    fontWeight: 600, color: "white", fontSize: 14
-                  }}
-                >
-                  N
-                </div>
-                <div style={{ fontSize: 13 }}>
-                  <div className="muted" style={{ fontSize: 11 }}>Vous votez</div>
-                  <div style={{ fontWeight: 600, color: "var(--navy-900)" }}>
-                    Neutre / Blanc
-                  </div>
-                </div>
-              </>
-            ) : selectedCandidate ? (
-              <>
-                <Avatar
-                  initials={initialsOf(
-                    selectedCandidate.student.first_name,
-                    selectedCandidate.student.last_name
-                  )} name={`${selectedCandidate.student.first_name ?? ""} ${selectedCandidate.student.last_name ?? ""}`}
-                  size={32}
-                  color={selectedCandidate.color}
-                />
-                <div style={{ fontSize: 13 }}>
-                  <div className="muted" style={{ fontSize: 11 }}>Vous votez pour</div>
-                  <div style={{ fontWeight: 600, color: "var(--navy-900)" }}>
-                    {fullNameOf(selectedCandidate.student)}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div
-                style={{
-                  fontSize: 13, color: "var(--ink-500)", padding: "0 4px",
-                }}
-              >
-                Sélectionnez un candidat pour continuer
+          <fieldset style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }} disabled={!isOpen}>
+            <legend className="sr-only">Choisissez un candidat, ou le vote blanc</legend>
+            {isLoading && (
+              <div style={{ padding: 24 }}>
+                <div className="skel" style={{ height: 88, marginBottom: 12 }} />
+                <div className="skel" style={{ height: 88 }} />
               </div>
             )}
+            {!isLoading && candidates.length === 0 && (
+              <p className="muted" style={{ padding: 28, margin: 0 }}>
+                Aucun candidat enregistré pour cette élection.
+              </p>
+            )}
+            {candidates.map((c, i) => (
+              <BallotEntry
+                key={c.id}
+                number={i + 1}
+                name={fullNameOf(c.student)}
+                detail={c.student.matricule}
+                slogan={c.slogan}
+                portrait={
+                  <Avatar
+                    initials={initialsOf(c.student.first_name, c.student.last_name)}
+                    name={fullNameOf(c.student)}
+                    size={60}
+                    src={c.photo_url || c.student.photo_url || undefined}
+                  />
+                }
+                selected={selected === c.id}
+                onSelect={() => setSelected(c.id)}
+                onProfile={() => setProfile(c)}
+              />
+            ))}
+            {!isLoading && candidates.length > 0 && (
+              <BallotEntry
+                name="Vote blanc"
+                detail="Aucun candidat"
+                note="Vous ne choisissez personne ; votre participation est comptée."
+                portrait={<span className="sv-ballot-blank" aria-hidden="true" />}
+                selected={selected === "neutral"}
+                onSelect={() => setSelected("neutral")}
+              />
+            )}
+          </fieldset>
+        </article>
+
+        <div className="sv-confirm-dock">
+          <div className="sv-confirm-bar">
+            <div className="sv-confirm-choice" aria-live="polite">
+              <small>Votre choix</small>
+              <strong>
+                {selected === "neutral"
+                  ? "Vote blanc"
+                  : selectedCandidate
+                  ? `N° ${String(selectedIndex + 1).padStart(2, "0")} · ${fullNameOf(selectedCandidate.student)}`
+                  : "Cochez une case du bulletin"}
+              </strong>
+            </div>
             <button
-              className="btn btn-primary btn-lg"
-              disabled={!selected || election?.status !== "open"}
+              className="btn btn-accent btn-lg"
+              disabled={!selected || !isOpen}
               onClick={() => {
                 if (selected === "neutral") {
                   setConfirming({
@@ -268,7 +170,7 @@ export default function VotingRoomPage() {
                 }
               }}
             >
-              Confirmer mon vote <Lock size={16} />
+              Confirmer mon vote <Lock size={16} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -276,6 +178,7 @@ export default function VotingRoomPage() {
 
       <CandidateProfileModal
         candidate={profile}
+        number={profile ? numberOf(profile) : undefined}
         classLabel={classLabel}
         onClose={() => setProfile(null)}
         onSelect={(c) => {
@@ -287,6 +190,7 @@ export default function VotingRoomPage() {
       {confirming && (
         <ConfirmVoteModal
           candidate={confirming}
+          number={confirming.id === "neutral" ? undefined : numberOf(confirming)}
           classLabel={classLabel}
           onCancel={() => setConfirming(null)}
           onConfirm={async () => {
@@ -310,111 +214,49 @@ export default function VotingRoomPage() {
   );
 }
 
-function CandidateCard({
-  c, selected, onSelect, onProfile,
+/**
+ * Une ligne du bulletin. Le choix est un vrai bouton radio (masqué) : flèches
+ * du clavier, lecteur d'écran et formulaire natif fonctionnent sans code.
+ */
+function BallotEntry({
+  number, name, detail, slogan, note, portrait, selected, onSelect, onProfile,
 }: {
-  c: ColoredCandidate;
+  number?: number;
+  name: string;
+  detail: string;
+  slogan?: string | null;
+  note?: string;
+  portrait: React.ReactNode;
   selected: boolean;
   onSelect: () => void;
-  onProfile: () => void;
+  onProfile?: () => void;
 }) {
-  const programItems = (c.program || "").split("\n").filter(Boolean);
   return (
-    <div
-      onClick={onSelect}
-      className="card"
-      style={{
-        padding: 24, cursor: "pointer",
-        borderColor: selected ? "var(--orange-500)" : "var(--border)",
-        borderWidth: selected ? 2 : 1,
-        boxShadow: selected
-          ? "0 0 0 4px var(--orange-50), var(--shadow-md)"
-          : "var(--shadow-sm)",
-        transition: "all 200ms ease",
-        position: "relative",
-      }}
-    >
-      {selected && (
-        <div
-          style={{
-            position: "absolute", top: 16, right: 16,
-            width: 28, height: 28, borderRadius: "50%",
-            background: "var(--orange-500)", color: "var(--navy-900)",
-            display: "grid", placeItems: "center",
-            animation: "sv-fade-in 240ms ease",
-          }}
-        >
-          <Check size={16} strokeWidth={3} />
-        </div>
+    <div className={`sv-ballot-entry${selected ? " is-selected" : ""}`}>
+      <label className="sv-ballot-choice">
+        <input type="radio" name="ballot" className="sr-only" checked={selected} onChange={onSelect} />
+        <span className="sv-ballot-no" aria-hidden="true">
+          {number !== undefined && (
+            <>
+              <small>N°</small>
+              {String(number).padStart(2, "0")}
+            </>
+          )}
+        </span>
+        {portrait}
+        <span style={{ minWidth: 0 }}>
+          <span className="sv-ballot-name">{name}</span>
+          <span className="sv-ref" style={{ display: "block", marginTop: 3 }}>{detail}</span>
+          {slogan && <span className="sv-ballot-slogan">« {slogan} »</span>}
+          {note && <span style={{ display: "block", marginTop: 6, fontSize: 13.5, color: "var(--ink-500)" }}>{note}</span>}
+        </span>
+        <span className="sv-ballot-box">{selected && <BallotCross />}</span>
+      </label>
+      {onProfile && (
+        <button type="button" className="sv-ballot-more" onClick={onProfile}>
+          Programme et biographie <ChevronRight size={14} aria-hidden="true" />
+        </button>
       )}
-      <div className="row items-center gap-3">
-        <Avatar
-          initials={initialsOf(c.student.first_name, c.student.last_name)} name={`${c.student.first_name ?? ""} ${c.student.last_name ?? ""}`}
-          size={56}
-          color={c.color}
-          src={c.photo_url || c.student.photo_url || undefined}
-        />
-        <div>
-          <div
-            style={{
-              fontSize: 18, fontWeight: 600,
-              color: "var(--navy-900)", letterSpacing: "-0.015em",
-            }}
-          >
-            {fullNameOf(c.student)}
-          </div>
-          <div className="muted mono" style={{ fontSize: 12, marginTop: 2 }}>
-            {c.student.matricule}
-          </div>
-        </div>
-      </div>
-      {c.slogan && (
-        <div
-          style={{
-            marginTop: 16, padding: "10px 12px",
-            background: "var(--surface-2)",
-            borderRadius: "var(--r-md)",
-            fontSize: 13, fontStyle: "italic",
-            color: "var(--ink-700)",
-            borderLeft: `3px solid ${c.color}`,
-          }}
-        >
-          « {c.slogan} »
-        </div>
-      )}
-      {programItems.length > 0 && (
-        <ul
-          style={{
-            margin: "16px 0 0", padding: 0, listStyle: "none",
-            display: "flex", flexDirection: "column", gap: 8,
-          }}
-        >
-          {programItems.slice(0, 3).map((p, i) => (
-            <li
-              key={i}
-              className="row items-start gap-2"
-              style={{ fontSize: 13, color: "var(--ink-700)" }}
-            >
-              <Check
-                size={14}
-                style={{ color: c.color, flexShrink: 0, marginTop: 3 }}
-                strokeWidth={2.5}
-              />
-              {p}
-            </li>
-          ))}
-        </ul>
-      )}
-      <button
-        className="btn btn-ghost btn-sm"
-        style={{ marginTop: 16, padding: "6px 0", color: "var(--navy-700)" }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onProfile();
-        }}
-      >
-        Voir le profil détaillé <ChevronRight size={14} />
-      </button>
     </div>
   );
 }

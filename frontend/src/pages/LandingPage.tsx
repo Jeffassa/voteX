@@ -1,20 +1,11 @@
 import { Suspense, lazy, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  ArrowRight,
-  BarChart3,
-  Check,
-  FileCheck2,
-  Link2,
-  Lock,
-  ShieldCheck,
-  Smartphone,
-} from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 
 import { Brand } from "@/components/Brand";
+import { Microtext, Rosette, Stamp, WaveBand } from "@/components/SecurityPattern";
 import { HERO_POSTER, loadBallotBoxScene, wantsHero3d } from "@/components/three/heroScene";
 import { Reveal } from "@/components/Reveal";
-import SpotlightCards, { type SpotlightItem } from "@/components/kokonutui/spotlight-cards";
 import { useConsentStore } from "@/lib/consent";
 
 /**
@@ -30,8 +21,8 @@ const STEPS = [
     text: "Avec votre matricule ESATIC et votre mot de passe, ou avec l'adresse Google enregistrée par l'école.",
   },
   {
-    title: "Choisissez",
-    text: "Consultez les candidats de votre classe, puis maintenez le bouton de vote pour confirmer. Le vote blanc est possible.",
+    title: "Cochez",
+    text: "Le bulletin présente les candidats de votre classe. Tracez votre croix, puis maintenez le bouton pour la confirmer. Le vote blanc est possible.",
   },
   {
     title: "Vérifiez",
@@ -39,42 +30,31 @@ const STEPS = [
   },
 ];
 
-const FEATURES: SpotlightItem[] = [
+/** Les garanties, rédigées comme les articles d'une charte du scrutin. */
+const ARTICLES = [
   {
-    icon: Lock,
     title: "Vote secret",
-    description: "Le bulletin est enregistré sans votre identité ni l'heure du vote. Rien ne relie un électeur à son choix.",
-    color: "#1e4172",
+    text: "Le bulletin est enregistré sans votre identité ni l'heure du vote. Rien ne relie un électeur à son choix.",
   },
   {
-    icon: FileCheck2,
     title: "Reçu vérifiable",
-    description: "Chaque bulletin reçoit une empreinte SHA-256, que vous pouvez contrôler sur ce site à tout moment.",
-    color: "#15803d",
+    text: "Chaque bulletin reçoit une empreinte SHA-256, que vous pouvez contrôler sur ce site à tout moment.",
   },
   {
-    icon: BarChart3,
     title: "Résultats à la clôture",
-    description: "Pendant le scrutin, seule la participation est visible, pour ne pas influencer les derniers votants.",
-    color: "#b55600",
+    text: "Pendant le scrutin, seule la participation est visible, pour ne pas influencer les derniers votants.",
   },
   {
-    icon: Link2,
     title: "Empreintes sur blockchain",
-    description: "Les empreintes sont inscrites sur Ethereum (réseau de test Sepolia), où personne ne peut les effacer.",
-    color: "#6d28d9",
+    text: "Les empreintes sont inscrites sur Ethereum (réseau de test Sepolia), où personne ne peut les effacer.",
   },
   {
-    icon: ShieldCheck,
     title: "Une voix par étudiant",
-    description: "Un bulletin par électeur et par scrutin, garanti par la base de données elle-même.",
-    color: "#0369a1",
+    text: "Un bulletin par électeur et par scrutin, garanti par la base de données elle-même.",
   },
   {
-    icon: Smartphone,
     title: "Sur votre téléphone",
-    description: "Aucune application à installer : le site fonctionne sur mobile, tablette et ordinateur.",
-    color: "#be123c",
+    text: "Aucune application à installer : le site fonctionne sur mobile, tablette et ordinateur.",
   },
 ];
 
@@ -98,13 +78,13 @@ export default function LandingPage() {
             <Brand />
           </Link>
           <nav aria-label="Navigation principale" className="flex items-center gap-1 text-sm">
-            <a href="#fonctionnement" className="hidden rounded-lg px-3 py-2 text-[var(--ink-700)] hover:bg-muted sm:inline-block">
+            <a href="#fonctionnement" className="hidden rounded-[5px] px-3 py-2 text-[var(--ink-700)] hover:bg-muted sm:inline-block">
               Fonctionnement
             </a>
-            <a href="#securite" className="hidden rounded-lg px-3 py-2 text-[var(--ink-700)] hover:bg-muted sm:inline-block">
+            <a href="#securite" className="hidden rounded-[5px] px-3 py-2 text-[var(--ink-700)] hover:bg-muted sm:inline-block">
               Sécurité
             </a>
-            <Link to="/verify" className="hidden rounded-lg px-3 py-2 text-[var(--ink-700)] hover:bg-muted md:inline-block">
+            <Link to="/verify" className="hidden rounded-[5px] px-3 py-2 text-[var(--ink-700)] hover:bg-muted md:inline-block">
               Vérifier un vote
             </Link>
             <Link to="/login" className="btn btn-primary btn-sm ml-2">
@@ -115,23 +95,14 @@ export default function LandingPage() {
       </header>
 
       {/* Héros */}
-      <section className="relative overflow-hidden border-b border-border bg-white">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage: "radial-gradient(circle, rgba(24,24,27,0.07) 1px, transparent 1px)",
-            backgroundSize: "22px 22px",
-            maskImage: "radial-gradient(ellipse at 30% 40%, black 10%, transparent 70%)",
-          }}
-        />
+      <section className="relative overflow-hidden border-b border-border">
         <div className="relative mx-auto grid max-w-6xl items-center gap-6 px-4 pb-10 pt-12 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:pb-20 lg:pt-20">
           <Reveal>
-            <p className="inline-flex items-center gap-2 rounded-full border border-border bg-white px-3 py-1 text-[13px] font-medium text-[var(--ink-700)] shadow-sm">
-              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[var(--orange-500)]" />
+            <p className="inline-flex items-center gap-2 rounded-[3px] border border-[var(--border-strong)] bg-white px-2.5 py-1 font-mono text-[12px] text-[var(--ink-700)]">
+              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-[1px] bg-[var(--orange-500)]" />
               Élections des chefs de classe 2026
             </p>
-            <h1 className="mt-6 text-[40px] font-semibold leading-[1.05] tracking-[-0.035em] text-[var(--ink-900)] sm:text-[56px] lg:text-[64px]">
+            <h1 className="mt-6 text-[44px] font-[540] leading-[1.02] tracking-[-0.02em] text-[var(--navy-900)] sm:text-[60px] lg:text-[72px]">
               Le vote des chefs de classe, en ligne.
             </h1>
             <p className="mt-5 max-w-xl text-[17px] leading-relaxed text-[var(--ink-700)]">
@@ -149,7 +120,7 @@ export default function LandingPage() {
             <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--ink-500)]">
               {["Vote secret", "Reçu vérifiable", "Résultats à la clôture"].map((t) => (
                 <li key={t} className="flex items-center gap-2">
-                  <Check size={15} aria-hidden="true" className="text-[#15803d]" />
+                  <Check size={15} aria-hidden="true" className="text-[var(--navy-700)]" />
                   {t}
                 </li>
               ))}
@@ -157,10 +128,12 @@ export default function LandingPage() {
           </Reveal>
 
           <div className="relative h-[300px] sm:h-[380px] lg:h-[460px]">
-            <div
-              aria-hidden="true"
-              className="absolute inset-6 rounded-full opacity-60 blur-3xl"
-              style={{ background: "radial-gradient(circle, rgba(74,119,176,0.18), transparent 70%)" }}
+            {/* Rosace guillochée derrière l'urne : le fond des documents
+                infalsifiables, en écho au vote vérifiable. */}
+            <Rosette
+              size={520}
+              opacity={0.1}
+              style={{ color: "var(--navy-900)", left: "50%", top: "50%", transform: "translate(-50%, -50%)", maxWidth: "none" }}
             />
             {/* Image fixe d'abord, affichée dès le premier rendu ; la 3D se
                 fond par-dessus quand sa première image, identique, est prête. */}
@@ -196,16 +169,21 @@ export default function LandingPage() {
       <section id="fonctionnement" className="scroll-mt-20 py-16 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <Reveal onScroll>
-            <p className="h-eyebrow">Fonctionnement</p>
-            <h2 className="mt-2 max-w-xl text-3xl font-semibold tracking-[-0.025em] text-[var(--ink-900)] sm:text-4xl">
+            <p className="sv-ref">Fonctionnement</p>
+            <h2 className="sv-display mt-2 max-w-xl text-[36px] font-[540] leading-[1.1] text-[var(--navy-900)] sm:text-[44px]">
               Trois étapes, une minute.
             </h2>
           </Reveal>
-          <ol className="mt-10 grid gap-4 sm:grid-cols-3">
+          <ol className="mt-10 grid gap-x-10 gap-y-8 sm:grid-cols-3">
             {STEPS.map((s, i) => (
-              <Reveal as="li" onScroll delay={i * 0.08} key={s.title} className="rounded-2xl border border-border bg-white p-6 shadow-sm">
-                <span className="font-mono text-sm text-[var(--ink-500)]">{i + 1}</span>
-                <h3 className="mt-3 text-lg font-semibold tracking-tight text-[var(--ink-900)]">{s.title}</h3>
+              <Reveal as="li" onScroll delay={i * 0.08} key={s.title} className="border-t-[1.5px] border-[var(--navy-900)] pt-5">
+                <span aria-hidden="true" className="sv-display block text-[60px] font-[480] leading-[0.9] text-[var(--orange-600)]">
+                  {i + 1}
+                </span>
+                <h3 className="sv-display mt-4 text-[26px] font-[560] leading-tight text-[var(--navy-900)]">
+                  <span className="sr-only">Étape {i + 1} : </span>
+                  {s.title}
+                </h3>
                 <p className="mt-2 text-[15px] leading-relaxed text-[var(--ink-700)]">{s.text}</p>
               </Reveal>
             ))}
@@ -213,31 +191,39 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Garanties */}
+      {/* Charte du scrutin */}
       <section className="border-y border-border bg-white py-16 sm:py-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <Reveal onScroll>
-            <p className="h-eyebrow">Ce que la plateforme garantit</p>
-            <h2 className="mt-2 max-w-2xl text-3xl font-semibold tracking-[-0.025em] text-[var(--ink-900)] sm:text-4xl">
+            <p className="sv-ref">Charte du scrutin</p>
+            <h2 className="sv-display mt-2 max-w-2xl text-[36px] font-[540] leading-[1.1] text-[var(--navy-900)] sm:text-[44px]">
               Conçue pour qu'un vote en ligne mérite la même confiance qu'une urne.
             </h2>
           </Reveal>
-          <SpotlightCards items={FEATURES} showHeader={false} className="mt-8 bg-transparent px-0 pt-0 pb-0" />
+          <ol className="mt-10 grid gap-x-12 sm:grid-cols-2 lg:grid-cols-3">
+            {ARTICLES.map((a, i) => (
+              <Reveal as="li" onScroll delay={(i % 3) * 0.06} key={a.title} className="border-t border-[var(--border-strong)] py-6">
+                <p className="sv-ref m-0">Article {i + 1}</p>
+                <h3 className="sv-display mt-2 text-[23px] font-[560] leading-tight text-[var(--navy-900)]">{a.title}</h3>
+                <p className="mt-2 text-[15px] leading-relaxed text-[var(--ink-700)]">{a.text}</p>
+              </Reveal>
+            ))}
+          </ol>
         </div>
       </section>
 
       {/* Sécurité et vérification */}
       <section id="securite" className="scroll-mt-20 py-16 sm:py-24">
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2">
+        <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2">
           <Reveal onScroll>
-            <p className="h-eyebrow">Sécurité</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-[-0.025em] text-[var(--ink-900)] sm:text-4xl">
+            <p className="sv-ref">Sécurité</p>
+            <h2 className="sv-display mt-2 text-[36px] font-[540] leading-[1.1] text-[var(--navy-900)] sm:text-[44px]">
               Vous pouvez vérifier, sans avoir à nous croire sur parole.
             </h2>
             <ul className="mt-6 space-y-3">
               {GUARANTEES.map((g) => (
                 <li key={g} className="flex gap-3 text-[15px] leading-relaxed text-[var(--ink-700)]">
-                  <Check size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-[#15803d]" />
+                  <Check size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-[var(--navy-700)]" />
                   {g}
                 </li>
               ))}
@@ -248,30 +234,32 @@ export default function LandingPage() {
           </Reveal>
 
           <Reveal onScroll delay={0.1}>
-            <figure className="rounded-2xl border border-border bg-white p-5 shadow-sm sm:p-6">
-              <figcaption className="text-sm font-medium text-[var(--ink-700)]">Exemple de reçu</figcaption>
-              <dl className="mt-4 space-y-3 text-sm">
-                <div>
-                  <dt className="text-[var(--ink-500)]">Empreinte du bulletin</dt>
-                  <dd className="mt-1 break-all rounded-lg bg-muted px-3 py-2 font-mono text-[13px] text-[var(--ink-900)]">
-                    0x8f3a51c0e9d7b4a2f6e1c3d5b7a9e0f2c4d6b8a0e2f4c6d8b0a2e4f6c8d0c21e
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-[var(--ink-500)]">Élection</dt>
-                  <dd className="text-right text-[var(--ink-900)]">Chef de classe, L3 Génie Logiciel</dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-[var(--ink-500)]">Statut</dt>
-                  <dd className="flex items-center gap-1.5 text-[#15803d]">
-                    <Check size={14} aria-hidden="true" /> Bulletin compté
-                  </dd>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <dt className="text-[var(--ink-500)]">Candidat choisi</dt>
-                  <dd className="text-[var(--ink-900)]">Jamais affiché</dd>
-                </div>
-              </dl>
+            <figure className="relative m-0 overflow-hidden rounded-[7px] border border-border bg-white shadow-[var(--shadow-lg)]">
+              <WaveBand height={18} />
+              <div className="relative px-6 pb-5 pt-5">
+                <Stamp small style={{ position: "absolute", right: 22, top: 18 }}>A voté</Stamp>
+                <figcaption className="sv-ref">Exemple de reçu</figcaption>
+                <p className="sv-display m-0 mt-1 text-[22px] font-[560] text-[var(--navy-900)]">Chef de classe, L3 Génie Logiciel</p>
+                <Microtext style={{ marginTop: 12 }} />
+                <dl className="mt-4 space-y-3 text-sm">
+                  <div>
+                    <dt className="text-[var(--ink-500)]">Empreinte du bulletin</dt>
+                    <dd className="mt-1 break-all rounded-[3px] border border-dashed border-[#b4c4da] bg-[var(--navy-50)] px-3 py-2 font-mono text-[12.5px] text-[var(--navy-800)]">
+                      0x8f3a51c0e9d7b4a2f6e1c3d5b7a9e0f2c4d6b8a0e2f4c6d8b0a2e4f6c8d0c21e
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-[var(--ink-500)]">Statut</dt>
+                    <dd className="flex items-center gap-1.5 text-[var(--success-600)]">
+                      <Check size={14} aria-hidden="true" /> Bulletin compté
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-[var(--ink-500)]">Candidat choisi</dt>
+                    <dd className="text-[var(--ink-900)]">Jamais affiché</dd>
+                  </div>
+                </dl>
+              </div>
             </figure>
           </Reveal>
         </div>
@@ -279,8 +267,10 @@ export default function LandingPage() {
 
       {/* Appel à l'action */}
       <section className="px-4 pb-16 sm:px-6 sm:pb-24">
-        <Reveal onScroll className="mx-auto max-w-6xl rounded-3xl bg-[var(--navy-900)] px-6 py-12 text-center text-white sm:px-12 sm:py-16">
-          <h2 className="text-3xl font-semibold tracking-[-0.025em] sm:text-4xl">Le scrutin de votre classe est ouvert ?</h2>
+        <Reveal onScroll className="sv-navy-panel mx-auto max-w-6xl rounded-[10px] px-6 py-12 text-center sm:px-12 sm:py-16">
+          <Rosette size={520} opacity={0.12} style={{ left: -160, top: -170 }} />
+          <Rosette size={420} opacity={0.1} style={{ right: -140, bottom: -180 }} />
+          <h2 className="sv-display text-[34px] font-[540] leading-tight sm:text-[44px]">Le scrutin de votre classe est ouvert ?</h2>
           <p className="mx-auto mt-3 max-w-md text-[16px] text-white/80">
             Connectez-vous pour voter. Cela prend moins d'une minute.
           </p>

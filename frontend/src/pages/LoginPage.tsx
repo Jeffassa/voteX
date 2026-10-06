@@ -4,6 +4,7 @@ import { AlertCircle, ArrowLeft, ArrowRight, Check, Eye, EyeOff, Lock, User } fr
 import toast from "react-hot-toast";
 
 import { Brand } from "@/components/Brand";
+import { Rosette } from "@/components/SecurityPattern";
 import { useReveal } from "@/hooks/useReveal";
 import { Honeypot } from "@/components/Honeypot";
 import { GOOGLE_ERRORS, GoogleSignInButton } from "@/components/GoogleSignInButton";
@@ -119,21 +120,15 @@ export default function LoginPage() {
           overflow: "hidden",
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            opacity: 0.06,
-            backgroundImage: "radial-gradient(circle at 20% 20%, white 1px, transparent 1.5px)",
-            backgroundSize: "24px 24px",
-          }}
-        />
+        {/* Rosace guillochée : le fond des documents officiels, à la place
+            d'une trame de points. */}
+        <Rosette size={640} opacity={0.11} style={{ right: -240, bottom: -240 }} />
         {/* brand-inverse : sans lui, « ESATIC » s'écrivait en marine sur marine. */}
         <div className="brand-inverse" style={{ position: "relative" }}>
           <Brand />
         </div>
         <div className="sv-auth-tagline" style={{ position: "relative", margin: "auto", width: "100%", maxWidth: 440, textAlign: "left" }}>
-          <h2 style={{ fontSize: 34, fontWeight: 600, letterSpacing: "-0.03em", lineHeight: 1.1, margin: 0 }}>
+          <h2 style={{ fontSize: 42, fontWeight: 520, lineHeight: 1.05, margin: 0 }}>
             Élections des chefs de classe
           </h2>
           <p style={{ fontSize: 15, color: "rgba(255,255,255,0.78)", lineHeight: 1.6, marginTop: 14 }}>

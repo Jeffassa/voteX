@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock, Lock, Mail, Save, User } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft, Clock, Save } from "lucide-react";
 import toast from "react-hot-toast";
 import { useQuery } from "@tanstack/react-query";
 
@@ -15,24 +15,26 @@ export default function ProfilePage() {
   const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *" });
   const { data: me } = useMe();
   const navigate = useNavigate();
+  // Dans l'administration, le menu latéral tient lieu d'en-tête : l'en-tête
+  // des électeurs s'y ajoutait et doublait la navigation.
+  const inAdmin = useLocation().pathname.startsWith("/admin");
 
   return (
     <div>
-      <AppHeader />
+      {!inAdmin && <AppHeader />}
       <div ref={pageRef} className="container container-narrow scene" style={{ padding: "40px 32px 80px" }}>
         <button
           className="btn btn-ghost btn-sm"
           onClick={() => navigate(-1)}
           style={{ marginBottom: 16, marginLeft: -10 }}
         >
-          <ArrowLeft size={14} /> Retour
+          <ArrowLeft size={14} aria-hidden="true" /> Retour
         </button>
 
         <div className="row items-center gap-4" style={{ marginBottom: 32 }}>
           <Avatar
             initials={getInitials(me?.first_name, me?.last_name)} name={`${me?.first_name ?? ""} ${me?.last_name ?? ""}`}
             size={64}
-            color="#0A2540"
             src={me?.photo_url || undefined}
           />
           <div>
@@ -87,11 +89,8 @@ function ProfileForm() {
 
   return (
     <form onSubmit={submit} className="card card-pad" style={{ marginBottom: 16 }}>
-      <div className="row items-center gap-2" style={{ marginBottom: 18 }}>
-        <User size={18} aria-hidden="true" style={{ color: "var(--ink-500)" }} />
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--ink-900)" }}>
-          Informations personnelles
-        </h2>
+      <div style={{ marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid var(--border)" }}>
+        <h2 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 560, color: "var(--navy-900)" }}>Informations personnelles</h2>
       </div>
 
       <div className="col gap-3">
@@ -187,9 +186,8 @@ function EmailForm() {
 
   return (
     <form onSubmit={submit} className="card card-pad" style={{ marginBottom: 16 }} noValidate>
-      <div className="row items-center gap-2" style={{ marginBottom: 14 }}>
-        <Mail size={18} aria-hidden="true" style={{ color: "var(--ink-500)" }} />
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "var(--ink-900)" }}>Adresse e-mail</h2>
+      <div style={{ marginBottom: 14, paddingBottom: 12, borderBottom: "1px solid var(--border)" }}>
+        <h2 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 560, color: "var(--navy-900)" }}>Adresse e-mail</h2>
       </div>
 
       <p style={{ margin: 0, fontSize: 14, color: "var(--ink-700)" }}>
@@ -288,11 +286,8 @@ function PasswordForm() {
 
   return (
     <form onSubmit={submit} className="card card-pad">
-      <div className="row items-center gap-2" style={{ marginBottom: 18 }}>
-        <Lock size={18} style={{ color: "var(--ink-500)" }} />
-        <div style={{ fontWeight: 600, color: "var(--navy-900)", letterSpacing: "-0.01em" }}>
-          Changer le mot de passe
-        </div>
+      <div style={{ marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid var(--border)" }}>
+        <h2 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 560, color: "var(--navy-900)" }}>Changer le mot de passe</h2>
       </div>
 
       <div className="col gap-3">

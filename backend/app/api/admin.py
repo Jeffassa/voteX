@@ -83,6 +83,7 @@ def activate_student(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Le compte de cet étudiant est déjà activé")
 
     student.is_active = True
+    student.deactivated_at = None
     db.commit()
     db.refresh(student)
 
@@ -155,6 +156,7 @@ def reject_claim(
     student.failed_login_count = 0
     student.locked_until = None
     student.is_active = True
+    student.deactivated_at = None
 
     db.commit()
 

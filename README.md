@@ -187,10 +187,23 @@ vers `https` (308) et publient HSTS.
 
 ### Avant d'ouvrir le site au public
 
-- Compléter les mentions marquées **[À COMPLÉTER]** dans
-  `frontend/src/pages/legal/PrivacyPage.tsx` (responsable du traitement,
-  contact, hébergeur, durées de conservation) et `TermsPage.tsx`.
+- Renseigner l'hébergeur, seule mention encore marquée **[À COMPLÉTER]** dans
+  `frontend/src/pages/legal/PrivacyPage.tsx` et `TermsPage.tsx`.
 - Vérifier le domaine d'envoi des emails (voir `SECURITY.md`).
+- Planifier la purge des données (au moins une fois par mois). La page de
+  confidentialité promet des durées de conservation que seul ce script
+  applique :
+
+  ```bash
+  # Rôle de migration : le rôle applicatif ne peut pas supprimer dans
+  # voter_records ni audit_events, et c'est voulu.
+  DATABASE_URL=postgresql://smartvote_migration:…@hote/smartvote_db     python -m scripts.purge_retention --dry-run   # puis sans --dry-run
+  ```
+
+  Participation et journal d'audit : 12 mois. Compte retiré par
+  l'administration : supprimé 12 mois après son retrait (anonymisé pour un
+  ancien candidat, dont le nom reste attaché aux résultats). Les bulletins,
+  anonymes, sont conservés.
 
 ### Connexion avec Google
 

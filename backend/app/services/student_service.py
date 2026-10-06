@@ -1,5 +1,6 @@
 """Logique métier des étudiants — CRUD admin + self-update."""
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import BackgroundTasks
@@ -33,6 +34,11 @@ def update(
         ).first()
         if existing:
             raise ConflictError("Email déjà utilisé par un autre compte")
+
+    # Retirer ou rendre un compte fait partir, ou annule, le délai de
+    # conservation (voir retention_service).
+    if "is_active" in data and data["is_active"] != student.is_active:
+        student.deactivated_at = None if data["is_active"] else datetime.now(timezone.utc)
 
     for field, value in data.items():
         setattr(student, field, value)
@@ -68,6 +74,8 @@ def delete(db: Session, student_id: UUID, *, current_user_id: UUID) -> None:
         # Désactivation plutôt que suppression : effacer l'électeur ferait
         # disparaître la preuve de participation et fausserait le quorum.
         student.is_active = False
+        # Point de départ des 12 mois de conservation (retention_service).
+        student.deactivated_at = datetime.now(timezone.utc)
         db.commit()
         audit_service.record(
             db,

@@ -1,13 +1,13 @@
 import { Link } from "react-router-dom";
 
 import { useConsentStore } from "@/lib/consent";
-import { LegalLayout, ToFill } from "./LegalLayout";
+import { ESATIC, EsaticMail, EsaticPhone, LegalLayout, ToFill } from "./LegalLayout";
 
 export default function PrivacyPage() {
   const { analytics, reopen } = useConsentStore();
 
   return (
-    <LegalLayout title="Politique de confidentialité" updatedAt="29 septembre 2026">
+    <LegalLayout title="Politique de confidentialité" updatedAt="30 septembre 2026">
       <p>
         ESATIC SmartVote est la plateforme de vote en ligne utilisée pour l'élection des chefs
         de classe de l'École Supérieure Africaine des TIC (ESATIC). Cette page explique quelles
@@ -19,9 +19,9 @@ export default function PrivacyPage() {
 
       <h2>1. Responsable du traitement</h2>
       <p>
-        Le responsable du traitement est l'ESATIC, <ToFill>adresse postale de l'établissement</ToFill>.
-        Contact pour toute question relative à vos données :{" "}
-        <ToFill>adresse e-mail du délégué ou du référent à la protection des données</ToFill>.
+        Le responsable du traitement est l'École Supérieure Africaine des TIC (ESATIC),{" "}
+        {ESATIC.address}. Téléphone : <EsaticPhone />.
+        Contact pour toute question relative à vos données : <EsaticMail />.
       </p>
 
       <h2>2. Données traitées et finalités</h2>
@@ -86,17 +86,29 @@ export default function PrivacyPage() {
         <li>Le cas échéant, le service de suivi des erreurs techniques (Sentry), sans données de vote.</li>
       </ul>
       <p>
-        Certains prestataires peuvent être situés hors de Côte d'Ivoire. Ces transferts sont
-        encadrés par des garanties contractuelles appropriées.{" "}
-        <ToFill>préciser les garanties retenues et, si requis, la référence de l'autorisation de l'ARTCI</ToFill>
+        Resend, Google et Sentry sont établis aux États-Unis : les données qui leur sont
+        confiées (adresse e-mail et contenu des messages pour Resend, adresse e-mail pour
+        Google, rapports d'erreur pour Sentry) quittent donc la Côte d'Ivoire. Ces transferts
+        reposent sur les engagements contractuels de protection des données de ces
+        prestataires, et restent soumis aux formalités prévues auprès de l'ARTCI par la loi
+        n° 2013-450.
       </p>
 
       <h2>5. Durées de conservation</h2>
       <ul>
-        <li>Compte électeur : pendant la scolarité à l'ESATIC, puis <ToFill>durée</ToFill> après la fin de celle-ci.</li>
-        <li>Sessions de connexion : 7 jours au plus.</li>
-        <li>Participation aux scrutins et bulletins anonymes : <ToFill>durée, par exemple jusqu'à l'expiration des délais de contestation</ToFill>.</li>
-        <li>Journal d'audit (IP, actions sensibles) : <ToFill>durée, recommandée : 12 mois</ToFill>.</li>
+        <li>
+          Compte électeur : pendant votre scolarité à l'ESATIC. À la fin de celle-ci,
+          l'administration retire votre compte : il est supprimé aussitôt si vous n'avez jamais
+          voté, sinon 12 mois plus tard. Le compte d'un ancien candidat est anonymisé : seuls
+          son nom et son programme restent attachés aux résultats publiés.
+        </li>
+        <li>Sessions de connexion : 7 jours au plus ; les sessions expirées sont supprimées.</li>
+        <li>Participation aux scrutins (le fait d'avoir voté) : 12 mois après la clôture du scrutin.</li>
+        <li>
+          Bulletins : conservés, car ils ne portent ni votre identité, ni l'heure du vote ; ils
+          fondent les résultats publiés.
+        </li>
+        <li>Journal d'audit (IP, actions sensibles) : 12 mois.</li>
         <li>Choix relatif aux cookies : 6 mois, après quoi la question vous est reposée.</li>
       </ul>
 
@@ -145,7 +157,7 @@ export default function PrivacyPage() {
         rectification passe par elle.
       </p>
       <p>
-        Pour exercer vos droits : <ToFill>adresse e-mail de contact</ToFill>. Une réponse vous
+        Pour exercer vos droits : <EsaticMail />. Une réponse vous
         sera apportée dans un délai d'un mois. Vous pouvez également saisir l'Autorité de
         Régulation des Télécommunications/TIC de Côte d'Ivoire (ARTCI), autorité de protection
         des données personnelles, ou, si le RGPD s'applique à vous, l'autorité de contrôle de

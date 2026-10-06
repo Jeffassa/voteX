@@ -33,6 +33,22 @@ export function LegalLayout({ title, updatedAt, children }: Props) {
   );
 }
 
+/** Coordonnées publiées sur esatic.ci, relevées le 30 septembre 2026. */
+export const ESATIC = {
+  address:
+    "Zone 3, boulevard Philippe Grégoire Yacé (ex-boulevard de Marseille), Treichville, Abidjan, Côte d'Ivoire",
+  phone: "+225 27 21 21 81 00",
+  email: "direction.esatic@esatic.edu.ci",
+};
+
+export function EsaticMail() {
+  return <a href={`mailto:${ESATIC.email}`}>{ESATIC.email}</a>;
+}
+
+export function EsaticPhone() {
+  return <a href={`tel:${ESATIC.phone.replace(/\s/g, "")}`}>{ESATIC.phone}</a>;
+}
+
 /** Repère visible d'une information que l'établissement doit renseigner. */
 export function ToFill({ children }: { children: ReactNode }) {
   return <mark className="sv-to-fill">[À COMPLÉTER : {children}]</mark>;

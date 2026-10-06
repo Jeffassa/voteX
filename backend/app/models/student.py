@@ -62,6 +62,12 @@ class Student(Base):
 
     class_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("classes.id"), nullable=True)
 
+    # Date à laquelle l'administration a retiré le compte (fin de scolarité).
+    # Départ du délai de conservation : le compte est supprimé 12 mois plus
+    # tard par scripts/purge_retention.py. Nul pour un compte en service, et
+    # pour une revendication en salle d'attente (is_active faux, mais pas retirée).
+    deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     classroom = relationship("ClassRoom", back_populates="students")

@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
 
-import { LegalLayout, ToFill } from "./LegalLayout";
+import { ESATIC, EsaticMail, EsaticPhone, LegalLayout, ToFill } from "./LegalLayout";
 
 export default function TermsPage() {
   return (
-    <LegalLayout title="Conditions générales d'utilisation" updatedAt="29 septembre 2026">
+    <LegalLayout title="Conditions générales d'utilisation" updatedAt="30 septembre 2026">
       <h2>1. Objet</h2>
       <p>
         Les présentes conditions encadrent l'utilisation d'ESATIC SmartVote, plateforme de vote en
@@ -14,7 +14,8 @@ export default function TermsPage() {
 
       <h2>2. Éditeur et hébergement</h2>
       <p>
-        Éditeur : ESATIC, <ToFill>adresse, téléphone, directeur de la publication</ToFill>.<br />
+        Éditeur : École Supérieure Africaine des TIC (ESATIC), {ESATIC.address}. Téléphone :{" "}
+        <EsaticPhone />. Directeur de la publication : le Directeur général de l'ESATIC.<br />
         Hébergeur : <ToFill>raison sociale, adresse et téléphone de l'hébergeur</ToFill>.
       </p>
 
@@ -65,8 +66,9 @@ export default function TermsPage() {
 
       <h2>7. Contestation des résultats</h2>
       <p>
-        Toute contestation d'un résultat est adressée à <ToFill>instance compétente et adresse de contact</ToFill>{" "}
-        dans un délai de <ToFill>délai</ToFill> après la publication des résultats.
+        Toute contestation d'un résultat est adressée à la direction de l'ESATIC, à{" "}
+        <EsaticMail />, dans un délai de 72 heures après la publication des résultats. Elle
+        précise le scrutin concerné et les faits invoqués.
       </p>
 
       <h2>8. Propriété intellectuelle</h2>
@@ -85,7 +87,8 @@ export default function TermsPage() {
       <h2>10. Évolution et droit applicable</h2>
       <p>
         Ces conditions peuvent évoluer ; la version en vigueur est celle publiée sur cette page.
-        Elles sont soumises au droit ivoirien. <ToFill>juridiction compétente en cas de litige</ToFill>.
+        Elles sont soumises au droit ivoirien. À défaut de règlement amiable, tout litige relève
+        des juridictions d'Abidjan.
       </p>
     </LegalLayout>
   );

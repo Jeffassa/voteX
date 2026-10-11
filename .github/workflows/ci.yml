@@ -1,7 +1,8 @@
 # ESATIC SmartVote — Pipeline d'Intégration Continue
 #
 # Déclenché sur chaque push et pull request vers main.
-# Exécute le linting, les tests backend (pytest) et les tests frontend (vitest).
+# Exécute les tests backend (pytest), frontend (vitest, build), les parcours
+# e2e (Playwright) et les tests du contrat.
 
 name: CI
 
@@ -87,6 +88,35 @@ jobs:
         env:
           VITE_API_URL: https://api.smartvote.example
           VITE_SITE_URL: https://smartvote.example
+
+  # ─────────────────────── Parcours e2e ───────────────────────
+  # Pages publiques (accueil, connexion, activation) dans Chromium, format
+  # bureau et téléphone. Playwright démarre Vite lui-même (webServer).
+  e2e:
+    name: Frontend (parcours e2e)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run e2e tests
+        run: npx playwright test --reporter=github
 
   # ─────────────────────── Smart Contract ───────────────────────
   contracts:

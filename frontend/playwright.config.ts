@@ -10,6 +10,13 @@ export default defineConfig({
   // Vite compile chaque route au premier accès : le délai par défaut (5 s)
   // suffit quand un test tourne seul, et expire dès qu'ils s'enchaînent.
   expect: { timeout: 15_000 },
+  // Démarre Vite si rien n'écoute déjà (en local, la pile Docker le fait).
+  webServer: {
+    command: "npm run dev -- --port 5173 --strictPort",
+    url: "http://localhost:5173",
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
   use: {
     baseURL: "http://localhost:5173",
     trace: "on-first-retry",

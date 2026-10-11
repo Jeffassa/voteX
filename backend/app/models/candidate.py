@@ -17,7 +17,9 @@ class Candidate(Base):
     election_id: Mapped[UUID] = mapped_column(
         Uuid, ForeignKey("elections.id", ondelete="CASCADE"), nullable=False
     )
-    student_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("students.id"), nullable=False)
+    # La contrainte unique (election_id, student_id) sert les recherches par
+    # élection, pas celles par étudiant (candidatures d'un profil, suppression).
+    student_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("students.id"), nullable=False, index=True)
     slogan: Mapped[str | None] = mapped_column(String(200), nullable=True)
     program: Mapped[str | None] = mapped_column(Text, nullable=True)
     biography: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum as PyEnum
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, Uuid, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -17,6 +17,11 @@ class ElectionStatus(str, PyEnum):
 
 class Election(Base):
     __tablename__ = "elections"
+    __table_args__ = (
+        # Scrutins d'une classe, du plus récent au plus ancien : le tableau de
+        # bord de l'électeur et la liste de l'administration.
+        Index("ix_elections_class_id_starts_at", "class_id", "starts_at"),
+    )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     title: Mapped[str] = mapped_column(String(200), nullable=False)

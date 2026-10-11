@@ -35,12 +35,23 @@ if not _configured_url or _configured_url == _PLACEHOLDER_URL:
     config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 
+def include_object(obj, name, type_, reflected, compare_to):
+    """Écarte de l'autogénération les index créés à la main en SQL.
+
+    Les index en trigrammes (suffixe _trgm, migration a4d8e2f6b1c9) sont
+    propres à PostgreSQL et absents des modèles : sans ce filtre,
+    l'autogénération proposerait de les supprimer.
+    """
+    return not (type_ == "index" and reflected and name and name.endswith("_trgm"))
+
+
 def run_migrations_offline() -> None:
     """Mode hors-ligne : génère le SQL sans connexion à la DB."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
+        include_object=include_object,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -59,7 +70,7 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection, target_metadata=target_metadata, include_object=include_object
         )
 
         with context.begin_transaction():

@@ -43,7 +43,9 @@ def _build_limiter() -> Limiter:
         limiter = Limiter(key_func=get_remote_address, storage_uri=settings.REDIS_URL)
         # slowapi n'ouvre la connexion qu'au premier passage : on la force ici
         # pour ne pas découvrir le problème sur la première tentative de vote.
-        limiter.limiter.get_window_stats("startup-probe")
+        # (La sonde passait une chaîne au lieu d'une limite : elle échouait
+        # toujours, et les compteurs restaient en mémoire malgré Redis.)
+        limiter.limiter.get_window_stats(parse("1/minute"), "startup-probe")
         logger.info("Rate limiting partagé via Redis.")
         return limiter
     except Exception as exc:

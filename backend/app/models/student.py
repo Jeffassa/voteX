@@ -60,7 +60,8 @@ class Student(Base):
     failed_login_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    class_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("classes.id"), nullable=True)
+    # Indexé : liste filtrée par classe, inscrits d'un scrutin, participation par classe.
+    class_id: Mapped[UUID | None] = mapped_column(Uuid, ForeignKey("classes.id"), nullable=True, index=True)
 
     # Date à laquelle l'administration a retiré le compte (fin de scolarité).
     # Départ du délai de conservation : le compte est supprimé 12 mois plus

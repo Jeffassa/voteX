@@ -3,6 +3,7 @@
 # Usage :
 #   docker compose up --build
 #   → Postgres sur localhost:5432
+#   → Redis (cache et limitation de débit), interne au réseau du projet
 #   → Backend FastAPI sur http://localhost:8000  (docs: /docs)
 #   → Frontend Vite sur   http://localhost:5173
 #
@@ -30,6 +31,19 @@ services:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U smartvote -d smartvote"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Cache des résultats (app/core/cache.py) et compteurs de limitation de
+  # débit partagés entre les processus (app/core/rate_limit.py). Données
+  # jetables : ni persistance ni port publié, seul le réseau du projet y accède.
+  redis:
+    image: redis:7-alpine
+    container_name: smartvote-redis
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -73,10 +87,13 @@ services:
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8000/api/auth/google/callback}
       METRICS_ENABLED: "true"
       METRICS_TOKEN: ${METRICS_TOKEN:-}
+      REDIS_URL: redis://redis:6379/0
     ports:
       - "8000:8000"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       # Live reload pour le dev — modifie un .py, le container reload

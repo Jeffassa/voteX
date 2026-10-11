@@ -22,7 +22,7 @@ COPY . .
 RUN npm run build
 
 # ─── Étape 2 : Serveur de production Nginx ───
-FROM nginx:1.27-alpine AS production
+FROM nginx:1.31-alpine AS production
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 

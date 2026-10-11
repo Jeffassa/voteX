@@ -14,6 +14,46 @@
 # correspondantes dans un fichier `.env` à la racine (chargé automatiquement
 # par docker-compose via la directive env_file).
 
+# Configuration de l'API, partagée avec le planificateur des scrutins
+# (service `scheduler`) : même base, même secret (l'urne chiffrée en dérive
+# sa clé), même cache et même envoi d'e-mails.
+x-backend-env: &backend-env
+  DATABASE_URL: postgresql://smartvote:smartvote@postgres:5432/smartvote
+  ENVIRONMENT: development
+  # Secret de DÉVELOPPEMENT. Il est publié dans ce dépôt : le backend refuse
+  # de démarrer avec cette valeur si ENVIRONMENT=production. Pour un vrai
+  # déploiement, exportez JWT_SECRET=$(openssl rand -hex 32) avant `up`.
+  JWT_SECRET: ${JWT_SECRET:-Z9k4vPq8rMnL3jH7sB2dX5cF1gW6tY0aQiE4uN8RsoVbPyDmCkJfAhXgZrTwLnQpDEV}
+  ACCESS_TOKEN_EXPIRE_MINUTES: "15"
+  REFRESH_TOKEN_EXPIRE_DAYS: "7"
+  FRONTEND_URL: http://localhost:5173
+  # Cookies — dev sur HTTP, donc Secure=false. En prod : Secure=true (HTTPS obligatoire)
+  COOKIE_SECURE: "false"
+  COOKIE_SAMESITE: "lax"
+  COOKIE_DOMAIN: ""
+  # Supabase / Blockchain / Email vides → dégradation propre
+  SUPABASE_URL: ""
+  SUPABASE_ANON_KEY: ""
+  SUPABASE_SERVICE_KEY: ""
+  WEB3_RPC_URL: ""
+  CONTRACT_ADDRESS: ""
+  ADMIN_PRIVATE_KEY: ""
+  MAIL_USERNAME: ${MAIL_USERNAME:-""}
+  MAIL_PASSWORD: ${MAIL_PASSWORD:-""}
+  MAIL_SERVER: ${MAIL_SERVER:-""}
+  MAIL_PORT: ${MAIL_PORT:-587}
+  MAIL_FROM: ${MAIL_FROM:-"noreply@esatic-smartvote.ci"}
+  # Supervision : /metrics reste fermé par défaut, on l'ouvre ici pour que
+  # la stack docker-compose.monitoring.yml ait quelque chose à scraper.
+  # Connexion Google (optionnelle) : identifiants OAuth de la console
+  # Google Cloud. Sans eux, le bouton « Continuer avec Google » n'apparaît pas.
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+  GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8000/api/auth/google/callback}
+  METRICS_ENABLED: "true"
+  METRICS_TOKEN: ${METRICS_TOKEN:-}
+  REDIS_URL: redis://redis:6379/0
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -52,42 +92,7 @@ services:
     build:
       context: ./backend
     container_name: smartvote-backend
-    environment:
-      DATABASE_URL: postgresql://smartvote:smartvote@postgres:5432/smartvote
-      ENVIRONMENT: development
-      # Secret de DÉVELOPPEMENT. Il est publié dans ce dépôt : le backend refuse
-      # de démarrer avec cette valeur si ENVIRONMENT=production. Pour un vrai
-      # déploiement, exportez JWT_SECRET=$(openssl rand -hex 32) avant `up`.
-      JWT_SECRET: ${JWT_SECRET:-Z9k4vPq8rMnL3jH7sB2dX5cF1gW6tY0aQiE4uN8RsoVbPyDmCkJfAhXgZrTwLnQpDEV}
-      ACCESS_TOKEN_EXPIRE_MINUTES: "15"
-      REFRESH_TOKEN_EXPIRE_DAYS: "7"
-      FRONTEND_URL: http://localhost:5173
-      # Cookies — dev sur HTTP, donc Secure=false. En prod : Secure=true (HTTPS obligatoire)
-      COOKIE_SECURE: "false"
-      COOKIE_SAMESITE: "lax"
-      COOKIE_DOMAIN: ""
-      # Supabase / Blockchain / Email vides → dégradation propre
-      SUPABASE_URL: ""
-      SUPABASE_ANON_KEY: ""
-      SUPABASE_SERVICE_KEY: ""
-      WEB3_RPC_URL: ""
-      CONTRACT_ADDRESS: ""
-      ADMIN_PRIVATE_KEY: ""
-      MAIL_USERNAME: ${MAIL_USERNAME:-""}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-""}
-      MAIL_SERVER: ${MAIL_SERVER:-""}
-      MAIL_PORT: ${MAIL_PORT:-587}
-      MAIL_FROM: ${MAIL_FROM:-"noreply@esatic-smartvote.ci"}
-      # Supervision : /metrics reste fermé par défaut, on l'ouvre ici pour que
-      # la stack docker-compose.monitoring.yml ait quelque chose à scraper.
-      # Connexion Google (optionnelle) : identifiants OAuth de la console
-      # Google Cloud. Sans eux, le bouton « Continuer avec Google » n'apparaît pas.
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
-      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8000/api/auth/google/callback}
-      METRICS_ENABLED: "true"
-      METRICS_TOKEN: ${METRICS_TOKEN:-}
-      REDIS_URL: redis://redis:6379/0
+    environment: *backend-env
     ports:
       - "8000:8000"
     depends_on:
@@ -139,6 +144,25 @@ services:
     command: python -m scripts.purge_scheduler
     # Pas de serveur HTTP ici : le healthcheck de l'image (curl /health) ne
     # s'applique pas.
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+
+  # Clôture des scrutins à leur heure de fin et relance des non-votants par
+  # e-mail (au plus tard 24 h avant la fin), chaque minute. Même image et même
+  # configuration que l'API. Voir app/services/election_scheduler.py.
+  scheduler:
+    build:
+      context: ./backend
+    container_name: smartvote-scheduler
+    environment: *backend-env
+    depends_on:
+      backend:
+        condition: service_started
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/scripts:/app/scripts
+    command: python -m scripts.election_scheduler
     healthcheck:
       disable: true
     restart: unless-stopped

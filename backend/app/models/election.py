@@ -33,6 +33,9 @@ class Election(Base):
         Enum(ElectionStatus), default=ElectionStatus.DRAFT, nullable=False
     )
     blockchain_id: Mapped[int | None] = mapped_column(nullable=True)
+    # Relance des non-votants avant la clôture (scripts/election_scheduler.py) :
+    # posée à l'envoi, elle empêche une seconde relance du même scrutin.
+    reminder_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

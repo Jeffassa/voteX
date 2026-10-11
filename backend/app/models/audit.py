@@ -21,6 +21,7 @@ class AuditAction(str, PyEnum):
     ELECTION_DELETED = "election_deleted"
     ELECTION_OPENED = "election_opened"
     ELECTION_CLOSED = "election_closed"
+    ELECTION_REMINDER_SENT = "election_reminder_sent"
 
     CANDIDATE_CREATED = "candidate_created"
     CANDIDATE_DELETED = "candidate_deleted"

@@ -184,7 +184,12 @@ export default function ElectionDetailPage() {
       </section>
 
       {(election.status === "open" || election.status === "closed") && (
-        <NonVotersPanel electionId={election.id} classId={election.class_id} />
+        <NonVotersPanel
+          electionId={election.id}
+          classId={election.class_id}
+          isOpen={election.status === "open"}
+          reminderSentAt={election.reminder_sent_at ?? null}
+        />
       )}
 
       {adding && (
@@ -428,7 +433,14 @@ function CandidateRow({
 
 type VoteFilter = "all" | "voted" | "not_voted";
 
-function NonVotersPanel({ electionId, classId }: { electionId: string; classId: string }) {
+function NonVotersPanel({
+  electionId, classId, isOpen, reminderSentAt,
+}: {
+  electionId: string;
+  classId: string;
+  isOpen: boolean;
+  reminderSentAt: string | null;
+}) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<VoteFilter>("all");
 
@@ -498,6 +510,13 @@ function NonVotersPanel({ electionId, classId }: { electionId: string; classId: 
             {rate} %
           </span>
         </div>
+        {(isOpen || reminderSentAt) && (
+          <p style={{ margin: "10px 0 0", fontSize: 13, color: "var(--ink-500)" }}>
+            {reminderSentAt
+              ? `Relance par e-mail envoyée aux non-votants le ${formatDateTime(reminderSentAt)}.`
+              : "Si l'envoi d'e-mails est configuré, les non-votants recevront un rappel avant la clôture, une seule fois."}
+          </p>
+        )}
       </div>
 
       <div className="sv-toolbar">

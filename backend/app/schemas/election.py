@@ -31,6 +31,7 @@ class ElectionOut(BaseModel):
     ends_at: datetime
     status: str
     blockchain_id: int | None
+    reminder_sent_at: datetime | None = None
     created_at: datetime
 
 

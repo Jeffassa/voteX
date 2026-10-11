@@ -36,6 +36,7 @@ const ACTIONS: Record<string, ActionMeta> = {
   election_deleted: { label: "Élection supprimée", color: DANGER, category: "elections" },
   election_opened: { label: "Scrutin ouvert", color: SUCCESS, category: "elections" },
   election_closed: { label: "Scrutin clôturé", color: WARN, category: "elections" },
+  election_reminder_sent: { label: "Non-votants relancés", color: INFO, category: "elections" },
   candidate_created: { label: "Candidat ajouté", color: INFO, category: "elections" },
   candidate_deleted: { label: "Candidat retiré", color: DANGER, category: "elections" },
   student_created: { label: "Étudiant inscrit", color: INFO, category: "people" },

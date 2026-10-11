@@ -41,6 +41,8 @@ export interface Election {
   ends_at: string;
   status: ElectionStatus;
   blockchain_id: number | null;
+  /** Relance des non-votants par e-mail (tâche planifiée), si elle est partie. */
+  reminder_sent_at?: string | null;
   created_at: string;
 }
 

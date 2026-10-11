@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.cache import (
@@ -184,8 +184,12 @@ def set_status(
     status: ElectionStatus,
     *,
     actor_id: UUID | None = None,
+    reason: str | None = None,
 ) -> Election:
     """Met à jour le statut + propage sur la blockchain (best-effort).
+
+    `reason` complète l'entrée du journal (ex. clôture automatique à l'heure
+    de fin, sans administrateur derrière).
 
     Quand on passe à OPEN, on crée l'élection on-chain si pas encore fait,
     puis on l'ouvre. Quand on passe à CLOSED, on la clôture on-chain.
@@ -249,7 +253,7 @@ def set_status(
             actor_id=actor_id,
             target_type="election",
             target_id=election.id,
-            details=f"{previous.value} → {status.value}",
+            details=f"{previous.value} → {status.value}" + (f" ({reason})" if reason else ""),
         )
     return election
 
@@ -384,11 +388,7 @@ def list_non_voters(db: Session, election_id: UUID) -> list[Student]:
     # Sous-requête : IDs des étudiants qui ont déjà voté dans cette élection.
     # La participation vit dans VoterRecord — Vote est anonyme et ne porte
     # AUCUN lien vers l'électeur (c'est tout l'intérêt du découplage).
-    voted_subq = (
-        db.query(VoterRecord.student_id)
-        .filter(VoterRecord.election_id == election_id)
-        .subquery()
-    )
+    voted_subq = select(VoterRecord.student_id).where(VoterRecord.election_id == election_id)
 
     return (
         db.query(Student)

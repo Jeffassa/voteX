@@ -120,6 +120,11 @@ class Settings(BaseSettings):
     METRICS_ENABLED: bool = False
     METRICS_TOKEN: str = ""
 
+    # Relance des non-votants par e-mail avant la clôture : au plus tard ce
+    # nombre d'heures avant la fin, et jamais avant la moitié du scrutin. 0 la
+    # désactive. Voir app/services/election_scheduler.py.
+    VOTE_REMINDER_HOURS: int = 24
+
     # Cache Redis — optionnel. Si vide, le cache est désactivé (mode passthrough).
     REDIS_URL: str = ""
     # Durée de vie des résultats d'élections fermées en cache (en secondes). 5 minutes par défaut.

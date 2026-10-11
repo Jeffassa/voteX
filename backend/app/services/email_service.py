@@ -64,6 +64,11 @@ def _is_configured() -> bool:
     return bool(settings.MAIL_USERNAME and settings.MAIL_PASSWORD and settings.MAIL_SERVER)
 
 
+def is_configured() -> bool:
+    """L'envoi d'e-mails est-il possible ? (Les tâches planifiées s'en servent.)"""
+    return _is_configured()
+
+
 def _config() -> ConnectionConfig | None:
     if not _is_configured():
         return None
@@ -441,3 +446,48 @@ async def send_email_changed_notice(*, to_email: str, student_name: str, new_ema
     )
     await _send("email_changed_notice", to_email=to_email,
                 subject="[ESATIC SmartVote] Votre adresse e-mail a été modifiée", html=html)
+
+
+_DAYS = ("lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche")
+_MONTHS = ("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août",
+           "septembre", "octobre", "novembre", "décembre")
+
+
+def _french_datetime(dt: datetime) -> str:
+    """« jeudi 16 octobre à 18 h 00 », en UTC, c'est-à-dire à l'heure d'Abidjan."""
+    from datetime import timezone
+
+    dt = dt.astimezone(timezone.utc) if dt.tzinfo else dt
+    return f"{_DAYS[dt.weekday()]} {dt.day} {_MONTHS[dt.month - 1]} à {dt.hour} h {dt.minute:02d}"
+
+
+async def send_vote_reminder_email(
+    *, to_email: str, voter_name: str, election_title: str, election_id: str, ends_at: datetime
+) -> None:
+    """Relance d'un inscrit qui n'a pas encore voté, avant la clôture."""
+    vote_url = f"{settings.FRONTEND_URL}/elections/{election_id}/vote"
+    html = _layout(
+        "ESATIC SmartVote, rappel de scrutin",
+        f"""
+        <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(voter_name)},</h1>
+        <p style="color:#334155;line-height:1.6;font-size:14px">
+          Le scrutin « {_esc(election_title)} » ferme le
+          <strong>{_esc(_french_datetime(ends_at))}</strong> (heure d'Abidjan), et votre
+          bulletin n'est pas encore dans l'urne. Voter prend moins d'une minute.
+        </p>
+        <p style="margin-top:20px">
+          <a href="{_esc(vote_url)}"
+             style="display:inline-block;padding:12px 22px;background:#0A2540;color:white;
+                    text-decoration:none;border-radius:10px;font-weight:500">
+            Voter maintenant
+          </a>
+        </p>
+        <p style="color:#64748B;font-size:12px;margin-top:24px;border-top:1px solid #E5E8EE;
+                  padding-top:16px;line-height:1.5">
+          Vous recevez ce rappel une seule fois par scrutin. Votre choix reste secret :
+          personne, administration comprise, ne voit pour qui vous votez.
+        </p>
+        """,
+    )
+    await _send("vote_reminder", to_email=to_email,
+                subject=f"[ESATIC SmartVote] Rappel : {election_title}", html=html)

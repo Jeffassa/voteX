@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/brand/logo.svg" width="88" alt=""></p>
+
 # ESATIC SmartVote
 
 Plateforme de vote en ligne pour l'élection des chefs de classe à l'ESATIC.

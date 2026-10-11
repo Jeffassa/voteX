@@ -28,6 +28,21 @@ def _esc(value: object) -> str:
     return html.escape(str(value), quote=True)
 
 
+def _brand_header(title: str) -> str:
+    """Bandeau marine des e-mails : logo clair et intitulé.
+
+    Le logo est servi par le frontend (public/brand/logo-email.png) : les
+    clients mail ignorent le SVG en ligne. Bloquée, l'image laisse l'intitulé.
+    """
+    return f"""
+        <div style="background:#0A2540;color:white;padding:14px 20px;border-radius:12px;
+                    margin:-32px -32px 24px;font-weight:600;font-size:16px;letter-spacing:-0.02em">
+          <img src="{_esc(settings.FRONTEND_URL)}/brand/logo-email.png" width="22" height="22" alt=""
+               style="vertical-align:middle;margin:-3px 10px 0 0;border:0">{_esc(title)}
+        </div>
+    """
+
+
 def _header_safe(value: str) -> str:
     """Aplatit une valeur destinée à un en-tête de mail."""
     return " ".join(str(value).split())
@@ -100,10 +115,7 @@ def _build_receipt_html(
     <div style="font-family:-apple-system,Inter,sans-serif;max-width:560px;margin:0 auto;
                 color:#0F172A;background:#F7F8FA;padding:32px">
       <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
-        <div style="background:#0A2540;color:white;padding:16px 20px;border-radius:12px;
-                    margin:-32px -32px 24px;font-weight:600;font-size:16px;letter-spacing:-0.02em">
-          ESATIC SmartVote, reçu de vote
-        </div>
+        {_brand_header('ESATIC SmartVote, reçu de vote')}
         <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540;letter-spacing:-0.025em">
           Votre vote a été enregistré.
         </h1>
@@ -148,10 +160,7 @@ async def send_password_reset_email(
     <div style="font-family:-apple-system,Inter,sans-serif;max-width:520px;margin:0 auto;
                 color:#0F172A;background:#F7F8FA;padding:32px">
       <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
-        <div style="background:#0A2540;color:white;padding:16px 20px;border-radius:12px;
-                    margin:-32px -32px 24px;font-weight:600;font-size:16px">
-          ESATIC SmartVote, réinitialisation du mot de passe
-        </div>
+        {_brand_header('ESATIC SmartVote, réinitialisation du mot de passe')}
         <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(voter_name)},</h1>
         <p style="color:#334155;line-height:1.6;font-size:14px">
           Tu as demandé à réinitialiser ton mot de passe SmartVote. Clique sur le bouton
@@ -253,10 +262,7 @@ async def send_activation_code_email(
     <div style="font-family:-apple-system,Inter,sans-serif;max-width:520px;margin:0 auto;
                 color:#0F172A;background:#F7F8FA;padding:32px">
       <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
-        <div style="background:#0A2540;color:white;padding:16px 20px;border-radius:12px;
-                    margin:-32px -32px 24px;font-weight:600;font-size:16px">
-          ESATIC SmartVote, activation du compte
-        </div>
+        {_brand_header('ESATIC SmartVote, activation du compte')}
         <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(voter_name)},</h1>
         <p style="color:#334155;line-height:1.6;font-size:14px">
           Ton compte SmartVote a été pré-créé par l'administration. Voici ton code d'activation
@@ -315,10 +321,7 @@ async def send_account_activated_email(*, to_email: str, student_name: str) -> N
     <div style="font-family:-apple-system,Inter,sans-serif;max-width:520px;margin:0 auto;
                 color:#0F172A;background:#F7F8FA;padding:32px">
       <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
-        <div style="background:#0A2540;color:white;padding:16px 20px;border-radius:12px;
-                    margin:-32px -32px 24px;font-weight:600;font-size:16px">
-          ESATIC SmartVote, compte autorisé
-        </div>
+        {_brand_header('ESATIC SmartVote, compte autorisé')}
         <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(student_name)},</h1>
         <p style="color:#334155;line-height:1.6;font-size:14px">
           Ton identité a été vérifiée par l'administration : ton compte SmartVote est ouvert.
@@ -384,10 +387,7 @@ def _layout(title: str, body: str) -> str:
     <div style="font-family:-apple-system,Inter,sans-serif;max-width:520px;margin:0 auto;
                 color:#0F172A;background:#F7F8FA;padding:32px">
       <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
-        <div style="background:#0A2540;color:white;padding:16px 20px;border-radius:12px;
-                    margin:-32px -32px 24px;font-weight:600;font-size:16px">
-          {_esc(title)}
-        </div>
+        {_brand_header(title)}
         {body}
       </div>
     </div>

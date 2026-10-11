@@ -116,6 +116,10 @@
   --orange-100: #ffe9d4;
   --orange-50: #fff5eb;
 
+  /* Logo (docs/brand/) : ardoise et cuivre. .brand-inverse les éclaircit. */
+  --logo-slate: #42464a;
+  --logo-copper: #c9967a;
+
   /* Fond « papier » et gris chauds : le gris neutre de Tailwind donnait à
      toutes les pages l'air d'un gabarit. Contrastes vérifiés (AA) sur --bg
      comme sur --surface-2. */
@@ -190,21 +194,15 @@ input, textarea, select { font-family: inherit; }
 a { color: inherit; text-decoration: none; }
 
 /* Brand */
-.brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -0.02em; }
-.brand .logo {
-  width: 32px; height: 32px; border-radius: 5px;
-  background: var(--navy-900);
-  display: grid; place-items: center; flex-shrink: 0;
-  position: relative; overflow: hidden;
-}
-.brand .logo svg { color: var(--orange-500); }
+.brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 600; letter-spacing: -0.02em; }
+.sv-logo { display: block; flex-shrink: 0; overflow: visible; }
 .brand .name { font-size: 16px; color: var(--navy-900); }
 .brand .name .tag { color: var(--ink-500); font-weight: 400; }
 /* Variante sur fond sombre. Remplace un filter: invert() qui blanchissait tout,
-   y compris l'orange du logo, et que les outils d'audit ne savent pas lire. */
+   y compris le cuivre du logo, et que les outils d'audit ne savent pas lire. */
+.brand-inverse { --logo-slate: #f3eee3; --logo-copper: #d9a283; }
 .brand-inverse .brand .name { color: white; }
 .brand-inverse .brand .name .tag { color: rgba(255, 255, 255, 0.75); }
-.brand-inverse .brand .logo { background: rgba(255, 255, 255, 0.08); }
 /* Titre du panneau des pages d'accès : deux lignes égales plutôt qu'un mot seul. */
 .sv-auth-tagline h2 { text-wrap: balance; font-family: var(--font-display); font-weight: 500; letter-spacing: -0.01em; }
 

@@ -1,5 +1,8 @@
 import { jsPDF } from "jspdf";
 
+// Logo clair (docs/brand/logo-inverse.svg) pour le bandeau marine, en data
+// URL : jsPDF l'intègre sans requête, et ce module n'est chargé qu'au clic.
+import logoPng from "@/assets/logo-pdf.png?inline";
 import { etherscanTxUrl } from "@/lib/blockchain";
 import type { VoteReceipt } from "@/types/api";
 
@@ -28,8 +31,7 @@ export function buildVoteReceiptPdf({
   // Header band navy
   doc.setFillColor(...NAVY);
   doc.rect(0, 0, pageWidth, 90, "F");
-  doc.setFillColor(...ORANGE);
-  doc.rect(margin, 28, 36, 36, "F");
+  doc.addImage(logoPng, "PNG", margin, 27, 35.5, 36);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(20);
   doc.setTextColor(255, 255, 255);

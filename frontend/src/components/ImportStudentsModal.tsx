@@ -69,7 +69,7 @@ export function ImportStudentsModal({ onClose }: Props) {
   }
 
   return (
-    <Modal open onClose={onClose} width={780} fitViewport>
+    <Modal open onClose={onClose} width={780} fitViewport band>
       {/* ─── HEADER (sticky) ─── */}
       <div
         style={{
@@ -82,7 +82,7 @@ export function ImportStudentsModal({ onClose }: Props) {
         }}
       >
         <div>
-          <h3 style={{ margin: 0, fontSize: 20, fontWeight: 600, color: "var(--navy-900)" }}>
+          <h3 className="sv-modal-title">
             Importer des étudiants
           </h3>
           <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>

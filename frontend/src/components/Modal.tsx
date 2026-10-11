@@ -1,5 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 
+import { WaveBand } from "@/components/SecurityPattern";
+
 interface ModalProps {
   open: boolean;
   onClose?: () => void;
@@ -7,6 +9,8 @@ interface ModalProps {
   width?: number;
   /** Si true, le contenu doit gérer son propre scroll (header/body/footer pattern). */
   fitViewport?: boolean;
+  /** Bande ondulée en tête, comme l'en-tête d'un formulaire officiel. */
+  band?: boolean;
 }
 
 export function Modal({
@@ -15,6 +19,7 @@ export function Modal({
   children,
   width = 520,
   fitViewport = false,
+  band = false,
 }: ModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -38,6 +43,7 @@ export function Modal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {band && <WaveBand height={16} />}
         {children}
       </div>
     </div>

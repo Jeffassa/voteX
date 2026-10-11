@@ -239,7 +239,8 @@ h1 { letter-spacing: -0.012em; text-wrap: balance; }
 .btn-outline:not(:disabled):hover { background: var(--surface-2); border-color: var(--ink-300); }
 .btn-ghost { background: transparent; color: var(--ink-700); }
 .btn-ghost:hover { background: var(--surface-2); color: var(--ink-900); }
-.btn-danger { background: var(--danger-600); color: white; }
+.btn-danger { background: var(--danger-600); color: white; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.22); }
+.btn-danger:not(:disabled):hover { background: #991b1b; }
 .btn-lg { padding: 14px 22px; font-size: 15px; border-radius: var(--r-md); }
 .btn-xl { padding: 18px 28px; font-size: 16px; border-radius: var(--r-lg); }
 .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: var(--r-sm); }
@@ -1150,3 +1151,45 @@ fieldset:disabled .sv-ballot-choice { cursor: not-allowed; }
 .sv-certificate-fields { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; margin: 10px 0 0; font-size: 13.5px; }
 .sv-certificate-fields dt { color: var(--ink-500); }
 .sv-certificate-fields dd { margin: 0; color: var(--navy-900); min-width: 0; }
+
+/* Boîte de confirmation (ConfirmDialog), à la place de window.confirm(). */
+.sv-dialog-backdrop { z-index: 400; }
+.sv-dialog { max-width: 470px; overflow: hidden; border-radius: var(--r-xl); }
+/* Ruban de chantier rouge et blanc : on s'apprête à supprimer ou refuser. */
+.sv-dialog-tape { height: 10px; background: repeating-linear-gradient(135deg, var(--danger-600) 0 8px, #fff 8px 16px); }
+.sv-dialog-body { padding: 20px 26px 22px; }
+.sv-dialog-icon {
+  width: 32px; height: 32px; flex-shrink: 0; display: grid; place-items: center;
+  border: 2px solid var(--navy-900); border-radius: 3px; color: var(--navy-900); background: white;
+}
+.sv-dialog.is-danger .sv-dialog-icon { border-color: var(--danger-600); color: var(--danger-600); background: var(--danger-50); }
+.sv-dialog-title {
+  margin: 14px 0 0; font-family: var(--font-display); font-size: 27px; font-weight: 560;
+  line-height: 1.12; color: var(--navy-900); letter-spacing: -0.01em;
+}
+.sv-dialog-subject {
+  margin: 12px 0 0; padding: 9px 12px; border: 1px dashed var(--border-strong); border-radius: var(--r-sm);
+  background: #fcfaf6; font-family: var(--font-display); font-size: 17px; font-weight: 520; color: var(--navy-900);
+  overflow-wrap: anywhere;
+}
+.sv-dialog-message { margin-top: 12px; font-size: 14.5px; line-height: 1.6; color: var(--ink-700); }
+.sv-dialog-actions {
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px;
+  padding: 14px 26px 16px; border-top: 1px solid var(--border); background: #fdfcf9;
+}
+@media (max-width: 480px) {
+  .sv-dialog-body { padding: 18px 18px 20px; }
+  .sv-dialog-actions { padding: 12px 18px 14px; }
+  .sv-dialog-actions .btn { flex: 1 1 140px; }
+}
+
+/* Notifications : bandeau marine, comme la barre de confirmation du vote. */
+.sv-toast {
+  background: var(--navy-900) !important; color: white !important;
+  border-radius: var(--r-md) !important; box-shadow: var(--shadow-xl) !important;
+  padding: 10px 14px !important; font-size: 14px !important; line-height: 1.45 !important;
+  max-width: 420px !important;
+}
+
+/* Titre des fenêtres de formulaire (classe, étudiant, candidat, import). */
+.sv-modal-title { margin: 0; font-family: var(--font-display); font-size: 27px; font-weight: 560; line-height: 1.12; color: var(--navy-900); letter-spacing: -0.01em; }

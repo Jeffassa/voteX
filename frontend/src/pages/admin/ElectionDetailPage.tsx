@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { useReveal } from "@/hooks/useReveal";
 import { ElectionStatusBadge, EmptyState, Segmented } from "@/components/admin/AdminUI";
 import { Avatar } from "@/components/Avatar";
+import { askConfirm } from "@/components/ConfirmDialog";
 import { Modal } from "@/components/Modal";
 import { Rosette } from "@/components/SecurityPattern";
 import {
@@ -14,6 +15,7 @@ import {
   useCreateCandidate,
   useDeleteElection,
   useElection,
+  useElectionResults,
   useNonVoters,
   useSetElectionStatus,
   useStudents,
@@ -35,6 +37,9 @@ export default function ElectionDetailPage() {
   const { data: election } = useElection(id);
   const { data: candidates } = useCandidates(id);
   const { data: classes } = useClasses();
+  // Une élection close qui a reçu des votes est conservée (le serveur refuse
+  // sa suppression) : on ne propose pas un bouton voué à l'échec.
+  const { data: results } = useElectionResults(election?.status === "closed" ? id : undefined, 0);
   const setStatus = useSetElectionStatus();
   const deleteElection = useDeleteElection();
 
@@ -42,12 +47,14 @@ export default function ElectionDetailPage() {
 
   const handleDelete = async () => {
     if (!election) return;
-    if (
-      !confirm(
-        `Supprimer définitivement l'élection « ${election.title} » ?\n\nCette action est irréversible. Les candidats associés seront aussi retirés.`
-      )
-    )
-      return;
+    if (!(await askConfirm({
+      tone: "danger",
+      irreversible: true,
+      title: "Supprimer l'élection",
+      subject: election.title,
+      message: "L'élection et ses candidats seront effacés définitivement.",
+      confirmLabel: "Supprimer définitivement",
+    }))) return;
     try {
       await deleteElection.mutateAsync(election.id);
       toast.success("Élection supprimée");
@@ -67,11 +74,17 @@ export default function ElectionDetailPage() {
     }
     // Les deux bascules sont sans retour : ouvrir fige la liste des candidats,
     // clôturer arrête le vote. Un clic égaré ne doit pas suffire.
-    const question =
-      status === "open"
-        ? `Ouvrir le scrutin « ${election.title} » ?\n\nLes électeurs de la classe pourront voter. La liste des candidats et les informations de l'élection ne seront plus modifiables.`
-        : `Clôturer le scrutin « ${election.title} » ?\n\nPlus personne ne pourra voter. Les résultats seront calculés à partir des bulletins reçus.`;
-    if (!confirm(question)) return;
+    const opening = status === "open";
+    if (!(await askConfirm({
+      irreversible: true,
+      eyebrow: "Scrutin",
+      title: opening ? "Ouvrir le scrutin" : "Clôturer le scrutin",
+      subject: election.title,
+      message: opening
+        ? "Les électeurs de la classe pourront voter. La liste des candidats et les informations de l'élection ne seront plus modifiables."
+        : "Plus personne ne pourra voter. Les bulletins reçus seront dépouillés et les résultats publiés.",
+      confirmLabel: opening ? "Ouvrir le scrutin" : "Clôturer le scrutin",
+    }))) return;
     try {
       await setStatus.mutateAsync({ id: election.id, status });
       toast.success(
@@ -106,6 +119,7 @@ export default function ElectionDetailPage() {
           return c ? `${c.level} ${c.name}` : "Classe inconnue";
         })()}
         candidateCount={colored.length}
+        canDeleteClosed={election.status === "closed" && results !== undefined && results.total_votes === 0}
         onStatus={handleStatus}
         onEdit={() => navigate(`/admin/elections/${election.id}/edit`)}
         onDelete={handleDelete}
@@ -191,11 +205,12 @@ const STEPS: { status: Election["status"]; label: string }[] = [
 ];
 
 function ElectionHeader({
-  election, classLabel, candidateCount, onStatus, onEdit, onDelete, pending,
+  election, classLabel, candidateCount, canDeleteClosed, onStatus, onEdit, onDelete, pending,
 }: {
   election: Election;
   classLabel: string;
   candidateCount: number;
+  canDeleteClosed: boolean;
   onStatus: (s: "open" | "closed") => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -302,9 +317,15 @@ function ElectionHeader({
         )}
         {(election.status === "closed" || election.status === "published") && (
           <>
-            <button className="btn btn-ghost btn-sm" onClick={onDelete} disabled={pending} style={{ color: "var(--danger-600)" }}>
-              <Trash2 size={14} aria-hidden="true" /> Supprimer définitivement
-            </button>
+            {canDeleteClosed ? (
+              <button className="btn btn-ghost btn-sm" onClick={onDelete} disabled={pending} style={{ color: "var(--danger-600)" }}>
+                <Trash2 size={14} aria-hidden="true" /> Supprimer définitivement
+              </button>
+            ) : (
+              <span style={{ fontSize: 13, color: "var(--ink-500)" }}>
+                Archivée : une élection qui a reçu des votes est conservée.
+              </span>
+            )}
             <span style={{ flex: 1 }} />
             <Link to={`/elections/${election.id}/results`} className="btn btn-primary">
               <BarChart3 size={16} aria-hidden="true" /> Voir les résultats
@@ -339,7 +360,13 @@ function CandidateRow({
   const [removing, setRemoving] = useState(false);
 
   async function remove() {
-    if (!confirm(`Retirer ${fullNameOf(c.student)} de cette élection ?`)) return;
+    if (!(await askConfirm({
+      tone: "danger",
+      title: "Retirer le candidat",
+      subject: `N° ${String(number).padStart(2, "0")} · ${fullNameOf(c.student)}`,
+      message: "Il ne figurera plus sur le bulletin. Vous pourrez l'ajouter de nouveau tant que le scrutin n'est pas ouvert.",
+      confirmLabel: "Retirer",
+    }))) return;
     setRemoving(true);
     try {
       await api.delete(`/api/candidates/${c.id}`);
@@ -594,9 +621,9 @@ function AddCandidateModal({
   }
 
   return (
-    <Modal open onClose={onClose} width={560}>
+    <Modal open onClose={onClose} width={560} band>
       <form onSubmit={submit} style={{ padding: 28 }}>
-        <h3 style={{ margin: 0, fontSize: 20, fontWeight: 600, color: "var(--navy-900)" }}>
+        <h3 className="sv-modal-title">
           Ajouter un candidat
         </h3>
         <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>

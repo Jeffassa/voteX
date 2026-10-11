@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { useReveal } from "@/hooks/useReveal";
 import { EmptyState, PageHeader, Segmented } from "@/components/admin/AdminUI";
 import { Modal } from "@/components/Modal";
+import { askConfirm } from "@/components/ConfirmDialog";
 import {
   useClasses,
   useCreateClass,
@@ -133,8 +134,13 @@ function ClassRow({ c, onEdit }: { c: ClassRoom; onEdit: () => void }) {
   const label = `${c.level} ${c.name}`;
 
   async function remove() {
-    if (!confirm(`Supprimer la classe "${label}" ?\n\nLa classe doit être vide (pas d'étudiants ni d'élections).`))
-      return;
+    if (!(await askConfirm({
+      tone: "danger",
+      title: "Supprimer la classe",
+      subject: `${label} · ${c.field}`,
+      message: "Seule une classe vide peut être supprimée : ni étudiants, ni élections.",
+      confirmLabel: "Supprimer la classe",
+    }))) return;
     try {
       await deleteClass.mutateAsync(c.id);
       toast.success("Classe supprimée");
@@ -207,9 +213,9 @@ function ClassFormModal({
   const pending = create.isPending || update.isPending;
 
   return (
-    <Modal open onClose={onClose} width={520}>
+    <Modal open onClose={onClose} width={520} band>
       <form onSubmit={submit} style={{ padding: 28 }}>
-        <h3 style={{ margin: 0, fontSize: 20, fontWeight: 600, color: "var(--navy-900)" }}>
+        <h3 className="sv-modal-title">
           {classroom ? `Modifier ${classroom.level} ${classroom.name}` : "Nouvelle classe"}
         </h3>
 

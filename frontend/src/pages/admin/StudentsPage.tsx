@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { useReveal } from "@/hooks/useReveal";
 import { EmptyState, MenuItem, MenuSeparator, PageHeader, RowMenu, Segmented, useDebounced } from "@/components/admin/AdminUI";
 import { Avatar, getInitials } from "@/components/Avatar";
+import { askConfirm } from "@/components/ConfirmDialog";
 import { ImportStudentsModal } from "@/components/ImportStudentsModal";
 import { Modal } from "@/components/Modal";
 import {
@@ -80,13 +81,16 @@ export default function StudentsPage() {
    * évite le clic sur la mauvaise ligne.
    */
   const handleReject = async (id: string, label: string) => {
-    if (!window.confirm(
-      `Refuser la demande de ${label} ?
-
-` +
-      "Le compte redeviendra revendicable : personne ne le détiendra, et le " +
-      "titulaire pourra recommencer son inscription."
-    )) return;
+    if (!(await askConfirm({
+      tone: "danger",
+      eyebrow: "Salle d'attente",
+      title: "Refuser la demande",
+      subject: label,
+      message:
+        "Le compte redeviendra revendicable : personne ne le détiendra, et le " +
+        "titulaire pourra recommencer son inscription.",
+      confirmLabel: "Refuser la demande",
+    }))) return;
     try {
       await rejectClaim.mutateAsync(id);
       toast.success("Demande refusée. Le compte est de nouveau revendicable.");
@@ -337,8 +341,15 @@ function StudentRow({ s, classLabel, isMe, canChangeRole, onEdit }: RowProps) {
   }
 
   async function remove() {
-    if (!confirm(`Supprimer ${name} ?\n\nSi cet étudiant a déjà voté, il sera désactivé au lieu d'être supprimé (préservation de l'intégrité du vote).`))
-      return;
+    if (!(await askConfirm({
+      tone: "danger",
+      title: "Supprimer l'étudiant",
+      subject: `${name} · ${s.matricule}`,
+      message:
+        "S'il a déjà voté, son compte sera désactivé au lieu d'être supprimé : " +
+        "la preuve de sa participation doit rester.",
+      confirmLabel: "Supprimer",
+    }))) return;
     try {
       await deleteStudent.mutateAsync(s.id);
       toast.success("Étudiant retiré");
@@ -350,11 +361,17 @@ function StudentRow({ s, classLabel, isMe, canChangeRole, onEdit }: RowProps) {
   async function promote(role: UserRole) {
     // Donner ou retirer des droits d'administration se confirme, le nom de la
     // personne sous les yeux : le menu est à un clic de la ligne voisine.
-    const question =
-      role === "admin"
-        ? `Donner les droits d'administration à ${name} ?\n\nCette personne pourra gérer les élections, les classes et la liste électorale.`
-        : `Retirer les droits d'administration de ${name} ?`;
-    if (!confirm(question)) return;
+    const granting = role === "admin";
+    if (!(await askConfirm({
+      eyebrow: "Droits d'administration",
+      title: granting ? "Donner les droits d'administration" : "Retirer les droits d'administration",
+      subject: `${name} · ${s.matricule}`,
+      message: granting
+        ? "Cette personne pourra gérer les élections, les classes et la liste électorale."
+        : "Cette personne redeviendra un simple électeur et perdra l'accès à l'administration.",
+      confirmLabel: granting ? "Donner les droits" : "Retirer les droits",
+      tone: granting ? "default" : "danger",
+    }))) return;
     try {
       await changeRole.mutateAsync({ id: s.id, role });
       toast.success(role === "admin" ? `${name} a désormais les droits d'administration` : `${name} n'a plus les droits d'administration`);
@@ -458,9 +475,9 @@ function CreateStudentModal({
   }
 
   return (
-    <Modal open onClose={onClose} width={560}>
+    <Modal open onClose={onClose} width={560} band>
       <form onSubmit={submit} style={{ padding: 28 }}>
-        <h3 style={{ margin: 0, fontSize: 20, fontWeight: 600, color: "var(--navy-900)" }}>
+        <h3 className="sv-modal-title">
           Inscrire un étudiant
         </h3>
 
@@ -550,9 +567,9 @@ function EditStudentModal({
   }
 
   return (
-    <Modal open onClose={onClose} width={560}>
+    <Modal open onClose={onClose} width={560} band>
       <form onSubmit={submit} style={{ padding: 28 }}>
-        <h3 style={{ margin: 0, fontSize: 20, fontWeight: 600, color: "var(--navy-900)" }}>
+        <h3 className="sv-modal-title">
           Modifier {student.first_name} {student.last_name}
         </h3>
         <p className="muted mono" style={{ fontSize: 12, marginTop: 4 }}>

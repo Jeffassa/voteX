@@ -189,12 +189,12 @@ function VoteHistoryCard({
   return (
     <section aria-labelledby="my-receipts" className="card" style={{ padding: 0, overflow: "hidden" }}>
       <div className="sv-card-head">
-        <h2 id="my-receipts">Mes reçus de vote</h2>
+        <h2 id="my-receipts">Mes participations</h2>
         <span className="sv-ref">{votes.length}</span>
       </div>
       {votes.length === 0 ? (
         <p className="muted" style={{ fontSize: 13.5, margin: 0, padding: "18px 20px 22px" }}>
-          Aucun vote pour l'instant. Chaque vote vous laissera ici un reçu et son empreinte.
+          Aucun vote pour l'instant. Votre participation à chaque scrutin s'inscrira ici.
         </p>
       ) : (
         <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
@@ -212,7 +212,14 @@ function VoteHistoryCard({
                   {new Date(v.created_at).toLocaleDateString("fr-FR")}
                 </div>
               </div>
-              <HashChip value={v.vote_hash} />
+              {/* Le serveur ne réexpose pas l'empreinte (elle relierait un
+                  compte à son bulletin) : elle ne figure que sur le reçu remis
+                  au moment du vote. On ne montre pas « anonymisé » comme un code. */}
+              {v.vote_hash.startsWith("0x") ? (
+                <HashChip value={v.vote_hash} />
+              ) : (
+                <span className="badge badge-success">Participation enregistrée</span>
+              )}
             </li>
           ))}
         </ul>

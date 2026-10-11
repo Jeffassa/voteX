@@ -6,6 +6,7 @@ import { Toaster } from "react-hot-toast";
 
 import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ConfirmHost } from "./components/ConfirmDialog";
 import { HERO_POSTER, loadBallotBoxScene, wantsHero3d } from "./components/three/heroScene";
 // Polices servies par l'application, sous-ensemble latin uniquement. Google
 // Fonts bloquait le premier rendu (feuille de style externe) et transmettait
@@ -53,7 +54,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <App />
-          <Toaster position="top-right" />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              className: "sv-toast",
+              success: { iconTheme: { primary: "#22c55e", secondary: "#0a2540" } },
+              error: { iconTheme: { primary: "#ff7a00", secondary: "#0a2540" }, duration: 6000 },
+            }}
+          />
+          <ConfirmHost />
         </BrowserRouter>
       </QueryClientProvider>
     </ErrorBoundary>

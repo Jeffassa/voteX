@@ -15,7 +15,7 @@ passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 python-multipart==0.0.32
 email-validator==2.3.0
-web3==7.5.0
+web3==8.0.0
 # Épinglé explicitement : web3 et resend l'acceptent large, et la résolution
 # retombait sur 2.31.0, qui traîne trois avis de sécurité.
 requests==2.33.0

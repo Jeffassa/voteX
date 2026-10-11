@@ -26,11 +26,20 @@ def cast(
     background_tasks: BackgroundTasks,
 ):
     vote = vote_service.cast_vote(
-        db, user=user, election_id=payload.election_id, candidate_id=payload.candidate_id
+        db,
+        user=user,
+        election_id=payload.election_id,
+        candidate_id=payload.candidate_id,
+        receipt_key=payload.receipt_key,
     )
 
     election = db.query(Election).filter(Election.id == payload.election_id).first()
     voted_at = datetime.now(timezone.utc)
+    if vote.replayed:
+        # Reçu redonné après une réponse perdue : l'e-mail et le brassage
+        # sont déjà partis avec la première requête.
+        return VoteReceipt(id=vote.id, election_id=vote.election_id, vote_hash=vote.vote_hash,
+                           tx_hash=None, block_number=None, created_at=voted_at)
 
     # Le reçu n'énonce JAMAIS le choix : ni dans la réponse, ni dans l'e-mail.
     # Une boîte mail est lisible par le fournisseur, un tiers ou quelqu'un qui

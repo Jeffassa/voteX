@@ -1,12 +1,15 @@
+import hashlib
+import hmac
 import logging
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 from app.models import Candidate, Election, Student, Vote, VoterRecord
 from app.models.election import ElectionStatus
@@ -32,12 +35,72 @@ class CastBallot:
     vote_hash: str
     tx_hash: str | None = None
     block_number: int | None = None
+    # Vrai quand la requête rejoue un vote déjà enregistré (reçu redonné).
+    replayed: bool = False
 
 
-def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UUID | None = None) -> CastBallot:
+# Reçu redonné au même électeur, pour la même requête, pendant ce délai après
+# son vote. Au-delà, « déjà voté » : rejouer la requête avec chaque candidat
+# dirait lequel produit le reçu, et le reçu deviendrait une preuve de vote.
+# Dix minutes couvrent une coupure réseau, pas une revente du vote.
+RECEIPT_REPLAY_WINDOW = timedelta(minutes=10)
+
+
+def _nonce(election_id: UUID, receipt_key: str | None) -> str:
+    """Aléa du hachage de vote.
+
+    Sans jeton : tiré au hasard, comme avant. Avec : dérivé du jeton par HMAC,
+    pour que la même requête redonne le même hachage. Rien n'est stocké : ni
+    le jeton, ni de lien entre l'électeur et son bulletin ; sans le secret du
+    serveur, le jeton seul ne permet pas de recalculer l'aléa.
+    """
+    if receipt_key is None:
+        return secrets.token_hex(16)
+    key = hmac.new(settings.JWT_SECRET.encode(), b"smartvote/vote-receipt/v1", hashlib.sha256).digest()
+    return hmac.new(key, f"{election_id}:{receipt_key}".encode(), hashlib.sha256).hexdigest()[:32]
+
+
+def _replay(
+    db: Session, *, user: Student, election_id: UUID, candidate_id: UUID | None, receipt_key: str | None
+) -> CastBallot | None:
+    """Le reçu d'un vote déjà enregistré, si cette requête est bien celle qui l'a produit."""
+    if receipt_key is None:
+        return None
+    record = (
+        db.query(VoterRecord)
+        .filter(VoterRecord.election_id == election_id, VoterRecord.student_id == user.id)
+        .first()
+    )
+    if record is None or record.created_at is None:
+        return None
+    voted_at = record.created_at.replace(tzinfo=timezone.utc) if record.created_at.tzinfo is None else record.created_at
+    if datetime.now(timezone.utc) - voted_at > RECEIPT_REPLAY_WINDOW:
+        return None
+    vote_hash = compute_vote_hash(str(user.id), str(election_id), str(candidate_id), _nonce(election_id, receipt_key))
+    counted = db.query(Vote.id).filter(Vote.vote_hash == vote_hash, Vote.election_id == election_id).first()
+    pending = None if counted else ballot_box.find_pending(db, vote_hash)
+    if counted is None and (pending is None or pending.election_id != election_id):
+        return None
+    return CastBallot(id=uuid4(), election_id=election_id, vote_hash=vote_hash, replayed=True)
+
+
+def cast_vote(
+    db: Session,
+    *,
+    user: Student,
+    election_id: UUID,
+    candidate_id: UUID | None = None,
+    receipt_key: str | None = None,
+) -> CastBallot:
     election = db.query(Election).filter(Election.id == election_id).first()
     if not election:
         raise NotFoundError("Élection introuvable")
+
+    # Nouvel essai d'un vote déjà enregistré (réponse perdue) : le même reçu,
+    # même si le scrutin a fermé entre-temps.
+    replay = _replay(db, user=user, election_id=election_id, candidate_id=candidate_id, receipt_key=receipt_key)
+    if replay is not None:
+        return replay
 
     if election.status != ElectionStatus.OPEN:
         raise ValidationError("L'élection n'est pas ouverte au vote")
@@ -70,7 +133,7 @@ def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UU
     if existing:
         raise ConflictError("Vous avez déjà voté pour cette élection")
 
-    nonce = secrets.token_hex(16)
+    nonce = _nonce(election_id, receipt_key)
     # Le bulletin est validé en base D'ABORD. L'ancrage on-chain (jusqu'à 90 s
     # d'attente d'un bloc, et irréversible) se fait ensuite, hors requête, par
     # anchoring_service : une panne ou une lenteur du RPC ne bloque plus un vote
@@ -95,6 +158,11 @@ def cast_vote(db: Session, *, user: Student, election_id: UUID, candidate_id: UU
         # plus haut peut passer deux fois, seule la contrainte unique arbitre.
         # Sans ce filet, le second vote sortait en 500 au lieu d'un 409 clair.
         db.rollback()
+        # La requête jumelle (double clic, nouvel essai du navigateur) a gagné :
+        # même jeton, même reçu.
+        replay = _replay(db, user=user, election_id=election_id, candidate_id=candidate_id, receipt_key=receipt_key)
+        if replay is not None:
+            return replay
         logger.warning(
             "vote refusé pour user=%s election=%s : %s", user.id, election_id, exc.orig
         )

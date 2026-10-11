@@ -1,12 +1,16 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class VoteRequest(BaseModel):
     election_id: UUID
     candidate_id: UUID | None = None
+    # Jeton aléatoire tiré par le navigateur avant l'envoi, renvoyé tel quel
+    # s'il doit réessayer : un vote dont la réponse s'est perdue rend alors
+    # le même reçu au lieu de « déjà voté ». Jamais stocké (vote_service).
+    receipt_key: str | None = Field(default=None, min_length=22, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
 
 
 class VoteReceipt(BaseModel):

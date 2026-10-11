@@ -15,7 +15,9 @@ export interface Me {
   matricule: string;
   first_name: string;
   last_name: string;
-  email: string;
+  email: string | null;
+  /** Adresse saisie, en attente du clic sur le lien de confirmation. */
+  pending_email?: string | null;
   role: UserRole;
   photo_url: string | null;
   is_active: boolean;
@@ -70,12 +72,13 @@ export interface ElectionResults {
   blank_votes?: number;
   participation_rate: number;
   candidates: CandidateResult[];
+  /** Vrai tant que le scrutin est ouvert : seule la participation est publique. */
+  scores_hidden?: boolean;
 }
 
 export interface VoteReceipt {
   id: string;
   election_id: string;
-  candidate_id: string;
   vote_hash: string;
   tx_hash: string | null;
   block_number: number | null;
@@ -86,7 +89,8 @@ export interface VoteVerification {
   valid: boolean;
   vote_hash: string;
   election_title: string | null;
-  created_at: string | null;
+  anchored?: boolean;
+  tx_hash?: string | null;
   block_number: number | null;
   message: string;
 }

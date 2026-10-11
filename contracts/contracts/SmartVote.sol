@@ -3,7 +3,8 @@ pragma solidity ^0.8.24;
 
 /// @title SmartVote — registre on-chain d'intégrité des votes ESATIC
 /// @notice Ne stocke que des hashes de votes (jamais les votes en clair).
-///         Le backend FastAPI signe et soumet les transactions.
+///         Le backend FastAPI signe et soumet les transactions ; il est seul
+///         juge de la période du scrutin (voir `castVote`).
 contract SmartVote {
     struct Election {
         uint256 id;
@@ -20,6 +21,11 @@ contract SmartVote {
     mapping(uint256 => Election) public elections;
     mapping(uint256 => mapping(bytes32 => bool)) public voteRecorded;
     mapping(uint256 => uint256) public voteCount;
+    // Une élection close l'est pour de bon : sans cela, la rouvrir rendait
+    // la chaîne prête à accepter des bulletins après publication des scores.
+    // Mapping séparé plutôt que champ de la structure, pour garder l'ABI de
+    // getElection.
+    mapping(uint256 => bool) public closed;
 
     event ElectionCreated(uint256 indexed id, string title, uint256 startsAt, uint256 endsAt);
     event ElectionOpened(uint256 indexed id);
@@ -53,6 +59,7 @@ contract SmartVote {
     function openElection(uint256 electionId) external onlyOwner {
         Election storage e = elections[electionId];
         require(e.id != 0, "SmartVote: unknown election");
+        require(!closed[electionId], "SmartVote: election closed");
         e.open = true;
         emit ElectionOpened(electionId);
     }
@@ -61,6 +68,7 @@ contract SmartVote {
         Election storage e = elections[electionId];
         require(e.id != 0, "SmartVote: unknown election");
         e.open = false;
+        closed[electionId] = true;
         emit ElectionClosed(electionId);
     }
 
@@ -68,7 +76,12 @@ contract SmartVote {
         Election storage e = elections[electionId];
         require(e.id != 0, "SmartVote: unknown election");
         require(e.open, "SmartVote: election not open");
-        require(block.timestamp >= e.startsAt && block.timestamp <= e.endsAt, "SmartVote: out of period");
+        // Pas de contrôle de période ici, volontairement. Le backend contrôle
+        // déjà que le bulletin est déposé dans la fenêtre du scrutin ; or il
+        // l'ancre ensuite, en arrière-plan, parfois après `endsAt`. Refuser à ce
+        // moment-là ferait perdre définitivement l'ancrage d'un vote légitime
+        // déposé dans les dernières secondes. La clôture reste, elle, bornante :
+        // plus aucun hachage n'est accepté après `closeElection`.
         require(!voteRecorded[electionId][voteHash], "SmartVote: vote already recorded");
 
         voteRecorded[electionId][voteHash] = true;

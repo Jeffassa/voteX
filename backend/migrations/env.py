@@ -25,8 +25,14 @@ import app.models  # noqa: E402, F401
 
 target_metadata = Base.metadata
 
-# Injecter la DATABASE_URL depuis les settings de l'application
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# URL de la base : celle passée explicitement à Alembic gagne (utile pour
+# migrer une base de test ou une instance secondaire) ; sinon on prend celle de
+# l'application. Le placeholder livré dans alembic.ini ne compte pas comme un
+# choix explicite.
+_PLACEHOLDER_URL = "driver://user:pass@localhost/dbname"
+_configured_url = config.get_main_option("sqlalchemy.url")
+if not _configured_url or _configured_url == _PLACEHOLDER_URL:
+    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 
 def run_migrations_offline() -> None:

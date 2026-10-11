@@ -14,7 +14,12 @@ export function AppHeader() {
   // Le rôle vient EXCLUSIVEMENT de la réponse serveur — pas du localStorage
   const isAdmin = me?.role === "admin" || me?.role === "super_admin";
 
-  const links = isAdmin
+  const links = !me
+    ? [
+        { to: "/", label: "Accueil" },
+        { to: "/verify", label: "Vérifier un vote" },
+      ]
+    : isAdmin
     ? [
         { to: "/admin", label: "Tableau de bord" },
         { to: "/verify", label: "Vérifier un vote" },
@@ -28,7 +33,7 @@ export function AppHeader() {
     <header className="app-header">
       <div className="app-header-inner">
         <Link to="/"><Brand /></Link>
-        <nav>
+        <nav aria-label="Navigation principale">
           {links.map((l) => (
             <Link
               key={l.to}
@@ -40,26 +45,34 @@ export function AppHeader() {
           ))}
         </nav>
         <div className="row items-center gap-3">
+          {!me && (
+            <Link to="/login" className="btn btn-navy btn-sm">
+              Se connecter
+            </Link>
+          )}
           {me && (
-            <Link to="/profile" title="Mon profil">
+            <Link to="/profile" title="Mon profil" aria-label="Mon profil">
               <Avatar
-                initials={getInitials(me.first_name, me.last_name)}
+                initials={getInitials(me.first_name, me.last_name)} name={`${me.first_name ?? ""} ${me.last_name ?? ""}`}
                 size={34}
                 color="#0A2540"
                 src={me.photo_url || undefined}
               />
             </Link>
           )}
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={() => {
-              logout();
-              navigate("/login");
-            }}
-            title="Se déconnecter"
-          >
-            <LogOut size={16} />
-          </button>
+          {me && (
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => {
+                logout();
+                navigate("/login");
+              }}
+              title="Se déconnecter"
+              aria-label="Se déconnecter"
+            >
+              <LogOut size={16} aria-hidden="true" />
+            </button>
+          )}
         </div>
       </div>
     </header>

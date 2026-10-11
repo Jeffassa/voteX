@@ -11,12 +11,12 @@ docker compose up --build
 Attends que tu voies dans les logs :
 
 ```
-smartvote-backend  | > Création des tables...
-smartvote-backend  | tables OK
+smartvote-backend  | > Mise à jour du schéma (Alembic)...
+smartvote-backend  | Schéma à jour.
 smartvote-backend  | > Seed des données de démo...
 smartvote-backend  | Seed OK :
 smartvote-backend  |   super-admin : matricule=SUPERADMIN  password=admin12345
-smartvote-backend  |   voter démo  : matricule=20240398    password=student12345  (Sékou Bamba)
+smartvote-backend  |   voter démo  : matricule=24-ESATIC0398SB  password=student12345  (Sékou Bamba)
 smartvote-backend  |   élection    : Chef de classe — L3 Génie Logiciel (open)
 smartvote-backend  |   classes     : L3 Génie Logiciel, L3 Réseaux Télécoms, L3 Cybersécurité, L3 Intelligence Artificielle
 smartvote-backend  | INFO:     Uvicorn running on http://0.0.0.0:8000
@@ -43,7 +43,7 @@ smartvote-frontend |   ➜  Local:   http://localhost:5173/
 ### 2.2 Login
 
 1. Clique **Se connecter avec mon matricule**
-2. Rentre `20240398` / `student12345`
+2. Rentre `24-ESATIC0398SB` / `student12345`
 3. ✅ Redirige vers le dashboard
 4. ✅ Toast vert "Connexion réussie"
 

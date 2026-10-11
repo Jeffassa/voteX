@@ -1,0 +1,41 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Journaux des conteneurs, découverts via l'API Docker.
+  #
+  # Pourquoi pas la lecture de fichiers : sur Docker Desktop (Windows, macOS),
+  # les journaux vivent dans la machine virtuelle du moteur, pas sur le disque
+  # de l'hôte. Le montage « C:\ProgramData\Docker\containers » arrivait donc
+  # vide et promtail ne lisait jamais rien — sans la moindre erreur, ce qui
+  # rendait le défaut invisible.
+  #
+  # Le socket est monté en lecture seule, mais soyons clairs : l'accès à l'API
+  # Docker reste un privilège élevé. C'est acceptable pour une pile de
+  # supervision locale ; en production, préférez le pilote de journalisation
+  # Loki configuré au niveau du démon.
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 15s
+    relabel_configs:
+      # Nom lisible du conteneur (l'API le renvoie préfixé d'un « / »).
+      - source_labels: [__meta_docker_container_name]
+        regex: "/(.*)"
+        target_label: container
+      - source_labels: [__meta_docker_container_log_stream]
+        target_label: stream
+      - target_label: job
+        replacement: containerlogs
+
+# Pas de job « windows_events » : l'image promtail est une image Linux, elle n'a
+# pas de journal d'événements Windows à lire. Sa présence faisait échouer
+# l'analyse de ce fichier au démarrage — promtail redémarrait en boucle et
+# aucune ligne n'atteignait Loki.

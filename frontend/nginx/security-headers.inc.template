@@ -1,0 +1,24 @@
+# En-têtes de sécurité, inclus dans CHAQUE location de default.conf.
+#
+# nginx n'hérite des add_header du bloc server que si la location n'en déclare
+# aucun. Les blocs /assets/ et /index.html posant Cache-Control, la CSP et les
+# autres en-têtes disparaissaient justement de la page HTML — celle qui exécute
+# le JavaScript. D'où cet include répété.
+#
+# Suffixe .inc (et non .conf) : nginx inclut automatiquement conf.d/*.conf au
+# niveau http, ce fichier ne doit l'être qu'ici.
+
+add_header X-Frame-Options "DENY" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+
+# HTTPS forcé : un navigateur qui a vu cet en-tête refuse ensuite toute
+# connexion en clair au domaine pendant un an.
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+# CSP — c'est ici qu'elle compte : le backend ne sert que du JSON, alors que
+# c'est cette page qui exécute du JavaScript. Sans elle, un XSS peut exfiltrer
+# un bulletin ou piloter le vote à la place de l'électeur. connect-src ouvre
+# l'appel à l'API, servie sur sa propre origine (API_ORIGIN).
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: ${PHOTO_ORIGINS}; connect-src 'self' ${API_ORIGIN}; manifest-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'" always;

@@ -19,7 +19,8 @@ from app.models import Election, Vote
 from app.models.election import ElectionStatus
 from app.models.student import UserRole
 from app.schemas.election import ElectionCreate, ElectionUpdate
-from app.services import election_service, vote_service
+from app.core.cache import cache_delete, key_election_results
+from app.services import ballot_box, election_service, vote_service
 
 
 # ─────────────────────────── list / get ───────────────────────────
@@ -257,6 +258,10 @@ def test_compute_results_calculates_percentages(db, voter, candidate_students, o
     vote_service.cast_vote(
         db, user=candidate_students[1], election_id=open_election.id, candidate_id=cand1.id
     )
+    # Participation comptée dès le dépôt ; les voix, une fois l'urne vidée.
+    assert election_service.compute_results(db, open_election.id).total_votes == 3
+    ballot_box.mix(db, open_election.id, final=True)
+    cache_delete(key_election_results(str(open_election.id)))
 
     results = election_service.compute_results(db, open_election.id)
     assert results.total_votes == 3
@@ -280,6 +285,7 @@ def test_compute_results_sorts_candidates_by_votes_desc(db, voter, candidate_stu
     vote_service.cast_vote(
         db, user=candidate_students[0], election_id=open_election.id, candidate_id=cand2.id
     )
+    ballot_box.mix(db, open_election.id, final=True)
 
     results = election_service.compute_results(db, open_election.id)
     assert results.candidates[0].candidate_id == cand2.id

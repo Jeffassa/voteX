@@ -10,6 +10,7 @@ si le RPC tombe.
 import hashlib
 import json
 import logging
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -53,19 +54,37 @@ def _contract():
         return None, None
 
 
-def _signed_tx(w3: Web3, fn) -> dict[str, Any]:
+# Un compte Ethereum ne tolère qu'UN flux de transactions à la fois : deux envois
+# qui lisent le même `nonce` en parallèle se disputent la même place, et l'un
+# des deux est rejeté. Ce verrou sérialise les envois au sein du processus ;
+# entre processus, c'est le verrou consultatif de la base (anchoring_service)
+# qui réserve l'ancrage des bulletins à un seul travailleur à la fois.
+_send_lock = threading.Lock()
+_GAS_LIMIT = 300_000
+
+
+def _build_and_send(w3: Web3, fn, nonce: int) -> Any:
     account = w3.eth.account.from_key(settings.ADMIN_PRIVATE_KEY)
     tx = fn.build_transaction(
         {
             "from": account.address,
-            "nonce": w3.eth.get_transaction_count(account.address),
-            "gas": 300_000,
+            "nonce": nonce,
+            "gas": _GAS_LIMIT,
             "gasPrice": w3.eth.gas_price,
         }
     )
     signed = account.sign_transaction(tx)
-    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
-    receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=90)
+    return w3.eth.send_raw_transaction(signed.raw_transaction)
+
+
+def _signed_tx(w3: Web3, fn) -> dict[str, Any]:
+    with _send_lock:
+        account = w3.eth.account.from_key(settings.ADMIN_PRIVATE_KEY)
+        # "pending" : compte aussi les transactions déjà émises mais pas encore
+        # minées, sans quoi deux envois rapprochés reprennent le même nonce.
+        nonce = w3.eth.get_transaction_count(account.address, "pending")
+        tx_hash = _build_and_send(w3, fn, nonce)
+        receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=90)
     return {"tx_hash": tx_hash.hex(), "block_number": receipt.blockNumber, "receipt": receipt}
 
 
@@ -119,22 +138,69 @@ def close_election_on_chain(blockchain_id: int) -> bool:
         return False
 
 
-def record_vote_on_chain(vote_hash: str, election_blockchain_id: int | None) -> dict[str, Any]:
-    """Enregistre un hash de vote on-chain. Retourne {tx_hash, block_number}."""
+class AnchorOutcome:
+    """Issue de l'ancrage d'un hachage.
+
+    `retryable` distingue la panne passagère (RPC injoignable, nonce en retard)
+    du refus définitif du contrat (transaction annulée : élection hors période
+    ou déjà close) — qu'il serait vain de rejouer indéfiniment.
+    """
+
+    __slots__ = ("tx_hash", "block_number", "retryable")
+
+    def __init__(self, tx_hash: str | None = None, block_number: int | None = None,
+                 retryable: bool = True):
+        self.tx_hash = tx_hash
+        self.block_number = block_number
+        self.retryable = retryable
+
+    @property
+    def ok(self) -> bool:
+        return self.tx_hash is not None
+
+
+def submit_votes(items: list[tuple[str, int]]) -> list[AnchorOutcome]:
+    """Ancre un lot de hachages `(vote_hash, blockchain_id)`.
+
+    Les transactions partent d'abord avec des nonces consécutifs, puis on
+    attend les reçus : le lot coûte un temps de bloc, pas un par bulletin.
+    Au premier échec d'envoi la chaîne de nonces est rompue : les suivants ne
+    sont pas tentés et restent à rejouer.
+    """
+    outcomes = [AnchorOutcome() for _ in items]
     w3, contract = _contract()
-    if (
-        not w3
-        or not contract
-        or not settings.ADMIN_PRIVATE_KEY
-        or election_blockchain_id is None
-    ):
-        return {"tx_hash": None, "block_number": None}
-    try:
-        result = _signed_tx(
-            w3,
-            contract.functions.castVote(election_blockchain_id, vote_hash),
-        )
-        return {"tx_hash": result["tx_hash"], "block_number": result["block_number"]}
-    except Exception as exc:
-        logger.warning("blockchain: castVote failed: %s", exc)
-        return {"tx_hash": None, "block_number": None}
+    if not w3 or not contract or not settings.ADMIN_PRIVATE_KEY or not items:
+        return outcomes
+
+    with _send_lock:
+        try:
+            account = w3.eth.account.from_key(settings.ADMIN_PRIVATE_KEY)
+            nonce = w3.eth.get_transaction_count(account.address, "pending")
+        except Exception as exc:
+            logger.warning("blockchain: cannot read nonce: %s", exc)
+            return outcomes
+
+        sent: list[tuple[int, Any]] = []
+        for index, (vote_hash, chain_id) in enumerate(items):
+            try:
+                tx_hash = _build_and_send(
+                    w3, contract.functions.castVote(chain_id, vote_hash), nonce
+                )
+            except Exception as exc:
+                logger.warning("blockchain: castVote not sent (%s) — batch interrupted", exc)
+                break
+            sent.append((index, tx_hash))
+            nonce += 1
+
+        for index, tx_hash in sent:
+            try:
+                receipt = w3.eth.wait_for_transaction_receipt(tx_hash, timeout=90)
+            except Exception as exc:
+                logger.warning("blockchain: no receipt for %s: %s", tx_hash.hex(), exc)
+                continue  # peut-être minée plus tard : sera rejouée
+            if receipt.status == 1:
+                outcomes[index] = AnchorOutcome(tx_hash.hex(), receipt.blockNumber)
+            else:
+                logger.warning("blockchain: castVote reverted (tx %s)", tx_hash.hex())
+                outcomes[index] = AnchorOutcome(retryable=False)
+    return outcomes

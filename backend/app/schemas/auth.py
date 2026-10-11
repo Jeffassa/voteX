@@ -13,6 +13,8 @@ class ActivationCodeRequest(BaseModel):
     first_name: str = Field(min_length=1, max_length=100)
     last_name: str = Field(min_length=1, max_length=100)
     email: EmailStr
+    # Champ piège anti-robots (voir app/core/antispam.py) : toujours vide chez un humain.
+    website: str | None = Field(default=None, max_length=200)
 
 
 class RegisterRequest(BaseModel):
@@ -27,11 +29,13 @@ class RegisterRequest(BaseModel):
     last_name: str = Field(min_length=1, max_length=100)
     password: str = Field(min_length=8, max_length=128)
     confirm_password: str = Field(min_length=8, max_length=128)
-    # Email et class_id ne sont PAS saisis par l'étudiant — ils viennent de l'import admin
-    # (email est optionnel : l'étudiant peut le fournir pour activer le reset password)
+    # Adresse personnelle facultative (Gmail…). Elle n'est appliquée qu'après
+    # confirmation par le lien envoyé à cette adresse (email_change_service).
     email: EmailStr | None = None
     class_id: str | None = None
     activation_code: str | None = None
+    # Champ piège anti-robots (voir app/core/antispam.py) : toujours vide chez un humain.
+    website: str | None = Field(default=None, max_length=200)
 
     @field_validator("matricule")
     @classmethod
@@ -54,6 +58,12 @@ class TokenResponse(BaseModel):
 
 class PasswordResetRequest(BaseModel):
     email: EmailStr
+    # Champ piège anti-robots (voir app/core/antispam.py) : toujours vide chez un humain.
+    website: str | None = Field(default=None, max_length=200)
+
+
+class EmailConfirmRequest(BaseModel):
+    token: str = Field(min_length=10, max_length=2048)
 
 
 class PasswordResetConfirm(BaseModel):

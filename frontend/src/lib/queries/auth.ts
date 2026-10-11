@@ -22,6 +22,8 @@ export function useMe(enabled = true) {
 interface LoginInput {
   matricule: string;
   password: string;
+  /** Champ piège anti-robots, vide chez un humain. */
+  website?: string;
 }
 
 interface LoginResponse {
@@ -34,10 +36,11 @@ export function useLogin() {
   const queryClient = useQueryClient();
 
   return useMutation<LoginResponse, Error, LoginInput>({
-    mutationFn: async ({ matricule, password }) => {
+    mutationFn: async ({ matricule, password, website }) => {
       const form = new URLSearchParams();
       form.append("username", matricule);
       form.append("password", password);
+      if (website) form.append("website", website);
       const { data } = await api.post<LoginResponse>("/api/auth/login", form, {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
       });
@@ -71,9 +74,9 @@ registerLogoutCallback(() => {
 });
 
 export function useRequestPasswordReset() {
-  return useMutation<void, Error, { email: string }>({
-    mutationFn: async ({ email }) => {
-      await api.post("/api/auth/password-reset/request", { email });
+  return useMutation<void, Error, { email: string; website?: string }>({
+    mutationFn: async ({ email, website }) => {
+      await api.post("/api/auth/password-reset/request", { email, website: website || undefined });
     },
   });
 }

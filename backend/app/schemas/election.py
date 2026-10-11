@@ -41,6 +41,8 @@ class ElectionResults(BaseModel):
     blank_votes: int = 0
     participation_rate: float
     candidates: list["CandidateResult"]
+    # Vrai quand le détail par candidat est masqué (scrutin encore ouvert).
+    scores_hidden: bool = False
 
 
 class CandidateResult(BaseModel):

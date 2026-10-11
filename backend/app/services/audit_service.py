@@ -8,7 +8,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.audit import AuditAction, AuditEvent
 
@@ -45,6 +45,7 @@ def record(
 def list_recent(db: Session, *, limit: int = 100) -> list[AuditEvent]:
     return (
         db.query(AuditEvent)
+        .options(joinedload(AuditEvent.actor))
         .order_by(AuditEvent.created_at.desc())
         .limit(limit)
         .all()

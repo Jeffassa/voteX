@@ -12,13 +12,16 @@ Tokens signés HS256 avec :
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from jose import JWTError, jwt
+import jwt
 from passlib.context import CryptContext
 
 from app.core.config import JWT_AUDIENCE, JWT_ISSUER, settings
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Claims sans lesquels un access token n'a aucun sens exploitable.
+REQUIRED_CLAIMS = ("sub", "exp", "iat", "iss", "aud", "role", "pwd_v")
 
 
 def hash_password(password: str) -> str:
@@ -59,11 +62,11 @@ def create_access_token(
 def decode_token(token: str) -> dict[str, Any]:
     """Vérifie signature + expiration + issuer + audience.
 
-    Toute modification du payload invalide la signature → JWTError.
-    Token expiré, mauvais issuer ou mauvaise audience → JWTError.
+    Toute modification du payload invalide la signature → InvalidTokenError.
+    Token expiré, mauvais issuer ou mauvaise audience → InvalidTokenError.
     """
     try:
-        return jwt.decode(
+        payload = jwt.decode(
             token,
             settings.JWT_SECRET,
             algorithms=[settings.JWT_ALGORITHM],
@@ -71,5 +74,12 @@ def decode_token(token: str) -> dict[str, Any]:
             issuer=JWT_ISSUER,
             options={"require": ["sub", "exp", "iat", "iss", "aud"]},
         )
-    except JWTError as exc:
+    except jwt.InvalidTokenError as exc:
         raise ValueError(f"Token invalide : {exc}") from exc
+
+    # PyJWT n'exige que les revendications standard : `role` et `pwd_v` sont
+    # vérifiées ici, sinon un jeton émis sans elles passerait le décodage.
+    missing = [claim for claim in REQUIRED_CLAIMS if payload.get(claim) is None]
+    if missing:
+        raise ValueError(f"Token invalide : claims manquants {missing}")
+    return payload

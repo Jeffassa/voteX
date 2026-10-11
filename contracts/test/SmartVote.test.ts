@@ -50,4 +50,36 @@ describe("SmartVote", () => {
     const h = ethers.keccak256(ethers.toUtf8Bytes("vote"));
     await expect(sv.connect(other).castVote(1, h)).to.be.revertedWith("SmartVote: not owner");
   });
+
+  it("accepte l'ancrage d'un bulletin arrivé après la fin de la période", async () => {
+    const { sv } = await deploy();
+    const now = await time.latest();
+    await sv.createElection("Test", now, now + 3600);
+    await sv.openElection(1);
+
+    // Le bulletin a été déposé à temps côté serveur ; la chaîne le reçoit après.
+    await time.increase(7200);
+    const h = ethers.keccak256(ethers.toUtf8Bytes("tardif"));
+    await sv.castVote(1, h);
+    expect(await sv.verifyVote(1, h)).to.equal(true);
+  });
+
+  it("refuse de rouvrir une élection close", async () => {
+    const { sv } = await deploy();
+    const now = await time.latest();
+    await sv.createElection("Test", now, now + 3600);
+    await sv.openElection(1);
+    await sv.closeElection(1);
+    await expect(sv.openElection(1)).to.be.revertedWith("SmartVote: election closed");
+  });
+
+  it("refuse tout hachage une fois l'élection close", async () => {
+    const { sv } = await deploy();
+    const now = await time.latest();
+    await sv.createElection("Test", now, now + 3600);
+    await sv.openElection(1);
+    await sv.closeElection(1);
+    const h = ethers.keccak256(ethers.toUtf8Bytes("apres-cloture"));
+    await expect(sv.castVote(1, h)).to.be.revertedWith("SmartVote: election not open");
+  });
 });

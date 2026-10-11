@@ -45,7 +45,7 @@ def main():
         db.add(user)
         db.commit()
         db.refresh(user)
-        print(f"OK — {args.role} créé : {user.matricule} ({user.email}) — id={user.id}")
+        print(f"OK : {args.role} créé, {user.matricule} ({user.email}), id={user.id}")
     finally:
         db.close()
 

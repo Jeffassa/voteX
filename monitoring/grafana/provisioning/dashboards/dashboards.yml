@@ -1,0 +1,16 @@
+# Charge les tableaux de bord versionnés dans le dépôt plutôt que ceux créés à
+# la main dans l'interface : un tableau de bord non versionné disparaît avec le
+# volume Docker.
+apiVersion: 1
+
+providers:
+  - name: SmartVote
+    orgId: 1
+    folder: ESATIC SmartVote
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

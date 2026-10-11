@@ -3,7 +3,10 @@
 Stratégie de cookies :
 - `sv_access`  : access token JWT, httpOnly, courte durée (15 min)
 - `sv_refresh` : refresh token opaque, httpOnly, path scopé /api/auth, 7 jours
-- `sv_csrf`    : CSRF token, NON httpOnly (lu par le JS), même durée que refresh
+
+Il n'existe volontairement AUCUN cookie lisible par le JavaScript. Le jeton
+CSRF est scellé dans l'access token et transmis au client par l'en-tête de
+réponse `X-CSRF-Token` — voir app/core/csrf.py.
 
 httpOnly : empêche un XSS de lire le cookie via document.cookie
 Secure   : envoyé seulement sur HTTPS (true en prod, false en dev sur localhost)
@@ -18,7 +21,6 @@ from app.core.config import settings
 
 ACCESS_COOKIE = "sv_access"
 REFRESH_COOKIE = "sv_refresh"
-CSRF_COOKIE = "sv_csrf"
 CSRF_HEADER = "X-CSRF-Token"
 
 # Le refresh cookie n'est envoyé QUE sur les routes /api/auth/* — réduit
@@ -56,21 +58,10 @@ def set_refresh_cookie(response: Response, token: str, max_age_seconds: int) -> 
     )
 
 
-def set_csrf_cookie(response: Response, token: str, max_age_seconds: int) -> None:
-    """Le cookie CSRF doit être lisible par le JS pour qu'il puisse le renvoyer
-    en header X-CSRF-Token (pattern double-submit cookie)."""
-    response.set_cookie(
-        key=CSRF_COOKIE,
-        value=token,
-        max_age=max_age_seconds,
-        httponly=False,  # ← intentionnel, le JS doit le lire
-        path="/",
-        **_common_kwargs(),
-    )
-
-
 def clear_auth_cookies(response: Response) -> None:
     common = _common_kwargs()
     response.delete_cookie(ACCESS_COOKIE, path="/", **common)
     response.delete_cookie(REFRESH_COOKIE, path=REFRESH_COOKIE_PATH, **common)
-    response.delete_cookie(CSRF_COOKIE, path="/", **common)
+    # `sv_csrf` a existé jusqu'à l'abandon du double-submit : on continue de le
+    # supprimer, sinon un navigateur qui le détient encore le garderait.
+    response.delete_cookie("sv_csrf", path="/", **common)

@@ -1,0 +1,19 @@
+{
+  "short_name": "SmartVote",
+  "name": "ESATIC SmartVote",
+  "description": "Plateforme officielle de vote en ligne pour les élections des chefs de classe de l'ESATIC.",
+  "lang": "fr",
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "/icons/icon-192.png", "type": "image/png", "sizes": "192x192", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "background_color": "#0A2540",
+  "theme_color": "#0A2540",
+  "display": "standalone",
+  "orientation": "portrait",
+  "categories": ["education", "utilities"]
+}

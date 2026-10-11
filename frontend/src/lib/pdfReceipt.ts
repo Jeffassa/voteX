@@ -1,11 +1,10 @@
 import { jsPDF } from "jspdf";
 
 import { etherscanTxUrl } from "@/lib/blockchain";
-import type { Candidate, VoteReceipt } from "@/types/api";
+import type { VoteReceipt } from "@/types/api";
 
 interface BuildPdfArgs {
   receipt: VoteReceipt;
-  candidate?: Candidate | null;
   electionTitle: string;
   voterFullName: string;
   voterMatricule: string;
@@ -18,7 +17,6 @@ const INK_700: [number, number, number] = [51, 65, 85];
 
 export function buildVoteReceiptPdf({
   receipt,
-  candidate,
   electionTitle,
   voterFullName,
   voterMatricule,
@@ -39,7 +37,7 @@ export function buildVoteReceiptPdf({
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor(255, 255, 255);
-  doc.text("Reçu de vote — preuve d'enregistrement on-chain", margin + 50, 68);
+  doc.text("Reçu de vote, preuve d'enregistrement", margin + 50, 68);
 
   let y = 130;
 
@@ -53,10 +51,13 @@ export function buildVoteReceiptPdf({
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor(...INK_700);
-  const intro = candidate
-    ? `Bulletin pour ${candidate.student.first_name} ${candidate.student.last_name} scellé sur la blockchain.`
-    : "Bulletin scellé sur la blockchain.";
-  doc.text(intro, margin, y);
+  // Le document ne nomme jamais le candidat : un PDF est copiable, transmissible
+  // et archivable, il deviendrait une preuve de vote monnayable ou exigible.
+  doc.text(
+    receipt.tx_hash ? "Bulletin enregistré, empreinte inscrite sur la blockchain." : "Bulletin enregistré.",
+    margin,
+    y
+  );
 
   y += 36;
 
@@ -80,7 +81,7 @@ export function buildVoteReceiptPdf({
   drawKeyValue(
     doc,
     "Hash transaction",
-    receipt.tx_hash || "— hors chaîne —",
+    receipt.tx_hash || "Hors chaîne",
     margin,
     y,
     !!receipt.tx_hash,
@@ -90,7 +91,7 @@ export function buildVoteReceiptPdf({
   drawKeyValue(
     doc,
     "Bloc",
-    receipt.block_number ? `#${receipt.block_number.toLocaleString("fr-FR")}` : "—",
+    receipt.block_number ? `#${receipt.block_number.toLocaleString("fr-FR")}` : "-",
     margin,
     y,
     true

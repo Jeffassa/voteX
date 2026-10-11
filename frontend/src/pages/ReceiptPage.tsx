@@ -1,16 +1,24 @@
+import { useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { ArrowRight, Box, Download, ExternalLink } from "lucide-react";
+import { ArrowRight, Download, ExternalLink } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { useReveal } from "@/hooks/useReveal";
 import { AppHeader } from "@/components/AppHeader";
 import { HashChip } from "@/components/HashChip";
+import { Microtext, Rosette, Stamp } from "@/components/SecurityPattern";
 import { useElection, useMe } from "@/lib/queries";
+import { verifyVoteHash } from "@/lib/queries/votes";
 import { etherscanTxUrl, explorerName } from "@/lib/blockchain";
 import { fullNameOf } from "@/lib/palette";
-import { downloadVoteReceiptPdf } from "@/lib/pdfReceipt";
 import type { Candidate, VoteReceipt } from "@/types/api";
 
+const ANCHOR_WAIT_MS = 2 * 60 * 1000;
+
 export default function ReceiptPage() {
+  // Le reçu est une confirmation : on le laisse s'installer posément.
+  const pageRef = useReveal<HTMLDivElement>({ selector: ":scope > *", delay: 0.1 });
   const { id } = useParams<{ id: string }>();
   const { state } = useLocation() as {
     state?: { receipt?: VoteReceipt; candidate?: Candidate };
@@ -22,6 +30,21 @@ export default function ReceiptPage() {
 
   const receipt = state?.receipt;
   const candidate = state?.candidate;
+
+  // Le bulletin est enregistré tout de suite ; son inscription sur la chaîne se
+  // fait en arrière-plan. On interroge la vérification publique jusqu'à ce
+  // qu'elle aboutisse (ou pendant ~2 minutes au plus).
+  const startedAt = useRef(Date.now());
+  const anchor = useQuery({
+    queryKey: ["anchor", receipt?.vote_hash],
+    queryFn: () => verifyVoteHash(receipt!.vote_hash),
+    enabled: !!receipt && !receipt.tx_hash,
+    refetchInterval: (q) =>
+      q.state.data?.anchored || Date.now() - startedAt.current > ANCHOR_WAIT_MS ? false : 4000,
+  });
+  const txHash = receipt?.tx_hash ?? anchor.data?.tx_hash ?? null;
+  const blockNumber = receipt?.block_number ?? anchor.data?.block_number ?? null;
+  const anchoring = !txHash && Date.now() - startedAt.current <= ANCHOR_WAIT_MS;
 
   if (!receipt) {
     return (
@@ -39,68 +62,25 @@ export default function ReceiptPage() {
 
   const ts = new Date(receipt.created_at);
   const tsLabel = `${ts.toISOString().replace("T", " · ").slice(0, 22)} UTC`;
+  const blank = candidate?.id === "neutral";
 
   return (
     <div>
       <AppHeader />
       <div
+        ref={pageRef}
         className="container container-narrow scene"
-        style={{ padding: "64px 32px", textAlign: "center" }}
+        style={{ padding: "48px 32px 72px", textAlign: "center" }}
       >
-        <div
-          style={{
-            width: 96, height: 96, margin: "0 auto",
-            borderRadius: "50%", background: "var(--success-50)",
-            display: "grid", placeItems: "center", position: "relative",
-          }}
-        >
-          <div
-            style={{
-              position: "absolute", inset: -8,
-              border: "2px solid var(--success-500)",
-              borderRadius: "50%", opacity: 0.3,
-              animation: "sv-rcpt-pulse 2s ease-out infinite",
-            }}
-          />
-          <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
-            <circle
-              cx="28" cy="28" r="26"
-              stroke="var(--success-500)" strokeWidth="3" fill="none"
-              style={{
-                strokeDasharray: 164,
-                strokeDashoffset: 164,
-                animation: "sv-rcpt-circle 800ms 200ms ease forwards",
-              }}
-            />
-            <path
-              d="M16 29 L25 38 L41 20"
-              stroke="var(--success-500)" strokeWidth="3.5"
-              strokeLinecap="round" strokeLinejoin="round" fill="none"
-              style={{
-                strokeDasharray: 50,
-                strokeDashoffset: 50,
-                animation: "sv-rcpt-check 500ms 900ms ease forwards",
-              }}
-            />
-          </svg>
-        </div>
+        {/* Le tampon de l'assesseur : « A voté ». */}
+        <Stamp sub={ts.toLocaleDateString("fr-FR")}>A voté</Stamp>
 
-        <h1
-          style={{
-            fontSize: 36, fontWeight: 600, letterSpacing: "-0.03em",
-            marginTop: 28, marginBottom: 10, color: "var(--navy-900)",
-          }}
-        >
+        <h1 style={{ fontSize: 40, fontWeight: 540, marginTop: 30, marginBottom: 10, color: "var(--navy-900)", lineHeight: 1.1 }}>
           Votre vote a été enregistré.
         </h1>
-        <p
-          className="muted"
-          style={{
-            fontSize: 16, maxWidth: 540, margin: "0 auto", lineHeight: 1.6,
-          }}
-        >
-          Merci, {me?.first_name || "—"}. Votre bulletin
-          {candidate && (
+        <p className="muted" style={{ fontSize: 16, maxWidth: 540, margin: "0 auto", lineHeight: 1.6 }}>
+          Merci{me?.first_name ? `, ${me.first_name}` : ""}. Votre bulletin
+          {candidate && !blank && (
             <>
               {" "}pour{" "}
               <strong style={{ color: "var(--navy-900)" }}>
@@ -108,112 +88,102 @@ export default function ReceiptPage() {
               </strong>
             </>
           )}
-          {" "}est désormais scellé sur la blockchain.
+          {blank && " blanc"}
+          {" "}est enregistré{txHash ? " et scellé sur la blockchain" : ""}.
         </p>
 
-        <div
-          className="card"
-          style={{ marginTop: 40, padding: 0, textAlign: "left", overflow: "hidden" }}
-        >
-          <div
-            style={{
-              padding: "20px 24px",
-              borderBottom: "1px solid var(--border)",
-              display: "flex", justifyContent: "space-between", alignItems: "center",
-            }}
-          >
-            <div className="row items-center gap-2">
-              <Box size={16} style={{ color: "var(--orange-500)" }} />
-              <span style={{ fontWeight: 600, fontSize: 14 }}>Reçu de transaction</span>
-            </div>
-            <span className="badge badge-open">
-              <span className="dot" /> Confirmé
-            </span>
-          </div>
-          <div
-            style={{
-              padding: 24, display: "grid",
-              gridTemplateColumns: "140px 1fr",
-              rowGap: 16, columnGap: 24,
-              alignItems: "center", fontSize: 13,
-            }}
-          >
-            <div className="muted">Hash de vote</div>
-            <div><HashChip value={receipt.vote_hash} full /></div>
-
-            <div className="muted">Hash transaction</div>
-            <div>
-              {receipt.tx_hash ? (
-                <HashChip value={receipt.tx_hash} />
-              ) : (
-                <span className="muted">— hors chaîne —</span>
-              )}
-            </div>
-
-            <div className="muted">Bloc</div>
-            <div className="mono" style={{ color: "var(--navy-900)" }}>
-              {receipt.block_number
-                ? `#${receipt.block_number.toLocaleString("fr-FR")}`
-                : "—"}
-            </div>
-
-            <div className="muted">Horodatage</div>
-            <div className="mono" style={{ color: "var(--navy-900)" }}>
-              {tsLabel}
-            </div>
-
-            <div className="muted">Élection</div>
-            <div style={{ color: "var(--navy-900)" }}>{election?.title || "—"}</div>
-          </div>
-          <div
-            style={{
-              padding: 16,
-              background: "var(--surface-2)",
-              borderTop: "1px solid var(--border)",
-              display: "flex", gap: 10, justifyContent: "flex-end",
-            }}
-          >
-            {receipt.tx_hash ? (
-              <a
-                href={etherscanTxUrl(receipt.tx_hash)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-outline btn-sm"
+        <article className="sv-ticket" aria-labelledby="ticket-title">
+          <header className="sv-ticket-head sv-navy-panel">
+            <Rosette size={300} opacity={0.16} style={{ right: -90, top: -120 }} />
+            <div className="row items-start justify-between gap-3" style={{ flexWrap: "wrap" }}>
+              <div style={{ minWidth: 0 }}>
+                <div className="sv-ref" style={{ color: "rgba(255,255,255,0.65)" }}>Reçu de vote</div>
+                <h2 id="ticket-title" className="sv-display" style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 540, lineHeight: 1.15 }}>
+                  {election?.title || "Élection"}
+                </h2>
+              </div>
+              <span
+                className="badge"
+                style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.3)", color: txHash ? "#9fe0b4" : "white" }}
               >
-                <ExternalLink size={14} /> Vérifier sur {explorerName}
-              </a>
-            ) : (
-              <button className="btn btn-outline btn-sm" disabled>
-                <ExternalLink size={14} /> Hors chaîne
+                {txHash ? "Ancré sur la chaîne" : anchoring ? "Ancrage en cours" : "Enregistré"}
+              </span>
+            </div>
+          </header>
+          <Microtext style={{ padding: "6px 26px 0" }} />
+
+          <dl className="sv-ticket-fields">
+            <dt>Empreinte du bulletin</dt>
+            <dd><HashChip value={receipt.vote_hash} full /></dd>
+
+            <dt>Transaction</dt>
+            <dd>
+              {txHash ? (
+                <HashChip value={txHash} />
+              ) : (
+                <span className="muted">
+                  {anchoring ? "ancrage en cours…" : "en attente, au plus tard à la clôture"}
+                </span>
+              )}
+            </dd>
+
+            <dt>Bloc</dt>
+            <dd className="mono">{blockNumber ? `#${blockNumber.toLocaleString("fr-FR")}` : "en attente"}</dd>
+
+            <dt>Horodatage</dt>
+            <dd className="mono">{tsLabel}</dd>
+          </dl>
+
+          {/* Talon détachable : ce qu'on emporte. */}
+          <div className="sv-perf" />
+          <div className="sv-ticket-stub">
+            <p style={{ margin: 0, fontSize: 13, color: "var(--ink-500)", flex: "1 1 240px", lineHeight: 1.5 }}>
+              Conservez l'empreinte : elle prouve que votre bulletin est compté, sans dire pour qui.
+            </p>
+            <div className="row gap-2" style={{ flexWrap: "wrap" }}>
+              {txHash ? (
+                <a
+                  href={etherscanTxUrl(txHash)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-outline btn-sm"
+                >
+                  <ExternalLink size={14} aria-hidden="true" /> Vérifier sur {explorerName}
+                </a>
+              ) : (
+                <button className="btn btn-outline btn-sm" disabled>
+                  <ExternalLink size={14} aria-hidden="true" /> Pas encore ancré
+                </button>
+              )}
+              <button
+                className="btn btn-outline btn-sm"
+                onClick={() => {
+                  if (!me) {
+                    toast.error("Utilisateur indisponible");
+                    return;
+                  }
+                  // jsPDF n'est chargé qu'au clic : il pèse plus lourd que toute la
+                  // page, pour un bouton que la plupart des électeurs n'utilisent pas.
+                  void import("@/lib/pdfReceipt").then(({ downloadVoteReceiptPdf }) => downloadVoteReceiptPdf({
+                    receipt,
+                    electionTitle: election?.title || "Élection",
+                    voterFullName: `${me.first_name} ${me.last_name}`,
+                    voterMatricule: me.matricule,
+                  }));
+                }}
+              >
+                <Download size={14} aria-hidden="true" /> Télécharger le PDF
               </button>
-            )}
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={() => {
-                if (!me) {
-                  toast.error("Utilisateur indisponible");
-                  return;
-                }
-                downloadVoteReceiptPdf({
-                  receipt,
-                  candidate,
-                  electionTitle: election?.title || "Élection",
-                  voterFullName: `${me.first_name} ${me.last_name}`,
-                  voterMatricule: me.matricule,
-                });
-              }}
-            >
-              <Download size={14} /> Télécharger PDF
-            </button>
+            </div>
           </div>
-        </div>
+        </article>
 
         <button
           className="btn btn-navy btn-lg"
           style={{ marginTop: 32 }}
           onClick={() => navigate(`/elections/${id}/results`)}
         >
-          Voir les résultats en direct <ArrowRight size={16} />
+          Suivre la participation <ArrowRight size={16} aria-hidden="true" />
         </button>
       </div>
     </div>

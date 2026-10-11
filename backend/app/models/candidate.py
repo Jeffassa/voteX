@@ -28,4 +28,7 @@ class Candidate(Base):
 
     election = relationship("Election", back_populates="candidates")
     student = relationship("Student", back_populates="candidacies")
-    votes = relationship("Vote", back_populates="candidate")
+    # passive_deletes="all" : sans cela, supprimer le candidat remettait
+    # `votes.candidate_id` à NULL, et ses voix devenaient des votes blancs. La
+    # base refuse désormais la suppression tant qu'un bulletin le désigne.
+    votes = relationship("Vote", back_populates="candidate", passive_deletes="all")

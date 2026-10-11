@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 
-import Loader from "@/components/kokonutui/loader";
+import { LogoMark } from "@/components/Brand";
 import { trackEvent } from "@/lib/analytics";
 import { api } from "@/lib/api";
 import { authKeys } from "@/lib/queries/auth";
@@ -41,8 +41,11 @@ export default function GoogleCallbackPage() {
   }, [markLoggedIn, navigate, queryClient]);
 
   return (
-    <div role="status" style={{ minHeight: "70vh", display: "grid", placeItems: "center" }}>
-      <Loader size="sm" title="Connexion en cours" subtitle="Ouverture de votre session…" />
+    <div role="status" className="sv-callback">
+      <LogoMark size={52} />
+      <span className="sv-callback-bar" aria-hidden="true" />
+      <p className="sv-display sv-callback-title">Connexion en cours</p>
+      <p className="sv-callback-sub">Ouverture de votre session…</p>
     </div>
   );
 }

@@ -12,13 +12,10 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = process.cwd();
 const SRC = join(ROOT, "src");
-// Code tiers copié tel quel (registres shadcn) : on ne le réécrit pas.
-const VENDORED = [join(SRC, "components", "charts"), join(SRC, "components", "kokonutui")];
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((entry) => {
     const full = join(dir, entry);
-    if (VENDORED.some((v) => full.startsWith(v))) return [];
     if (statSync(full).isDirectory()) return files(full);
     return /\.(ts|tsx)$/.test(entry) && !entry.endsWith(".test.ts") ? [full] : [];
   });

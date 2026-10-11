@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { Modal } from "@/components/Modal";
 import { BallotCross, WaveBand } from "@/components/SecurityPattern";
-import { HoldToConfirm } from "@/components/kokonutui/hold-to-confirm";
+import { HoldToConfirm } from "@/components/HoldToConfirm";
 import { fullNameOf, initialsOf } from "@/lib/palette";
 import type { Candidate } from "@/types/api";
 

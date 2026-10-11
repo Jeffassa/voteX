@@ -1,5 +1,5 @@
 /**
- * Bouton « maintenir pour confirmer », adapté du Hold Button de Kokonut UI
+ * Bouton « maintenir pour confirmer », d'après le Hold Button de Kokonut UI
  * (MIT, @dorianbaffier, https://kokonutui.com).
  *
  * Pour un vote, définitif, un simple clic est trop facile à donner par
@@ -9,14 +9,16 @@
  * - `onConfirm` appelé quand la jauge est pleine (l'original ne faisait rien) ;
  * - clavier : Espace ou Entrée maintenus, comme la souris ou le doigt ;
  * - libellés et annonce pour lecteur d'écran en français ;
- * - `prefers-reduced-motion` : la jauge se remplit sans animation de largeur,
- *   le temps d'appui reste le même.
+ * - `prefers-reduced-motion` : la jauge se remplit d'un coup, le temps
+ *   d'appui reste le même.
+ *
+ * La jauge est une transition CSS : la bibliothèque d'animation de l'original
+ * (Motion) n'était chargée que pour ce bouton.
  */
 
-import { motion, useAnimation, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { cn } from "@/lib/utils";
+import { prefersReducedMotion } from "@/lib/motion";
 
 interface HoldToConfirmProps {
   onConfirm: () => void | Promise<void>;
@@ -37,8 +39,6 @@ export function HoldToConfirm({
   className,
 }: HoldToConfirmProps) {
   const [holding, setHolding] = useState(false);
-  const controls = useAnimation();
-  const reduceMotion = useReducedMotion();
   const timer = useRef<number | null>(null);
   const done = useRef(false);
 
@@ -49,11 +49,6 @@ export function HoldToConfirm({
   function start() {
     if (disabled || holding || done.current) return;
     setHolding(true);
-    controls.set({ scaleX: 0 });
-    controls.start({
-      scaleX: 1,
-      transition: { duration: reduceMotion ? 0 : duration / 1000, ease: "linear" },
-    });
     timer.current = window.setTimeout(async () => {
       done.current = true;
       setHolding(false);
@@ -61,7 +56,6 @@ export function HoldToConfirm({
         await onConfirm();
       } finally {
         done.current = false;
-        controls.set({ scaleX: 0 });
       }
     }, duration);
   }
@@ -69,21 +63,18 @@ export function HoldToConfirm({
   function cancel() {
     if (timer.current) window.clearTimeout(timer.current);
     timer.current = null;
-    if (!holding) return;
-    setHolding(false);
-    controls.stop();
-    controls.start({ scaleX: 0, transition: { duration: 0.15 } });
+    if (holding) setHolding(false);
   }
+
+  // Remplissage linéaire sur toute la durée d'appui ; retour rapide au relâché.
+  const fill = prefersReducedMotion() ? "none" : holding ? `transform ${duration}ms linear` : "transform 150ms ease-out";
 
   return (
     <button
       type="button"
       disabled={disabled}
       aria-describedby="hold-to-confirm-hint"
-      className={cn(
-        "btn btn-primary btn-lg relative touch-none select-none overflow-hidden",
-        className
-      )}
+      className={`btn btn-primary btn-lg relative touch-none select-none overflow-hidden${className ? ` ${className}` : ""}`}
       onPointerDown={(e) => {
         if (e.button === 0) start();
       }}
@@ -101,11 +92,10 @@ export function HoldToConfirm({
       }}
       onContextMenu={(e) => e.preventDefault()}
     >
-      <motion.span
+      <span
         aria-hidden="true"
-        animate={controls}
-        initial={{ scaleX: 0 }}
         className="absolute inset-0 origin-left bg-white/20"
+        style={{ transform: `scaleX(${holding ? 1 : 0})`, transition: fill }}
       />
       <span className="relative z-10 flex items-center justify-center gap-2">
         {holding ? holdingLabel : children}

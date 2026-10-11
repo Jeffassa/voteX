@@ -324,16 +324,14 @@ export default function BallotBoxScene({
     // Compilation des shaders sans bloquer le fil principal (extension
     // KHR_parallel_shader_compile quand le pilote l'offre) : la page reste
     // fluide pendant que l'image fixe tient la place.
-    renderer
-      .compileAsync(scene, camera)
-      .catch(() => undefined)
-      .then(() => {
-        if (disposed) return;
-        renderer.render(scene, camera);
-        ready = true;
-        onReadyRef.current?.();
-        setRunning(visible && !document.hidden);
-      });
+    const compiled = renderer.compileAsync(scene, camera).catch(() => undefined);
+    compiled.then(() => {
+      if (disposed) return;
+      renderer.render(scene, camera);
+      ready = true;
+      onReadyRef.current?.();
+      setRunning(visible && !document.hidden);
+    });
     const io = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting;
       setRunning(visible && !document.hidden);
@@ -349,17 +347,22 @@ export default function BallotBoxScene({
       ro.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pointermove", onPointer);
-      scene.traverse((o) => {
-        const mesh = o as Mesh;
-        mesh.geometry?.dispose();
-        const mat = mesh.material as MeshStandardMaterial | undefined;
-        mat?.map?.dispose();
-        mat?.dispose?.();
-      });
-      envMap.dispose();
-      pmrem.dispose();
-      renderer.dispose();
       renderer.domElement.remove();
+      // Three sonde les shaders jusqu'à la fin de compileAsync : libérer le
+      // moteur avant levait une TypeError dans sa boucle (accueil quitté pendant
+      // le chargement, double montage du mode strict). On attend la fin.
+      void compiled.then(() => {
+        scene.traverse((o) => {
+          const mesh = o as Mesh;
+          mesh.geometry?.dispose();
+          const mat = mesh.material as MeshStandardMaterial | undefined;
+          mat?.map?.dispose();
+          mat?.dispose?.();
+        });
+        envMap.dispose();
+        pmrem.dispose();
+        renderer.dispose();
+      });
     };
   }, []);
 

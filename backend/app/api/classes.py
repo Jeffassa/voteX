@@ -1,13 +1,14 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_admin
 from app.core.database import get_db
 from app.models import ClassRoom, Student
-from app.schemas.class_ import ClassCreate, ClassOut
+from app.schemas.class_ import ClassCreate, ClassOut, ClassUpdate
+from app.services import class_service
 
 
 router = APIRouter()
@@ -27,20 +28,34 @@ def get_class(
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[Student, Depends(get_current_user)],
 ):
-    classroom = db.query(ClassRoom).filter(ClassRoom.id == class_id).first()
-    if not classroom:
-        raise HTTPException(status_code=404, detail="Classe introuvable")
-    return classroom
+    return class_service.get_or_404(db, class_id)
 
 
 @router.post("/", response_model=ClassOut, status_code=201)
 def create_class(
     payload: ClassCreate,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[Student, Depends(require_admin)],
+    current: Annotated[Student, Depends(require_admin)],
 ):
-    classroom = ClassRoom(**payload.model_dump())
-    db.add(classroom)
-    db.commit()
-    db.refresh(classroom)
-    return classroom
+    return class_service.create(db, payload, actor_id=current.id)
+
+
+# Modification et suppression : l'interface les proposait depuis le début,
+# mais les routes manquaient (405 Method Not Allowed).
+@router.patch("/{class_id}", response_model=ClassOut)
+def update_class(
+    class_id: UUID,
+    payload: ClassUpdate,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[Student, Depends(require_admin)],
+):
+    return class_service.update(db, class_id, payload, actor_id=current.id)
+
+
+@router.delete("/{class_id}", status_code=204)
+def delete_class(
+    class_id: UUID,
+    db: Annotated[Session, Depends(get_db)],
+    current: Annotated[Student, Depends(require_admin)],
+):
+    class_service.delete(db, class_id, actor_id=current.id)

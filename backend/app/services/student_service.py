@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError, UnauthorizedError
 from app.core.security import verify_password
-from app.models import Student, VoterRecord
+from app.models import ClassRoom, Student, VoterRecord
 from app.models.audit import AuditAction
 from app.models.student import UserRole
 from app.schemas.student import StudentCreate, StudentSelfUpdate, StudentUpdate
@@ -50,6 +50,8 @@ def create(
     """Crée un compte à activer, exactement comme une ligne du fichier d'import."""
     if db.query(Student).filter(Student.matricule == payload.matricule).first():
         raise ConflictError("Ce matricule existe déjà.")
+    if db.get(ClassRoom, payload.class_id) is None:
+        raise NotFoundError("Classe introuvable")
     email = email_change_service.normalize(payload.email) if payload.email else None
     if email:
         email_change_service.ensure_available(db, email, user_id=None)
@@ -102,7 +104,12 @@ def update(
     student = get_or_404(db, student_id)
     ensure_can_manage(actor, student)
     actor_id = actor.id if actor is not None else actor_id
-    data = payload.model_dump(exclude_unset=True, mode="json")
+    # Types Python, pas JSON : en mode "json", class_id devenait une chaîne,
+    # écrite telle quelle dans une colonne UUID (acceptée par PostgreSQL par
+    # conversion implicite, refusée par les autres moteurs).
+    data = payload.model_dump(exclude_unset=True)
+    if data.get("class_id") is not None and db.get(ClassRoom, data["class_id"]) is None:
+        raise NotFoundError("Classe introuvable")
 
     # L'adresse ouvre le compte (Google, réinitialisation du mot de passe).
     # Sur un compte activé, l'administrateur ne l'écrit donc pas lui-même : elle

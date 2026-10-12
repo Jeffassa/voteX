@@ -8,7 +8,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { Avatar } from "@/components/Avatar";
 import { CandidateProfileModal } from "@/components/CandidateProfileModal";
 import { ConfirmVoteModal } from "@/components/ConfirmVoteModal";
-import { BallotCross, Microtext, WaveBand } from "@/components/SecurityPattern";
+import { CheckMark } from "@/components/SecurityPattern";
 import { formatDateTime } from "@/lib/dates";
 import { useCandidates, useCastVote, useElection, useMe } from "@/lib/queries";
 import { colorFor, fullNameOf, initialsOf } from "@/lib/palette";
@@ -68,9 +68,8 @@ export default function VotingRoomPage() {
             et la case où l'électeur trace sa croix. */}
         <article className="sv-ballot" aria-labelledby="ballot-title" style={{ marginTop: 14 }}>
           <header className="sv-ballot-head">
-            <WaveBand height={22} />
-            <div style={{ padding: "18px 28px 20px" }}>
-              <div className="sv-ref">Bulletin de vote{classLabel && ` · ${classLabel}`}</div>
+            <div style={{ padding: "26px 28px 24px" }}>
+              <div className="sv-kicker">Bulletin de vote{classLabel && ` · ${classLabel}`}</div>
               <h1 id="ballot-title" className="sv-ballot-title">
                 {election?.title || "Élection"}
               </h1>
@@ -87,7 +86,6 @@ export default function VotingRoomPage() {
                 ))}
               </ol>
             </div>
-            <Microtext style={{ padding: "0 28px 8px" }} />
           </header>
 
           <fieldset style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }} disabled={!isOpen}>
@@ -114,7 +112,8 @@ export default function VotingRoomPage() {
                   <Avatar
                     initials={initialsOf(c.student.first_name, c.student.last_name)}
                     name={fullNameOf(c.student)}
-                    size={60}
+                    size={56}
+                    color={c.color}
                     src={c.photo_url || c.student.photo_url || undefined}
                   />
                 }
@@ -157,7 +156,7 @@ export default function VotingRoomPage() {
                     id: "neutral",
                     election_id: id!,
                     student: { id: "neutral", first_name: "Vote", last_name: "Neutre", matricule: "BLANC", photo_url: null },
-                    color: "#94A3B8",
+                    color: "#5b6168",
                     slogan: "Vote Blanc",
                     program: "",
                     photo_url: null,
@@ -250,7 +249,7 @@ function BallotEntry({
           {slogan && <span className="sv-ballot-slogan">« {slogan} »</span>}
           {note && <span style={{ display: "block", marginTop: 6, fontSize: 13.5, color: "var(--ink-500)" }}>{note}</span>}
         </span>
-        <span className="sv-ballot-box">{selected && <BallotCross />}</span>
+        <span className="sv-ballot-box">{selected && <CheckMark size={15} />}</span>
       </label>
       {onProfile && (
         <button type="button" className="sv-ballot-more" onClick={onProfile}>

@@ -1,3 +1,4 @@
+import type React from "react";
 import { readableOn, tint } from "@/lib/contrast";
 
 interface AvatarProps {
@@ -13,14 +14,14 @@ interface AvatarProps {
 }
 
 export function Avatar({ initials, size = 36, color, ringColor, src, name, onDark }: AvatarProps) {
-  // Photo d'identité plutôt que pastille : cadre presque carré, initiales en
-  // serif sur un fond hachuré, comme une case de registre.
-  const tintBg = color ? `${color}1A` : "var(--navy-50)";
-  const hatch = color ? `${color}1F` : "rgba(10, 37, 64, 0.08)";
-  const bg = `repeating-linear-gradient(135deg, ${hatch} 0 1px, transparent 1px 5px), ${tintBg}`;
-  // Fond = la couleur à 10 % sur blanc ; le texte est assombri jusqu'à 4,5:1
-  // (le jaune d'un candidat tombait à 1,8:1).
-  const fg = color ? (onDark ? color : readableOn(color, tint(color, 0.1))) : "var(--navy-700)";
+  // Initiales sur la couleur à 12 %, texte assombri jusqu'à 4,5:1 (le jaune
+  // d'un candidat tombait à 1,8:1). Sans couleur : la teinte neutre.
+  const bg = color ? `${color}1F` : "var(--surface-3)";
+  const fg = color ? (onDark ? color : readableOn(color, tint(color, 0.12))) : "var(--ink-700)";
+  // Thème sombre : la couleur éclaircie (mêlée de blanc) reste lisible sur sa teinte.
+  const fgDark = color ? `color-mix(in srgb, ${color} 55%, white)` : undefined;
+  // Rond pour les petites tailles, carré adouci pour les portraits.
+  const radius = size >= 48 ? Math.round(size * 0.28) : "50%";
   const label = name?.trim() || undefined;
   return (
     <span
@@ -32,15 +33,15 @@ export function Avatar({ initials, size = 36, color, ringColor, src, name, onDar
         width: size,
         height: size,
         background: src ? "var(--surface-2)" : bg,
-        color: fg,
-        borderRadius: size >= 48 ? 5 : 3,
+        ...({ "--av-fg": fg, ...(fgDark ? { "--av-fg-dark": fgDark } : {}) } as React.CSSProperties),
+        borderRadius: radius,
         boxShadow: ringColor
           ? `0 0 0 3px ${ringColor}`
-          : `inset 0 0 0 1px ${onDark ? "rgba(255,255,255,0.18)" : "rgba(10, 37, 64, 0.12)"}`,
-        fontFamily: "var(--font-display)",
-        fontWeight: 600,
-        letterSpacing: "0.02em",
-        fontSize: size * 0.4,
+          : `inset 0 0 0 1px ${onDark ? "rgba(255,255,255,0.16)" : "rgba(19, 21, 23, 0.08)"}`,
+        fontWeight: 640,
+        fontStretch: "110%",
+        letterSpacing: "-0.02em",
+        fontSize: size * 0.38,
       }}
     >
       {src ? (

@@ -301,7 +301,6 @@ function Identity({
         initials={getInitials(s.first_name, s.last_name)}
         name={`${s.first_name ?? ""} ${s.last_name ?? ""}`}
         size={34}
-        color="#0A2540"
         src={s.photo_url || undefined}
       />
       <div style={{ minWidth: 0 }}>
@@ -475,7 +474,7 @@ function CreateStudentModal({
   }
 
   return (
-    <Modal open onClose={onClose} width={560} band>
+    <Modal open onClose={onClose} width={560}>
       <form onSubmit={submit} style={{ padding: 28 }}>
         <h3 className="sv-modal-title">
           Inscrire un étudiant
@@ -567,7 +566,7 @@ function EditStudentModal({
   }
 
   return (
-    <Modal open onClose={onClose} width={560} band>
+    <Modal open onClose={onClose} width={560}>
       <form onSubmit={submit} style={{ padding: 28 }}>
         <h3 className="sv-modal-title">
           Modifier {student.first_name} {student.last_name}

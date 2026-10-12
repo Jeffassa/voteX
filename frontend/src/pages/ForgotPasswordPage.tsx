@@ -44,11 +44,11 @@ export default function ForgotPasswordPage() {
           <div style={{ textAlign: "center" }}>
             {/* Un cachet postal plutôt qu'une coche dans un rond. */}
             <div style={{ margin: "8px 0 26px" }}>
-              <Stamp small style={{ color: "var(--navy-700)" }}>Envoyé</Stamp>
+              <Stamp small>Envoyé</Stamp>
             </div>
             <h1
               style={{
-                fontSize: 28, fontWeight: 560, color: "var(--navy-900)",
+                fontSize: 28, fontWeight: 640, color: "var(--navy-900)",
                 margin: "0 0 8px",
               }}
             >
@@ -66,7 +66,7 @@ export default function ForgotPasswordPage() {
           <form onSubmit={submit}>
             <h1
               style={{
-                fontSize: 30, fontWeight: 560, color: "var(--navy-900)",
+                fontSize: 30, fontWeight: 640, color: "var(--navy-900)",
                 margin: "0 0 8px",
               }}
             >

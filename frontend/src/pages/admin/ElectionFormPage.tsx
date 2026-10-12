@@ -141,8 +141,8 @@ export default function ElectionFormPage({ mode }: Props) {
       />
 
       {isEditingLocked && existing && (
-        <div className="sv-callout" style={{ marginBottom: 20, background: "var(--warn-50)", borderColor: "#fcd34d" }}>
-          <span className="sv-callout-icon" aria-hidden="true" style={{ background: "#fde68a", color: "var(--warn-600)" }}>
+        <div className="sv-callout" style={{ marginBottom: 20, background: "var(--warn-50)", borderColor: "var(--warn-200)" }}>
+          <span className="sv-callout-icon" aria-hidden="true" style={{ background: "var(--warn-200)", color: "var(--warn-600)" }}>
             <Lock size={15} />
           </span>
           <span>

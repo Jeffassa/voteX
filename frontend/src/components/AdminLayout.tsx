@@ -80,7 +80,7 @@ export function AdminLayout() {
           }}
         >
           <Link to="/admin/profile" className="sv-admin-profile-link row items-center" style={{ gap: 10 }} title="Mon profil">
-            <Avatar initials={getInitials(me?.first_name, me?.last_name)} name={fullName} size={34} color="#FF9333" onDark />
+            <Avatar initials={getInitials(me?.first_name, me?.last_name)} name={fullName} size={34} color="#d9a283" onDark />
             <span style={{ minWidth: 0 }}>
               <span className="sv-admin-profile-name sv-truncate" style={{ display: "block", fontSize: 13, fontWeight: 600 }}>
                 {fullName}

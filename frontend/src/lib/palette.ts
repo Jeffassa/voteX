@@ -1,5 +1,7 @@
-// Palette déterministe pour les avatars de candidats — par index dans l'élection.
-const PALETTE = ["#EAB308", "#0EA5E9", "#A855F7", "#22C55E", "#F43F5E", "#14B8A6", "#F97316", "#3B82F6"];
+// Palette déterministe des candidats, par index dans l'élection. Des teintes
+// sourdes accordées à l'ardoise et au cuivre du logo : les 500 de Tailwind
+// (jaune, ciel, violet…) donnaient aux résultats l'air d'un tableau de bord type.
+const PALETTE = ["#b9764f", "#4f6d8f", "#5e7d4e", "#7e5a7a", "#a8832a", "#3e7c7a", "#a5533f", "#5b6168"];
 
 export function colorFor(index: number) {
   return PALETTE[index % PALETTE.length];

@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 
 import { useReveal } from "@/hooks/useReveal";
 import { Brand } from "@/components/Brand";
-import { Rosette } from "@/components/SecurityPattern";
+import { BrandEcho } from "@/components/SecurityPattern";
 import { Honeypot } from "@/components/Honeypot";
 import { api } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
@@ -234,8 +234,8 @@ export default function RegisterPage() {
       <div
         className="sv-auth-side"
         style={{
-          background: "var(--navy-900)",
-          color: "white",
+          background: "var(--panel)",
+          color: "var(--on-panel)",
           padding: "48px 56px",
           display: "flex",
           flexDirection: "column",
@@ -248,9 +248,7 @@ export default function RegisterPage() {
           overflow: "hidden",
         }}
       >
-        {/* Rosace guillochée : le fond des documents officiels, à la place
-            d'une trame de points. */}
-        <Rosette size={640} opacity={0.11} style={{ right: -240, bottom: -240 }} />
+        <BrandEcho size={520} style={{ right: -150, bottom: -50 }} />
         {/* brand-inverse : sans lui, « ESATIC » s'écrivait en marine sur marine. */}
         <div className="brand-inverse" style={{ position: "relative" }}>
           <Brand />
@@ -258,9 +256,9 @@ export default function RegisterPage() {
         <div className="sv-auth-tagline" style={{ position: "relative", margin: "auto", width: "100%", maxWidth: 460, textAlign: "left" }}>
           <h2
             style={{
-              fontSize: 42,
-              fontWeight: 520,
-              lineHeight: 1.05,
+              fontSize: 44,
+              fontWeight: 650,
+              lineHeight: 1.02,
               marginTop: 0,
               textAlign: "left",
             }}
@@ -270,7 +268,7 @@ export default function RegisterPage() {
           <p
             style={{
               fontSize: 15,
-              color: "rgba(255,255,255,0.78)",
+              color: "var(--on-panel-2)",
               lineHeight: 1.6,
               marginTop: 14,
               textAlign: "left",
@@ -287,10 +285,10 @@ export default function RegisterPage() {
               gap: 12,
               alignItems: "center",
               fontSize: 13,
-              color: "rgba(255,255,255,0.78)",
+              color: "var(--on-panel-2)",
             }}
           >
-            <ShieldCheck size={16} aria-hidden="true" style={{ color: "var(--orange-400)" }} /> Un code de confirmation vous est envoyé par e-mail
+            <ShieldCheck size={16} aria-hidden="true" style={{ color: "var(--copper-400)" }} /> Un code de confirmation vous est envoyé par e-mail
           </div>
         </div>
       </div>

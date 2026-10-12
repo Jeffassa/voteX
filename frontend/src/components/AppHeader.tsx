@@ -54,8 +54,7 @@ export function AppHeader() {
             <Link to="/profile" title="Mon profil" aria-label="Mon profil">
               <Avatar
                 initials={getInitials(me.first_name, me.last_name)} name={`${me.first_name ?? ""} ${me.last_name ?? ""}`}
-                size={34}
-                color="#0A2540"
+                size={32}
                 src={me.photo_url || undefined}
               />
             </Link>

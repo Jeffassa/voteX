@@ -11,11 +11,10 @@ import { HERO_POSTER, loadBallotBoxScene, wantsHero3d } from "./components/three
 // Polices servies par l'application, sous-ensemble latin uniquement. Google
 // Fonts bloquait le premier rendu (feuille de style externe) et transmettait
 // l'adresse IP de chaque visiteur à un tiers, sans consentement.
-import "@fontsource-variable/geist";
+// Mona Sans (graisse et largeur variables) : texte courant étroit, titres
+// élargis. Geist Mono pour les empreintes, matricules et références.
+import "@fontsource-variable/mona-sans/standard.css";
 import "@fontsource-variable/geist-mono";
-// Serif des titres et des chiffres ; l'italique sert aux slogans des candidats.
-import "@fontsource-variable/newsreader";
-import "@fontsource-variable/newsreader/wght-italic.css";
 import "./index.css";
 
 // Accueil : l'image de l'urne et la 3D partent dès maintenant, en même temps
@@ -58,8 +57,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             position="top-right"
             toastOptions={{
               className: "sv-toast",
-              success: { iconTheme: { primary: "#22c55e", secondary: "#0a2540" } },
-              error: { iconTheme: { primary: "#ff7a00", secondary: "#0a2540" }, duration: 6000 },
+              success: { iconTheme: { primary: "#2ea36a", secondary: "#17191c" } },
+              error: { iconTheme: { primary: "#c9967a", secondary: "#17191c" }, duration: 6000 },
             }}
           />
           <ConfirmHost />

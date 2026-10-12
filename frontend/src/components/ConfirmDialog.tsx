@@ -18,7 +18,6 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 import { AlertTriangle, ShieldCheck } from "lucide-react";
 import { create } from "zustand";
 
-import { WaveBand } from "@/components/SecurityPattern";
 
 export interface ConfirmOptions {
   /** L'action, à l'infinitif : « Clôturer le scrutin ». */
@@ -115,7 +114,7 @@ function ConfirmDialog({
         className={`modal sv-dialog${danger ? " is-danger" : ""}`}
         onClick={(e) => e.stopPropagation()}
       >
-        {danger ? <div className="sv-dialog-tape" aria-hidden="true" /> : <WaveBand height={16} />}
+        
 
         <div className="sv-dialog-body">
           <div className="row items-center gap-3">

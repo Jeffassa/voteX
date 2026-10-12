@@ -90,7 +90,7 @@ function ProfileForm() {
   return (
     <form onSubmit={submit} className="card card-pad" style={{ marginBottom: 16 }}>
       <div style={{ marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid var(--border)" }}>
-        <h2 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 560, color: "var(--navy-900)" }}>Informations personnelles</h2>
+        <h2 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 640, color: "var(--navy-900)" }}>Informations personnelles</h2>
       </div>
 
       <div className="col gap-3">
@@ -187,7 +187,7 @@ function EmailForm() {
   return (
     <form onSubmit={submit} className="card card-pad" style={{ marginBottom: 16 }} noValidate>
       <div style={{ marginBottom: 14, paddingBottom: 12, borderBottom: "1px solid var(--border)" }}>
-        <h2 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 560, color: "var(--navy-900)" }}>Adresse e-mail</h2>
+        <h2 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 640, color: "var(--navy-900)" }}>Adresse e-mail</h2>
       </div>
 
       <p style={{ margin: 0, fontSize: 14, color: "var(--ink-700)" }}>
@@ -287,7 +287,7 @@ function PasswordForm() {
   return (
     <form onSubmit={submit} className="card card-pad">
       <div style={{ marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid var(--border)" }}>
-        <h2 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 560, color: "var(--navy-900)" }}>Changer le mot de passe</h2>
+        <h2 style={{ margin: 0, fontFamily: "var(--font-display)", fontSize: 21, fontWeight: 640, color: "var(--navy-900)" }}>Changer le mot de passe</h2>
       </div>
 
       <div className="col gap-3">

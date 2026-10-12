@@ -1,104 +1,86 @@
 /**
- * Motifs d'impression sécurisée : rosace guillochée, bande ondulée, microtexte,
- * tampon « A voté » et croix du bulletin. Purement décoratifs (aria-hidden),
- * ils donnent aux écrans l'allure des documents d'une élection : bulletin,
- * reçu, procès-verbal.
+ * Motifs de la marque, tirés du logo : chevrons emboîtés à l'angle des bras du
+ * « V », sceau « A voté », coche du bulletin. Purement décoratifs (aria-hidden).
  *
  * Les tracés sont calculés une fois, au chargement du module.
  */
 
 import type { CSSProperties, ReactNode } from "react";
 
-/** Hypotrochoïde : x = (R−r)cos t + d·cos((R−r)t/r), y = (R−r)sin t − d·sin((R−r)t/r). */
-function trochoid(R: number, r: number, d: number, turns: number, steps: number): string {
-  const k = (R - r) / r;
-  let path = "";
-  for (let i = 0; i <= steps; i++) {
-    const t = (i / steps) * turns * 2 * Math.PI;
-    const x = (R - r) * Math.cos(t) + d * Math.cos(k * t);
-    const y = (R - r) * Math.sin(t) - d * Math.sin(k * t);
-    path += `${i ? "L" : "M"}${x.toFixed(2)} ${y.toFixed(2)}`;
-  }
-  return path;
-}
+// Pente des bras du V (logoGeometry : ~0,52 de déport horizontal par unité de
+// hauteur) : les chevrons gardent l'angle exact du logo.
+const ARM = 0.53;
+const ECHO_COUNT = 9;
+const ECHO_STEP = 26;
+const ECHO_DEPTH = 230;
 
-// R/r = 30/7 : la courbe se referme après 7 tours et dessine 23 boucles.
-const ROSETTE = [30, 38, 46].map((d) => trochoid(100, 70 / 3, d, 7, 1610));
-
-/** Rosace guillochée, à poser dans un panneau (classe sv-navy-panel). */
-export function Rosette({ size = 420, opacity = 0.14, style }: { size?: number; opacity?: number; style?: CSSProperties }) {
-  return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      className="sv-pattern"
-      width={size}
-      height={size}
-      viewBox="-125 -125 250 250"
-      style={{ opacity, ...style }}
-    >
-      {ROSETTE.map((d, i) => (
-        <path key={i} d={d} fill="none" stroke="currentColor" strokeWidth={0.45} />
-      ))}
-      <circle r={118} fill="none" stroke="currentColor" strokeWidth={0.45} />
-      <circle r={122} fill="none" stroke="currentColor" strokeWidth={0.3} strokeDasharray="1.2 1.6" />
-    </svg>
-  );
-}
-
-const WAVES = Array.from({ length: 9 }, (_, i) => {
-  let path = "";
-  for (let x = 0; x <= 400; x += 4) {
-    const y = 2 + i * 2.4 + Math.sin(x / 9 + i * 0.7) * 0.9 + Math.sin(x / 31) * 0.6;
-    path += `${x ? "L" : "M"}${x} ${y.toFixed(2)}`;
-  }
-  return path;
+/** Chevrons emboîtés, pointe en bas, décalés vers le haut d'un pas chacun. */
+const ECHOES = Array.from({ length: ECHO_COUNT }, (_, i) => {
+  const apex = -i * ECHO_STEP;
+  const half = (ECHO_DEPTH * ARM).toFixed(1);
+  const top = (apex - ECHO_DEPTH).toFixed(1);
+  return `M-${half} ${top}L0 ${apex}L${half} ${top}`;
 });
 
-/** Bande de lignes ondulées : l'en-tête d'un bulletin ou d'un reçu. */
-export function WaveBand({ height = 26, color = "var(--navy-900)", opacity = 0.16 }: { height?: number; color?: string; opacity?: number }) {
+/**
+ * Écho du logo : neuf chevrons fins emboîtés, les trois premiers cuivrés. À poser dans
+ * un panneau sombre (classe sv-navy-panel), positionné en absolu.
+ */
+export function BrandEcho({ size = 420, opacity = 1, style }: { size?: number; opacity?: number; style?: CSSProperties }) {
+  const width = ECHO_DEPTH * ARM * 2;
+  const height = ECHO_DEPTH + (ECHO_COUNT - 1) * ECHO_STEP;
   return (
     <svg
       aria-hidden="true"
       focusable="false"
-      width="100%"
-      height={height}
-      viewBox="0 0 400 24"
-      preserveAspectRatio="none"
-      style={{ display: "block", color, opacity }}
+      className="sv-pattern sv-echo"
+      width={size}
+      height={size}
+      viewBox={`${-width / 2 - 4} ${-height - 4} ${width + 8} ${height + 8}`}
+      style={{ opacity, ...style }}
     >
-      {WAVES.map((d, i) => (
-        <path key={i} d={d} fill="none" stroke="currentColor" strokeWidth={0.5} vectorEffect="non-scaling-stroke" />
-      ))}
+      {ECHOES.map((d, i) => {
+        const copper = i < 3;
+        return (
+          <path
+            key={i}
+            d={d}
+            pathLength={1}
+            fill="none"
+            stroke={copper ? "var(--copper-500)" : "currentColor"}
+            strokeOpacity={copper ? 0.9 - i * 0.15 : 0.3 - i * 0.025}
+            strokeWidth={copper ? 1.4 : 1}
+            vectorEffect="non-scaling-stroke"
+            strokeLinejoin="miter"
+            // Tracé du chevron le plus bas au plus haut.
+            style={{ animationDelay: `${i * 70}ms` }}
+          />
+        );
+      })}
     </svg>
   );
 }
 
-/** Ligne de microtexte répété, comme en bordure des billets et des diplômes. */
-export function Microtext({ text = "ESATIC SMARTVOTE · SCRUTIN SÉCURISÉ · BULLETIN SECRET · ", style }: { text?: string; style?: CSSProperties }) {
-  return (
-    <div aria-hidden="true" className="sv-microtext" style={style}>
-      {text.repeat(14)}
-    </div>
-  );
-}
-
-/** Tampon de l'assesseur. Décoratif : le texte qui compte est ailleurs sur la page. */
+/** Sceau « A voté ». Décoratif : le texte qui compte est ailleurs sur la page. */
 export function Stamp({ children, sub, small, style }: { children: ReactNode; sub?: ReactNode; small?: boolean; style?: CSSProperties }) {
   return (
     <span aria-hidden="true" className={`sv-stamp${small ? " sm" : ""}`} style={style}>
-      {children}
-      {sub && <small>{sub}</small>}
+      <span className="sv-stamp-mark">
+        <CheckMark size={small ? 12 : 15} />
+      </span>
+      <span className="sv-stamp-text">
+        {children}
+        {sub && <small>{sub}</small>}
+      </span>
     </span>
   );
 }
 
-/** Croix tracée à la main dans la case du bulletin. */
-export function BallotCross({ size = 22 }: { size?: number }) {
+/** Coche du bulletin choisi. */
+export function CheckMark({ size = 16 }: { size?: number }) {
   return (
     <svg aria-hidden="true" focusable="false" width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <path d="M4.5 5.2c4.6 4.3 9.4 9.1 15 14.1" stroke="currentColor" strokeWidth={3.2} strokeLinecap="round" />
-      <path d="M19.2 4.6c-5 4.5-9.6 9.6-14.4 15" stroke="currentColor" strokeWidth={3.2} strokeLinecap="round" />
+      <path d="M5 12.5l4.6 4.6L19.5 7" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

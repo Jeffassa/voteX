@@ -70,10 +70,10 @@ export default function ResultsPage() {
           <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-[var(--ink-500)] hover:text-[var(--ink-900)]">
             <ArrowLeft size={15} aria-hidden="true" /> Tableau de bord
           </Link>
-          <div className="mt-5 flex flex-wrap items-end justify-between gap-4 border-b-[1.5px] border-[var(--navy-900)] pb-5">
+          <div className="mt-5 flex flex-wrap items-end justify-between gap-4 border-b border-[var(--border)] pb-6">
             <div className="min-w-0">
-              <div className="sv-ref">Procès-verbal du scrutin</div>
-              <h1 className="mt-1 text-[38px] font-[540] leading-[1.08] text-[var(--navy-900)]">
+              <div className="sv-kicker">Procès-verbal du scrutin</div>
+              <h1 className="mt-3 text-[42px] font-[650] leading-[1.02] text-[var(--ink-950)]">
                 {election?.title || "Résultats"}
               </h1>
             </div>
@@ -86,9 +86,9 @@ export default function ResultsPage() {
 
         <div className="mt-6 grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
           <section aria-labelledby="participation-title" className="card self-start" style={{ padding: 24 }}>
-            <h2 id="participation-title" className="sv-display text-[20px] font-[560] text-[var(--navy-900)]">Participation</h2>
+            <h2 id="participation-title" className="sv-display text-[20px] font-[640] text-[var(--navy-900)]">Participation</h2>
             <p className="m-0 mt-3">
-              <span className="sv-display text-[64px] font-[480] leading-none text-[var(--navy-900)]" style={{ fontVariantNumeric: "lining-nums tabular-nums" }}>
+              <span className="sv-display text-[64px] font-[600] leading-none text-[var(--navy-900)]" style={{ fontVariantNumeric: "lining-nums tabular-nums" }}>
                 {rate}
               </span>
               <span className="sv-display ml-1 text-[28px] text-[var(--ink-500)]">%</span>
@@ -120,13 +120,13 @@ export default function ResultsPage() {
           </section>
 
           <section aria-labelledby="scores-title" className="card" style={{ padding: 24 }}>
-            <h2 id="scores-title" className="sv-display text-[20px] font-[560] text-[var(--navy-900)]">Répartition des voix</h2>
+            <h2 id="scores-title" className="sv-display text-[20px] font-[640] text-[var(--navy-900)]">Répartition des voix</h2>
 
             {results?.scores_hidden ? (
               <div className="sv-sealed mt-5">
                 <span className="sv-sealed-icon" aria-hidden="true"><Lock size={18} /></span>
                 <div>
-                  <p className="sv-display m-0 text-[19px] font-[560] text-[var(--navy-900)]">Urne scellée jusqu'à la clôture</p>
+                  <p className="sv-display m-0 text-[19px] font-[640] text-[var(--navy-900)]">Urne scellée jusqu'à la clôture</p>
                   <p className="m-0 mt-1.5 text-sm leading-relaxed text-[var(--ink-700)]">
                     Les scores restent masqués pour tous, administrateurs compris, tant que le scrutin
                     est ouvert : ils ne doivent ni influencer ceux qui n'ont pas encore voté, ni révéler
@@ -154,8 +154,8 @@ export default function ResultsPage() {
                     const leads = !blank && !isOpen && r.votes > 0 && r.votes === leaderVotes;
                     return (
                       <tr key={r.key}>
-                        <td className="sv-display" style={{ paddingLeft: 0, fontSize: 22, color: leads ? "var(--orange-600)" : "var(--navy-900)" }}>
-                          {blank ? "" : i + 1}
+                        <td className="mono" style={{ paddingLeft: 0, fontSize: 13, color: leads ? "var(--copper-700)" : "var(--ink-500)" }}>
+                          {blank ? "" : String(i + 1).padStart(2, "0")}
                         </td>
                         <td>
                           <span className="flex items-center gap-3">

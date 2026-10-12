@@ -3,7 +3,7 @@ import { AlertCircle, Hash } from "lucide-react";
 
 import { useReveal } from "@/hooks/useReveal";
 import { AppHeader } from "@/components/AppHeader";
-import { Stamp, WaveBand } from "@/components/SecurityPattern";
+import { Stamp } from "@/components/SecurityPattern";
 import { verifyVoteHash } from "@/lib/queries";
 import type { VoteVerification } from "@/types/api";
 
@@ -37,7 +37,7 @@ export default function VerifyVotePage() {
         style={{ padding: "56px 32px 120px" }}
       >
         <div className="text-center">
-          <div className="sv-ref">Vérification publique</div>
+          <div className="sv-kicker">Vérification publique</div>
           <h1 className="h-title" style={{ fontSize: 44, marginTop: 8 }}>
             Vérifier un vote
           </h1>
@@ -61,7 +61,6 @@ export default function VerifyVotePage() {
             void verify();
           }}
         >
-          <WaveBand height={18} />
           <div style={{ padding: "22px 26px 26px" }}>
             <label className="label" htmlFor="verify-vote-f1">Empreinte du bulletin</label>
             <div className="row gap-3" style={{ flexWrap: "wrap" }}>
@@ -92,7 +91,7 @@ export default function VerifyVotePage() {
               {state === "found" && result && (
                 <div className="fade-in sv-certificate">
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <p className="sv-display" style={{ margin: 0, fontSize: 22, fontWeight: 560, color: "var(--success-600)" }}>
+                    <p className="sv-display" style={{ margin: 0, fontSize: 22, fontWeight: 640, color: "var(--success-600)" }}>
                       Vote authentique
                     </p>
                     <dl className="sv-certificate-fields">
@@ -114,7 +113,7 @@ export default function VerifyVotePage() {
                       Seule son existence est confirmée.
                     </p>
                   </div>
-                  <Stamp small style={{ color: "var(--success-600)", alignSelf: "center" }}>Compté</Stamp>
+                  <Stamp small style={{ alignSelf: "center" }}>Compté</Stamp>
                 </div>
               )}
               {state === "notfound" && (

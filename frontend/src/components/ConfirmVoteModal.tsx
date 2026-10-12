@@ -2,7 +2,7 @@ import { useState } from "react";
 
 import { Avatar } from "@/components/Avatar";
 import { Modal } from "@/components/Modal";
-import { BallotCross, WaveBand } from "@/components/SecurityPattern";
+import { CheckMark } from "@/components/SecurityPattern";
 import { HoldToConfirm } from "@/components/HoldToConfirm";
 import { fullNameOf, initialsOf } from "@/lib/palette";
 import type { Candidate } from "@/types/api";
@@ -31,61 +31,44 @@ export function ConfirmVoteModal({ candidate, number, classLabel, onCancel, onCo
 
   return (
     <Modal open={true} onClose={!submitting ? onCancel : undefined} width={500}>
-      <WaveBand height={18} />
-      <div style={{ padding: "22px 28px 26px" }}>
-        <div className="sv-ref">Dernière étape</div>
-        <h2 className="sv-display" style={{ fontSize: 28, fontWeight: 560, color: "var(--navy-900)", margin: "4px 0 8px", lineHeight: 1.1 }}>
+      <div style={{ padding: "26px 26px 24px" }}>
+        <div className="sv-kicker">Dernière étape</div>
+        <h2 className="sv-modal-title" style={{ fontSize: 26, margin: "12px 0 8px" }}>
           Déposer votre bulletin
         </h2>
-        <p style={{ fontSize: 14, color: "var(--ink-700)", lineHeight: 1.6, margin: 0 }}>
+        <p style={{ fontSize: 14.5, color: "var(--ink-700)", lineHeight: 1.6, margin: 0 }}>
           {blank ? (
             <>Vous allez voter <strong>blanc</strong>.</>
           ) : (
             <>
               Vous allez voter pour{" "}
-              <strong style={{ color: "var(--ink-900)" }}>{fullNameOf(candidate.student)}</strong>.
+              <strong style={{ color: "var(--ink-950)" }}>{fullNameOf(candidate.student)}</strong>.
             </>
           )}{" "}
           Un vote enregistré ne peut plus être modifié.
         </p>
 
-        {/* Le bulletin tel qu'il sera déposé : la ligne choisie, croix tracée. */}
-        <div
-          className="row items-center gap-3"
-          style={{
-            marginTop: 18, padding: "12px 14px 12px 0",
-            border: "1px solid var(--border)", borderRadius: "var(--r-md)", background: "#fff8ef",
-            overflow: "hidden",
-          }}
-        >
-          <span
-            aria-hidden="true"
-            className="sv-display"
-            style={{
-              alignSelf: "stretch", margin: "-12px 0", width: 56, display: "grid", placeItems: "center",
-              borderRight: "1.5px dashed var(--border-strong)", fontSize: 24, color: "var(--orange-600)",
-              background: "repeating-linear-gradient(135deg, rgba(255,122,0,0.1) 0 1px, transparent 1px 6px), #fff3e6",
-            }}
-          >
+        {/* Le bulletin tel qu'il sera déposé : la ligne choisie, cochée. */}
+        <div className="sv-confirm-slip">
+          <span className="sv-confirm-slip-no mono" aria-hidden="true">
             {number !== undefined ? String(number).padStart(2, "0") : ""}
           </span>
           {blank ? (
-            <span className="sv-ballot-blank" aria-hidden="true" style={{ width: 40, height: 40 }} />
+            <span className="sv-ballot-blank" aria-hidden="true" style={{ width: 44, height: 44, borderRadius: 13 }} />
           ) : (
             <Avatar
               initials={initialsOf(candidate.student.first_name, candidate.student.last_name)}
               name={fullNameOf(candidate.student)}
-              size={40}
+              size={44}
+              color={candidate.color}
             />
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="sv-display" style={{ fontWeight: 560, fontSize: 18, color: "var(--navy-900)", lineHeight: 1.2 }}>
-              {blank ? "Vote blanc" : fullNameOf(candidate.student)}
-            </div>
-            {classLabel && <div className="sv-ref" style={{ marginTop: 2 }}>{classLabel}</div>}
+            <div className="sv-confirm-slip-name">{blank ? "Vote blanc" : fullNameOf(candidate.student)}</div>
+            {classLabel && <div className="sv-ref" style={{ marginTop: 3 }}>{classLabel}</div>}
           </div>
-          <span className="sv-ballot-box" aria-hidden="true" style={{ width: 30, height: 30 }}>
-            <BallotCross size={18} />
+          <span className="sv-ballot-box" aria-hidden="true">
+            <CheckMark size={15} />
           </span>
         </div>
 

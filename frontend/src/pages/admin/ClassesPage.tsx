@@ -213,7 +213,7 @@ function ClassFormModal({
   const pending = create.isPending || update.isPending;
 
   return (
-    <Modal open onClose={onClose} width={520} band>
+    <Modal open onClose={onClose} width={520}>
       <form onSubmit={submit} style={{ padding: 28 }}>
         <h3 className="sv-modal-title">
           {classroom ? `Modifier ${classroom.level} ${classroom.name}` : "Nouvelle classe"}

@@ -8,7 +8,7 @@ import { ElectionStatusBadge, EmptyState, Segmented } from "@/components/admin/A
 import { Avatar } from "@/components/Avatar";
 import { askConfirm } from "@/components/ConfirmDialog";
 import { Modal } from "@/components/Modal";
-import { Rosette } from "@/components/SecurityPattern";
+import { BrandEcho } from "@/components/SecurityPattern";
 import {
   useCandidates,
   useClasses,
@@ -227,22 +227,22 @@ function ElectionHeader({
 
   return (
     <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-      <div className="sv-election-hero sv-navy-panel" style={{ padding: "26px 28px 24px" }}>
-        <Rosette size={460} style={{ right: -150, top: -150 }} />
+      <div className="sv-election-hero sv-navy-panel" style={{ padding: "28px 30px 26px" }}>
+        <BrandEcho size={300} style={{ right: 28, bottom: -40 }} />
         <div className="row items-center gap-2" style={{ marginBottom: 14, flexWrap: "wrap" }}>
           <ElectionStatusBadge status={election.status} />
           {overdue && <span className="badge badge-warn">Échéance dépassée</span>}
           {election.blockchain_id !== null && (
-            <span className="badge" style={{ background: "rgba(255,122,0,0.18)", color: "#FFB066" }}>
+            <span className="sv-chip-dark">
               Inscrite sur la blockchain, n° {election.blockchain_id}
             </span>
           )}
         </div>
-        <h1 style={{ fontSize: 34, fontWeight: 540, margin: 0, lineHeight: 1.1, maxWidth: 720 }}>
+        <h1 style={{ fontSize: 36, fontWeight: 650, margin: 0, lineHeight: 1.04, maxWidth: 720, color: "var(--on-panel)" }}>
           {election.title}
         </h1>
         {election.description && (
-          <p style={{ margin: "8px 0 0", color: "rgba(255,255,255,0.75)", fontSize: 14, lineHeight: 1.55, maxWidth: 680 }}>
+          <p style={{ margin: "8px 0 0", color: "var(--on-panel-2)", fontSize: 14.5, lineHeight: 1.55, maxWidth: 680 }}>
             {election.description}
           </p>
         )}
@@ -640,7 +640,7 @@ function AddCandidateModal({
   }
 
   return (
-    <Modal open onClose={onClose} width={560} band>
+    <Modal open onClose={onClose} width={560}>
       <form onSubmit={submit} style={{ padding: 28 }}>
         <h3 className="sv-modal-title">
           Ajouter un candidat

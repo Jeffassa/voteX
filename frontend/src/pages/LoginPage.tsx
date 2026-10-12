@@ -4,7 +4,7 @@ import { AlertCircle, ArrowLeft, ArrowRight, Check, Eye, EyeOff, Lock, User } fr
 import toast from "react-hot-toast";
 
 import { Brand } from "@/components/Brand";
-import { Rosette } from "@/components/SecurityPattern";
+import { BrandEcho } from "@/components/SecurityPattern";
 import { useReveal } from "@/hooks/useReveal";
 import { Honeypot } from "@/components/Honeypot";
 import { GOOGLE_ERRORS, GoogleSignInButton } from "@/components/GoogleSignInButton";
@@ -106,8 +106,8 @@ export default function LoginPage() {
       <div
         className="sv-auth-side"
         style={{
-          background: "var(--navy-900)",
-          color: "white",
+          background: "var(--panel)",
+          color: "var(--on-panel)",
           padding: "48px 56px",
           display: "flex",
           flexDirection: "column",
@@ -120,24 +120,22 @@ export default function LoginPage() {
           overflow: "hidden",
         }}
       >
-        {/* Rosace guillochée : le fond des documents officiels, à la place
-            d'une trame de points. */}
-        <Rosette size={640} opacity={0.11} style={{ right: -240, bottom: -240 }} />
+        <BrandEcho size={520} style={{ right: -150, bottom: -50 }} />
         {/* brand-inverse : sans lui, « ESATIC » s'écrivait en marine sur marine. */}
         <div className="brand-inverse" style={{ position: "relative" }}>
           <Brand />
         </div>
         <div className="sv-auth-tagline" style={{ position: "relative", margin: "auto", width: "100%", maxWidth: 440, textAlign: "left" }}>
-          <h2 style={{ fontSize: 42, fontWeight: 520, lineHeight: 1.05, margin: 0 }}>
+          <h2 style={{ fontSize: 44, fontWeight: 650, lineHeight: 1.02, margin: 0 }}>
             Élections des chefs de classe
           </h2>
-          <p style={{ fontSize: 15, color: "rgba(255,255,255,0.78)", lineHeight: 1.6, marginTop: 14 }}>
+          <p style={{ fontSize: 15, color: "var(--on-panel-2)", lineHeight: 1.6, marginTop: 14 }}>
             Connectez-vous pour voter dans l'élection de votre classe.
           </p>
           <ul style={{ listStyle: "none", padding: 0, margin: "28px 0 0", display: "grid", gap: 10 }}>
             {["Votre choix reste secret", "Un reçu pour vérifier votre bulletin", "Résultats publiés à la clôture"].map((t) => (
-              <li key={t} className="row items-center gap-2" style={{ fontSize: 14, color: "rgba(255,255,255,0.85)" }}>
-                <Check size={16} aria-hidden="true" style={{ color: "var(--orange-400)" }} /> {t}
+              <li key={t} className="row items-center gap-2" style={{ fontSize: 14, color: "rgba(243,241,236,0.86)" }}>
+                <Check size={16} aria-hidden="true" style={{ color: "var(--copper-400)" }} /> {t}
               </li>
             ))}
           </ul>

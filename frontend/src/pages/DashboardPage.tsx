@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Hash } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, Hash, ShieldCheck } from "lucide-react";
 
 import { useReveal } from "@/hooks/useReveal";
 import { AppHeader } from "@/components/AppHeader";
 import { Avatar, getInitials } from "@/components/Avatar";
 import { Countdown } from "@/components/Countdown";
 import { HashChip } from "@/components/HashChip";
-import { Rosette, Stamp } from "@/components/SecurityPattern";
+import { BrandEcho, Stamp } from "@/components/SecurityPattern";
 import { formatDateTime } from "@/lib/dates";
 import { useElections, useMe, useMyVotes } from "@/lib/queries";
 
@@ -17,6 +17,9 @@ const STATUS_LABEL: Record<string, string> = {
   closed: "Scrutin clos",
   published: "Résultats publiés",
 };
+
+type Election = NonNullable<ReturnType<typeof useElections>["data"]>[number];
+type MyVote = NonNullable<ReturnType<typeof useMyVotes>["data"]>[number];
 
 export default function DashboardPage() {
   // En-tête, carte de scrutin, puis les deux colonnes du bas : l'ordre
@@ -31,64 +34,48 @@ export default function DashboardPage() {
     [elections]
   );
 
-  const targetEnd = activeElection
-    ? new Date(activeElection.ends_at).getTime()
-    : Date.now() + 1000 * 60 * 60 * 38;
-
   const hasVoted = !!myVotes?.find((v) => v.election_id === activeElection?.id);
-
-  const classLabel = me?.classroom
-    ? `${me.classroom.level} ${me.classroom.name}`
-    : "Aucune classe assignée";
+  const classLabel = me?.classroom ? `${me.classroom.level} ${me.classroom.name}` : "Aucune classe assignée";
 
   return (
     <div>
       <AppHeader />
-      <div ref={pageRef} className="container" style={{ padding: "36px 32px 80px" }}>
-        <div className="row items-center gap-4" style={{ marginBottom: 28 }}>
+      <div ref={pageRef} className="container" style={{ maxWidth: 1120, padding: "40px 32px 88px" }}>
+        <header className="sv-dash-head">
           <Avatar
-            initials={getInitials(me?.first_name, me?.last_name)} name={`${me?.first_name ?? ""} ${me?.last_name ?? ""}`}
-            size={60}
+            initials={getInitials(me?.first_name, me?.last_name)}
+            name={`${me?.first_name ?? ""} ${me?.last_name ?? ""}`}
+            size={56}
             src={me?.photo_url || undefined}
           />
           <div style={{ minWidth: 0 }}>
-            <div className="sv-ref">Espace électeur</div>
-            <h1 style={{ margin: "2px 0 0", fontSize: 34, fontWeight: 540, color: "var(--navy-900)", lineHeight: 1.1 }}>
-              {meLoading ? "…" : me?.first_name ? `Bonjour, ${me.first_name}.` : "Bonjour."}
+            <div className="sv-kicker">Espace électeur</div>
+            <h1 className="sv-dash-title">
+              {meLoading ? "…" : me?.first_name ? `Bonjour, ${me.first_name}` : "Bonjour"}
             </h1>
-            <div className="muted" style={{ fontSize: 14, marginTop: 4 }}>
-              <span className="mono">{me?.matricule ?? ""}</span> · {classLabel}
+            <div className="sv-dash-meta">
+              <span className="mono">{me?.matricule ?? ""}</span>
+              <span aria-hidden="true" className="sv-dot-sep" />
+              <span>{classLabel}</span>
             </div>
           </div>
-        </div>
+        </header>
 
         {activeElection ? (
-          <ActiveElectionCard
-            election={activeElection}
-            targetEnd={targetEnd}
-            hasVoted={hasVoted}
-            isOpen={activeElection.status === "open"}
-          />
+          <ElectionHero election={activeElection} hasVoted={hasVoted} />
         ) : (
-          <div className="card" style={{ padding: 32 }}>
-            <p className="sv-display" style={{ margin: 0, fontSize: 22, fontWeight: 540, color: "var(--navy-900)" }}>
-              Aucune élection en cours pour votre classe.
-            </p>
-            <p className="muted" style={{ margin: "6px 0 0", fontSize: 14 }}>
-              Vous serez convoqué ici dès l'ouverture d'un scrutin.
-            </p>
-          </div>
+          <section className="card sv-dash-empty">
+            <span className="sv-empty-icon" aria-hidden="true"><CalendarDays size={20} /></span>
+            <div>
+              <p className="sv-dash-empty-title">Aucun scrutin pour votre classe</p>
+              <p className="muted" style={{ margin: "4px 0 0", fontSize: 14 }}>
+                Le bulletin apparaîtra ici dès l'ouverture d'un scrutin.
+              </p>
+            </div>
+          </section>
         )}
 
-        <div
-          className="sv-dashboard-lower"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.3fr 1fr",
-            gap: 20,
-            marginTop: 20,
-          }}
-        >
+        <div className="sv-dashboard-lower sv-dash-lower">
           <VoteHistoryCard votes={myVotes || []} elections={elections || []} />
           <VerificationPanel />
         </div>
@@ -97,80 +84,64 @@ export default function DashboardPage() {
   );
 }
 
-function ActiveElectionCard({
-  election, targetEnd, hasVoted, isOpen,
-}: {
-  election: NonNullable<ReturnType<typeof useElections>["data"]>[number];
-  targetEnd: number;
-  hasVoted: boolean;
-  isOpen: boolean;
-}) {
+function ElectionHero({ election, hasVoted }: { election: Election; hasVoted: boolean }) {
+  const isOpen = election.status === "open";
+  const targetEnd = new Date(election.ends_at).getTime();
+  const notStarted = isOpen && new Date(election.starts_at).getTime() > Date.now();
   // Un compte à rebours figé sur 00:00:00 ne dit rien : on l'explique.
-  const overdue = targetEnd < Date.now();
+  const overdue = isOpen && targetEnd < Date.now();
+
   return (
-    <section aria-labelledby="active-election" className="card" style={{ padding: 0, overflow: "hidden" }}>
-      {/* Convocation : en-tête guilloché, comme un document officiel. */}
-      <div className="sv-navy-panel" style={{ padding: "26px 32px 28px" }}>
-        <Rosette size={440} style={{ right: -130, top: -150 }} />
-        <div className="row items-center gap-3" style={{ flexWrap: "wrap" }}>
-          <span
-            className="badge"
-            style={{
-              background: isOpen ? "rgba(34,197,94,0.14)" : "rgba(255,255,255,0.08)",
-              borderColor: isOpen ? "rgba(134,239,172,0.45)" : "rgba(255,255,255,0.3)",
-              color: isOpen ? "#a7f3c0" : "white",
-            }}
-          >
-            {isOpen && <span className="dot" style={{ background: "#86EFAC", width: 6, height: 6, borderRadius: 1 }} />}
-            {STATUS_LABEL[election.status] ?? election.status}
-          </span>
-          <span className="sv-ref" style={{ color: "rgba(255,255,255,0.6)" }}>Convocation au scrutin</span>
-        </div>
-        <h2 id="active-election" className="sv-display" style={{ fontSize: 34, fontWeight: 540, margin: "14px 0 0", lineHeight: 1.1, maxWidth: 680 }}>
-          {election.title}
-        </h2>
-        <div style={{ marginTop: 8, fontSize: 13.5, color: "rgba(255,255,255,0.7)" }}>
-          Du {formatDateTime(election.starts_at)} au {formatDateTime(election.ends_at)}
-        </div>
+    <section aria-labelledby="active-election" className="sv-navy-panel sv-hero-card">
+      <BrandEcho size={400} style={{ right: 28, bottom: -36 }} />
+      <div className="sv-hero-top">
+        <span className={`sv-chip-dark${isOpen ? " is-live" : ""}`}>
+          {isOpen && <span className="dot" aria-hidden="true" />}
+          {STATUS_LABEL[election.status] ?? election.status}
+        </span>
+        <span className="sv-hero-sub">Scrutin de votre classe</span>
       </div>
 
-      <div
-        className="sv-dashboard-active"
-        style={{
-          padding: "26px 32px 28px", display: "grid",
-          gridTemplateColumns: "1fr auto", gap: 32, alignItems: "center",
-        }}
-      >
-        <div>
-          <div style={{ fontSize: 13, color: "var(--ink-500)" }}>
-            {!isOpen ? "Scrutin clos" : overdue ? "Date de fin passée" : "Clôture du scrutin dans"}
-          </div>
-          {isOpen && !overdue && (
-            <div style={{ marginTop: 10 }}>
-              <Countdown targetMs={targetEnd} />
-            </div>
-          )}
-          {isOpen && overdue && (
-            <p className="sv-display" style={{ margin: "6px 0 0", fontSize: 20, color: "var(--navy-900)" }}>
-              Le scrutin va être clôturé par l'administration.
+      <h2 id="active-election" className="sv-hero-title">{election.title}</h2>
+      <p className="sv-hero-period">
+        <CalendarDays size={15} aria-hidden="true" />
+        Du {formatDateTime(election.starts_at)} au {formatDateTime(election.ends_at)}
+      </p>
+
+      <div className="sv-hero-bottom">
+        <div style={{ minWidth: 0 }}>
+          {isOpen && !overdue ? (
+            <>
+              <div className="sv-hero-label">{notStarted ? "Ouverture prévue" : "Clôture dans"}</div>
+              <div style={{ marginTop: 12 }}>
+                <Countdown targetMs={notStarted ? new Date(election.starts_at).getTime() : targetEnd} />
+              </div>
+            </>
+          ) : isOpen ? (
+            <p className="sv-hero-note">L'heure de fin est passée : le scrutin se clôt dans un instant.</p>
+          ) : (
+            <p className="sv-hero-note">
+              Clos le {formatDateTime(election.ends_at)}.{" "}
+              {election.status === "published" ? "Les résultats sont publiés." : "Les résultats sont disponibles."}
             </p>
           )}
         </div>
-        <div className="col gap-3" style={{ alignItems: "flex-end" }}>
+
+        <div className="sv-hero-actions">
           {hasVoted ? (
             <>
               <Stamp small>A voté</Stamp>
               <span className="sr-only">Vous avez voté.</span>
-              <Link to={`/elections/${election.id}/results`} className="btn btn-outline" style={{ marginTop: 6 }}>
-                Suivre la participation <ArrowRight size={16} aria-hidden="true" />
+              <Link to={`/elections/${election.id}/results`} className="btn sv-btn-on-dark">
+                {isOpen ? "Suivre la participation" : "Voir les résultats"} <ArrowRight size={16} aria-hidden="true" />
               </Link>
             </>
-          ) : isOpen ? (
-            <Link to={`/elections/${election.id}/vote`} className="btn btn-primary btn-lg">
+          ) : isOpen && !notStarted && !overdue ? (
+            <Link to={`/elections/${election.id}/vote`} className="btn btn-accent btn-lg">
               Voter maintenant <ArrowRight size={16} aria-hidden="true" />
             </Link>
           ) : (
-            <Link to={`/elections/${election.id}/results`} className="btn btn-outline">
+            <Link to={`/elections/${election.id}/results`} className="btn sv-btn-on-dark">
               Voir les résultats <ArrowRight size={16} aria-hidden="true" />
             </Link>
           )}
@@ -180,49 +151,38 @@ function ActiveElectionCard({
   );
 }
 
-function VoteHistoryCard({
-  votes, elections,
-}: {
-  votes: NonNullable<ReturnType<typeof useMyVotes>["data"]>;
-  elections: NonNullable<ReturnType<typeof useElections>["data"]>;
-}) {
+function VoteHistoryCard({ votes, elections }: { votes: MyVote[]; elections: Election[] }) {
   return (
-    <section aria-labelledby="my-receipts" className="card" style={{ padding: 0, overflow: "hidden" }}>
+    <section aria-labelledby="my-receipts" className="card" style={{ overflow: "hidden" }}>
       <div className="sv-card-head">
         <h2 id="my-receipts">Mes participations</h2>
-        <span className="sv-ref">{votes.length}</span>
+        <span className="sv-count-pill">{votes.length}</span>
       </div>
       {votes.length === 0 ? (
-        <p className="muted" style={{ fontSize: 13.5, margin: 0, padding: "18px 20px 22px" }}>
-          Aucun vote pour l'instant. Votre participation à chaque scrutin s'inscrira ici.
+        <p className="muted" style={{ fontSize: 14, margin: 0, padding: "20px 20px 24px" }}>
+          Aucun vote pour l'instant. Chaque participation s'inscrira ici.
         </p>
       ) : (
-        <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-          {votes.map((v, i) => (
-            <li
-              key={v.id}
-              className="row items-center justify-between gap-3"
-              style={{ padding: "14px 20px", borderTop: i ? "1.5px dashed var(--border)" : undefined, flexWrap: "wrap" }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <div className="sv-display" style={{ fontSize: 17, fontWeight: 560, color: "var(--navy-900)" }}>
-                  {elections.find((e) => e.id === v.election_id)?.title || "Vote"}
+        <ol className="sv-timeline">
+          {votes.map((v) => (
+            <li key={v.id}>
+              <span className="sv-timeline-mark" aria-hidden="true"><Check size={12} strokeWidth={3} /></span>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div className="sv-timeline-title">
+                  {elections.find((e) => e.id === v.election_id)?.title || "Scrutin"}
                 </div>
-                <div className="sv-ref" style={{ marginTop: 3 }}>
-                  {new Date(v.created_at).toLocaleDateString("fr-FR")}
+                <div className="sv-timeline-meta">
+                  {new Date(v.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                  {" · "}Participation enregistrée
                 </div>
               </div>
               {/* Le serveur ne réexpose pas l'empreinte (elle relierait un
                   compte à son bulletin) : elle ne figure que sur le reçu remis
-                  au moment du vote. On ne montre pas « anonymisé » comme un code. */}
-              {v.vote_hash.startsWith("0x") ? (
-                <HashChip value={v.vote_hash} />
-              ) : (
-                <span className="badge badge-success">Participation enregistrée</span>
-              )}
+                  au moment du vote. */}
+              {v.vote_hash.startsWith("0x") && <HashChip value={v.vote_hash} />}
             </li>
           ))}
-        </ul>
+        </ol>
       )}
     </section>
   );
@@ -230,20 +190,16 @@ function VoteHistoryCard({
 
 function VerificationPanel() {
   return (
-    <section aria-labelledby="verify-title" className="card" style={{ padding: 0, overflow: "hidden" }}>
-      <div className="sv-card-head">
-        <h2 id="verify-title">Vérifier un reçu</h2>
-      </div>
-      <div style={{ padding: "16px 20px 20px" }}>
-        <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.55, margin: 0 }}>
-          Chaque vote produit une empreinte unique. Vous pouvez à tout moment vérifier
-          qu'elle a bien été enregistrée sur la blockchain, sans dévoiler pour qui
-          vous avez voté.
-        </p>
-        <Link to="/verify" className="btn btn-outline" style={{ marginTop: 16, width: "100%" }}>
-          <Hash size={16} aria-hidden="true" /> Vérifier une empreinte
-        </Link>
-      </div>
+    <section aria-labelledby="verify-title" className="card sv-verify-card">
+      <span className="sv-verify-icon" aria-hidden="true"><ShieldCheck size={20} /></span>
+      <h2 id="verify-title" className="sv-verify-title">Vérifier un reçu</h2>
+      <p className="muted" style={{ fontSize: 14, lineHeight: 1.55, margin: "6px 0 0" }}>
+        Chaque vote produit une empreinte unique. Contrôlez qu'elle est bien comptée,
+        sans révéler votre choix.
+      </p>
+      <Link to="/verify" className="btn btn-outline" style={{ marginTop: 18, width: "100%" }}>
+        <Hash size={16} aria-hidden="true" /> Vérifier une empreinte
+      </Link>
     </section>
   );
 }

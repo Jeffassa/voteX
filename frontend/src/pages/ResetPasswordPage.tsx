@@ -106,9 +106,9 @@ export default function ResetPasswordPage() {
         {done ? (
           <div style={{ textAlign: "center" }}>
             <div style={{ margin: "8px 0 26px" }}>
-              <Stamp small style={{ color: "var(--success-600)" }}>Modifié</Stamp>
+              <Stamp small>Modifié</Stamp>
             </div>
-            <h1 style={{ fontSize: 28, fontWeight: 560, color: "var(--navy-900)", margin: "0 0 8px" }}>
+            <h1 style={{ fontSize: 28, fontWeight: 640, color: "var(--navy-900)", margin: "0 0 8px" }}>
               Mot de passe modifié !
             </h1>
             <p className="muted" style={{ fontSize: 14 }}>

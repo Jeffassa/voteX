@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 import { useReveal } from "@/hooks/useReveal";
 import { AppHeader } from "@/components/AppHeader";
 import { HashChip } from "@/components/HashChip";
-import { Microtext, Rosette, Stamp } from "@/components/SecurityPattern";
+import { BrandEcho, Stamp } from "@/components/SecurityPattern";
 import { useElection, useMe } from "@/lib/queries";
 import { verifyVoteHash } from "@/lib/queries/votes";
 import { etherscanTxUrl, explorerName } from "@/lib/blockchain";
@@ -61,7 +61,7 @@ export default function ReceiptPage() {
   }
 
   const ts = new Date(receipt.created_at);
-  const tsLabel = `${ts.toISOString().replace("T", " · ").slice(0, 22)} UTC`;
+  const tsLabel = `${ts.toISOString().replace("T", " · ").slice(0, 21)} UTC`;
   const blank = candidate?.id === "neutral";
 
   return (
@@ -72,18 +72,21 @@ export default function ReceiptPage() {
         className="container container-narrow scene"
         style={{ padding: "48px 32px 72px", textAlign: "center" }}
       >
-        {/* Le tampon de l'assesseur : « A voté ». */}
-        <Stamp sub={ts.toLocaleDateString("fr-FR")}>A voté</Stamp>
+        {/* Coche tracée dans le cercle cuivré, puis le sceau « A voté ». */}
+        <svg className="sv-done-mark" viewBox="0 0 72 72" aria-hidden="true">
+          <circle cx="36" cy="36" r="33" pathLength={1} />
+          <path d="M23 37.5l9 9L50 27" pathLength={1} />
+        </svg>
 
-        <h1 style={{ fontSize: 40, fontWeight: 540, marginTop: 30, marginBottom: 10, color: "var(--navy-900)", lineHeight: 1.1 }}>
-          Votre vote a été enregistré.
+        <h1 style={{ fontSize: 46, fontWeight: 650, marginTop: 26, marginBottom: 12, color: "var(--ink-950)", lineHeight: 1.02 }}>
+          Votre vote est enregistré.
         </h1>
         <p className="muted" style={{ fontSize: 16, maxWidth: 540, margin: "0 auto", lineHeight: 1.6 }}>
           Merci{me?.first_name ? `, ${me.first_name}` : ""}. Votre bulletin
           {candidate && !blank && (
             <>
               {" "}pour{" "}
-              <strong style={{ color: "var(--navy-900)" }}>
+              <strong style={{ color: "var(--ink-950)" }}>
                 {fullNameOf(candidate.student)}
               </strong>
             </>
@@ -91,26 +94,25 @@ export default function ReceiptPage() {
           {blank && " blanc"}
           {" "}est enregistré{txHash ? " et scellé sur la blockchain" : ""}.
         </p>
+        <div style={{ marginTop: 20 }}>
+          <Stamp small sub={ts.toLocaleDateString("fr-FR")}>A voté</Stamp>
+        </div>
 
         <article className="sv-ticket" aria-labelledby="ticket-title">
           <header className="sv-ticket-head sv-navy-panel">
-            <Rosette size={300} opacity={0.16} style={{ right: -90, top: -120 }} />
+            <BrandEcho size={240} style={{ right: 18, bottom: -34 }} />
             <div className="row items-start justify-between gap-3" style={{ flexWrap: "wrap" }}>
               <div style={{ minWidth: 0 }}>
-                <div className="sv-ref" style={{ color: "rgba(255,255,255,0.65)" }}>Reçu de vote</div>
-                <h2 id="ticket-title" className="sv-display" style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 540, lineHeight: 1.15 }}>
+                <div className="lp-kicker-dark">Reçu de vote</div>
+                <h2 id="ticket-title" className="sv-display" style={{ margin: "10px 0 0", fontSize: 24, fontWeight: 650, lineHeight: 1.1 }}>
                   {election?.title || "Élection"}
                 </h2>
               </div>
-              <span
-                className="badge"
-                style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.3)", color: txHash ? "#9fe0b4" : "white" }}
-              >
+              <span className={`sv-chip-dark${txHash ? " is-live" : ""}`}>
                 {txHash ? "Ancré sur la chaîne" : anchoring ? "Ancrage en cours" : "Enregistré"}
               </span>
             </div>
           </header>
-          <Microtext style={{ padding: "6px 26px 0" }} />
 
           <dl className="sv-ticket-fields">
             <dt>Empreinte du bulletin</dt>
@@ -134,8 +136,6 @@ export default function ReceiptPage() {
             <dd className="mono">{tsLabel}</dd>
           </dl>
 
-          {/* Talon détachable : ce qu'on emporte. */}
-          <div className="sv-perf" />
           <div className="sv-ticket-stub">
             <p style={{ margin: 0, fontSize: 13, color: "var(--ink-500)", flex: "1 1 240px", lineHeight: 1.5 }}>
               Conservez l'empreinte : elle prouve que votre bulletin est compté, sans dire pour qui.

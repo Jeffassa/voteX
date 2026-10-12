@@ -69,7 +69,7 @@ export function ImportStudentsModal({ onClose }: Props) {
   }
 
   return (
-    <Modal open onClose={onClose} width={780} fitViewport band>
+    <Modal open onClose={onClose} width={780} fitViewport>
       {/* ─── HEADER (sticky) ─── */}
       <div
         style={{
@@ -186,7 +186,7 @@ export function ImportStudentsModal({ onClose }: Props) {
                   padding: "6px 10px",
                   borderRadius: "var(--r-sm)",
                   border: "1px solid var(--border-strong)",
-                  background: "white",
+                  background: "var(--surface)",
                   fontSize: 13,
                   fontWeight: 600,
                   color: "var(--navy-900)",

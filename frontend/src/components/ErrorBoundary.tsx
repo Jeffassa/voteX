@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<Props, State> {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "var(--surface, #F8FAFC)",
+            background: "var(--bg)",
             padding: 24,
             fontFamily: "Inter, sans-serif",
           }}
@@ -50,11 +50,11 @@ export class ErrorBoundary extends Component<Props, State> {
             style={{
               maxWidth: 480,
               width: "100%",
-              background: "white",
+              background: "var(--surface)",
               padding: 36,
               borderRadius: 8,
               boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01)",
-              border: "1px solid #E2E8F0",
+              border: "1px solid var(--border)",
               textAlign: "center",
             }}
           >
@@ -63,8 +63,8 @@ export class ErrorBoundary extends Component<Props, State> {
                 width: 56,
                 height: 56,
                 borderRadius: 6,
-                background: "#FEF2F2",
-                color: "#EF4444",
+                background: "var(--danger-50)",
+                color: "var(--danger-600)",
                 display: "grid",
                 placeItems: "center",
                 margin: "0 auto 20px auto",
@@ -73,11 +73,11 @@ export class ErrorBoundary extends Component<Props, State> {
               <AlertTriangle size={28} />
             </div>
 
-            <h2 style={{ fontSize: 22, fontWeight: 700, color: "#0F172A", margin: 0 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--ink-950)", margin: 0 }}>
               Une erreur inattendue est survenue
             </h2>
 
-            <p style={{ fontSize: 14, color: "#64748B", marginTop: 10, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 14, color: "var(--ink-500)", marginTop: 10, lineHeight: 1.6 }}>
               L'application a rencontré un problème technique temporaire. Vos données et vos votes restent en sécurité.
             </p>
 
@@ -86,11 +86,11 @@ export class ErrorBoundary extends Component<Props, State> {
                 style={{
                   marginTop: 16,
                   padding: 12,
-                  background: "#F1F5F9",
+                  background: "var(--surface-2)",
                   borderRadius: 8,
                   fontSize: 12,
                   fontFamily: "monospace",
-                  color: "#475569",
+                  color: "var(--ink-700)",
                   textAlign: "left",
                   overflowX: "auto",
                   maxHeight: 100,
@@ -115,7 +115,7 @@ export class ErrorBoundary extends Component<Props, State> {
                   alignItems: "center",
                   gap: 8,
                   padding: "10px 18px",
-                  background: "#0A2540",
+                  background: "var(--primary)",
                   color: "white",
                   border: "none",
                   borderRadius: 8,
@@ -135,8 +135,8 @@ export class ErrorBoundary extends Component<Props, State> {
                   gap: 8,
                   padding: "10px 18px",
                   background: "transparent",
-                  color: "#475569",
-                  border: "1px solid #CBD5E1",
+                  color: "var(--ink-700)",
+                  border: "1px solid var(--border-strong)",
                   borderRadius: 8,
                   fontSize: 14,
                   fontWeight: 500,

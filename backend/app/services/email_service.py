@@ -35,7 +35,7 @@ def _brand_header(title: str) -> str:
     clients mail ignorent le SVG en ligne. Bloquée, l'image laisse l'intitulé.
     """
     return f"""
-        <div style="background:#0A2540;color:white;padding:14px 20px;border-radius:12px;
+        <div style="background:#17191C;color:white;padding:14px 20px;border-radius:12px;
                     margin:-32px -32px 24px;font-weight:600;font-size:16px;letter-spacing:-0.02em">
           <img src="{_esc(settings.FRONTEND_URL)}/brand/logo-email.png" width="22" height="22" alt=""
                style="vertical-align:middle;margin:-3px 10px 0 0;border:0">{_esc(title)}
@@ -103,10 +103,10 @@ def _build_receipt_html(
     chain_block = ""
     if tx_hash:
         chain_block = f"""
-        <tr><td style="color:#64748B;padding:6px 0;width:140px">Hash transaction</td>
-            <td style="font-family:monospace;color:#0A2540;word-break:break-all">{_esc(tx_hash)}</td></tr>
-        <tr><td style="color:#64748B;padding:6px 0">Bloc</td>
-            <td style="font-family:monospace;color:#0A2540">#{block_number:,}</td></tr>
+        <tr><td style="color:#62676E;padding:6px 0;width:140px">Hash transaction</td>
+            <td style="font-family:monospace;color:#17191C;word-break:break-all">{_esc(tx_hash)}</td></tr>
+        <tr><td style="color:#62676E;padding:6px 0">Bloc</td>
+            <td style="font-family:monospace;color:#17191C">#{block_number:,}</td></tr>
         <tr><td colspan="2" style="padding-top:14px">
             <a href="{_esc(explorer_base)}/tx/{_esc(tx_hash)}"
                style="display:inline-block;padding:8px 14px;background:#FF7A00;color:white;
@@ -118,13 +118,13 @@ def _build_receipt_html(
 
     return f"""
     <div style="font-family:-apple-system,Inter,sans-serif;max-width:560px;margin:0 auto;
-                color:#0F172A;background:#F7F8FA;padding:32px">
-      <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
+                color:#131517;background:#F5F4F1;padding:32px">
+      <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E4E2DD">
         {_brand_header('ESATIC SmartVote, reçu de vote')}
-        <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540;letter-spacing:-0.025em">
+        <h1 style="font-size:22px;margin:0 0 8px;color:#17191C;letter-spacing:-0.025em">
           Votre vote a été enregistré.
         </h1>
-        <p style="color:#334155;line-height:1.6;font-size:14px">
+        <p style="color:#41464C;line-height:1.6;font-size:14px">
           Bonjour {_esc(voter_name)}, votre bulletin dans l'élection
           « {_esc(election_title)} » est enregistré.
           {"Il est scellé sur la blockchain." if tx_hash else
@@ -132,15 +132,15 @@ def _build_receipt_html(
         </p>
 
         <table style="width:100%;border-collapse:collapse;margin-top:20px;font-size:13px">
-          <tr><td style="color:#64748B;padding:6px 0;width:140px">Hash de vote</td>
-              <td style="font-family:monospace;color:#0A2540;word-break:break-all">{_esc(vote_hash)}</td></tr>
-          <tr><td style="color:#64748B;padding:6px 0">Horodatage</td>
-              <td style="font-family:monospace;color:#0A2540">{created_at.isoformat(sep=" ", timespec="seconds")} UTC</td></tr>
+          <tr><td style="color:#62676E;padding:6px 0;width:140px">Hash de vote</td>
+              <td style="font-family:monospace;color:#17191C;word-break:break-all">{_esc(vote_hash)}</td></tr>
+          <tr><td style="color:#62676E;padding:6px 0">Horodatage</td>
+              <td style="font-family:monospace;color:#17191C">{created_at.isoformat(sep=" ", timespec="seconds")} UTC</td></tr>
           {chain_block}
         </table>
 
         <p style="color:#94A3B8;font-size:11px;line-height:1.5;margin-top:24px;
-                  border-top:1px solid #E5E8EE;padding-top:16px">
+                  border-top:1px solid #E4E2DD;padding-top:16px">
           Pour des raisons d'anonymat, le contenu de votre bulletin n'est pas révélé dans ce reçu.
           Seule la preuve d'enregistrement on-chain est confirmée.
         </p>
@@ -163,11 +163,11 @@ async def send_password_reset_email(
 
     html = f"""
     <div style="font-family:-apple-system,Inter,sans-serif;max-width:520px;margin:0 auto;
-                color:#0F172A;background:#F7F8FA;padding:32px">
-      <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
+                color:#131517;background:#F5F4F1;padding:32px">
+      <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E4E2DD">
         {_brand_header('ESATIC SmartVote, réinitialisation du mot de passe')}
-        <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(voter_name)},</h1>
-        <p style="color:#334155;line-height:1.6;font-size:14px">
+        <h1 style="font-size:22px;margin:0 0 8px;color:#17191C">Bonjour {_esc(voter_name)},</h1>
+        <p style="color:#41464C;line-height:1.6;font-size:14px">
           Tu as demandé à réinitialiser ton mot de passe SmartVote. Clique sur le bouton
           ci-dessous pour choisir un nouveau mot de passe. Ce lien expire dans
           <strong>30 minutes</strong>.
@@ -179,7 +179,7 @@ async def send_password_reset_email(
             Réinitialiser mon mot de passe
           </a>
         </p>
-        <p style="color:#94A3B8;font-size:11px;margin-top:24px;border-top:1px solid #E5E8EE;
+        <p style="color:#94A3B8;font-size:11px;margin-top:24px;border-top:1px solid #E4E2DD;
                   padding-top:16px;line-height:1.5">
           Si tu n'es pas à l'origine de cette demande, ignore cet e-mail : ton mot de passe
           ne sera pas changé.
@@ -265,25 +265,25 @@ async def send_activation_code_email(
 
     html = f"""
     <div style="font-family:-apple-system,Inter,sans-serif;max-width:520px;margin:0 auto;
-                color:#0F172A;background:#F7F8FA;padding:32px">
-      <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
+                color:#131517;background:#F5F4F1;padding:32px">
+      <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E4E2DD">
         {_brand_header('ESATIC SmartVote, activation du compte')}
-        <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(voter_name)},</h1>
-        <p style="color:#334155;line-height:1.6;font-size:14px">
+        <h1 style="font-size:22px;margin:0 0 8px;color:#17191C">Bonjour {_esc(voter_name)},</h1>
+        <p style="color:#41464C;line-height:1.6;font-size:14px">
           Ton compte SmartVote a été pré-créé par l'administration. Voici ton code d'activation
           secret pour finaliser ton inscription :
         </p>
         <div style="margin:20px 0;text-align:center">
-          <span style="display:inline-block;padding:14px 28px;background:#F1F5F9;color:#0F172A;
+          <span style="display:inline-block;padding:14px 28px;background:#F1F5F9;color:#131517;
                        border-radius:10px;font-weight:700;font-size:24px;letter-spacing:4px;
                        border:1px solid #CBD5E1">
             {_esc(activation_code)}
           </span>
         </div>
-        <p style="color:#334155;line-height:1.6;font-size:14px">
+        <p style="color:#41464C;line-height:1.6;font-size:14px">
           Rends-toi sur la page d'activation et saisis ton matricule, ton nom et ce code.
         </p>
-        <p style="color:#94A3B8;font-size:11px;margin-top:24px;border-top:1px solid #E5E8EE;
+        <p style="color:#94A3B8;font-size:11px;margin-top:24px;border-top:1px solid #E4E2DD;
                   padding-top:16px;line-height:1.5">
           Si tu n'es pas étudiant à l'ESATIC, ignore cet email.
         </p>
@@ -324,14 +324,14 @@ async def send_account_activated_email(*, to_email: str, student_name: str) -> N
 
     html = f"""
     <div style="font-family:-apple-system,Inter,sans-serif;max-width:520px;margin:0 auto;
-                color:#0F172A;background:#F7F8FA;padding:32px">
-      <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
+                color:#131517;background:#F5F4F1;padding:32px">
+      <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E4E2DD">
         {_brand_header('ESATIC SmartVote, compte autorisé')}
-        <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(student_name)},</h1>
-        <p style="color:#334155;line-height:1.6;font-size:14px">
+        <h1 style="font-size:22px;margin:0 0 8px;color:#17191C">Bonjour {_esc(student_name)},</h1>
+        <p style="color:#41464C;line-height:1.6;font-size:14px">
           Ton identité a été vérifiée par l'administration : ton compte SmartVote est ouvert.
         </p>
-        <p style="color:#334155;line-height:1.6;font-size:14px">
+        <p style="color:#41464C;line-height:1.6;font-size:14px">
           Connecte-toi avec ton matricule et le mot de passe que tu as choisi lors de ta demande.
         </p>
         <p style="margin-top:20px">
@@ -390,8 +390,8 @@ async def _send(kind: str, *, to_email: str, subject: str, html: str) -> None:
 def _layout(title: str, body: str) -> str:
     return f"""
     <div style="font-family:-apple-system,Inter,sans-serif;max-width:520px;margin:0 auto;
-                color:#0F172A;background:#F7F8FA;padding:32px">
-      <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E5E8EE">
+                color:#131517;background:#F5F4F1;padding:32px">
+      <div style="background:white;border-radius:16px;padding:32px;border:1px solid #E4E2DD">
         {_brand_header(title)}
         {body}
       </div>
@@ -404,20 +404,20 @@ async def send_email_confirmation_email(*, to_email: str, student_name: str, con
     html = _layout(
         "ESATIC SmartVote, confirmation de votre adresse",
         f"""
-        <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(student_name)},</h1>
-        <p style="color:#334155;line-height:1.6;font-size:14px">
+        <h1 style="font-size:22px;margin:0 0 8px;color:#17191C">Bonjour {_esc(student_name)},</h1>
+        <p style="color:#41464C;line-height:1.6;font-size:14px">
           Confirmez que cette adresse vous appartient pour l'associer à votre compte SmartVote.
           Vous pourrez ensuite l'utiliser pour vous connecter avec Google et recevoir vos reçus
           de vote. Ce lien expire dans <strong>48 heures</strong>.
         </p>
         <p style="margin-top:20px">
           <a href="{_esc(confirm_url)}"
-             style="display:inline-block;padding:12px 22px;background:#0A2540;color:white;
+             style="display:inline-block;padding:12px 22px;background:#17191C;color:white;
                     text-decoration:none;border-radius:10px;font-weight:500">
             Confirmer mon adresse
           </a>
         </p>
-        <p style="color:#64748B;font-size:12px;margin-top:24px;border-top:1px solid #E5E8EE;
+        <p style="color:#62676E;font-size:12px;margin-top:24px;border-top:1px solid #E4E2DD;
                   padding-top:16px;line-height:1.5">
           Vous n'êtes pas à l'origine de cette demande ? Ignorez cet e-mail : l'adresse ne sera
           pas associée au compte.
@@ -433,12 +433,12 @@ async def send_email_changed_notice(*, to_email: str, student_name: str, new_ema
     html = _layout(
         "ESATIC SmartVote, adresse e-mail modifiée",
         f"""
-        <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(student_name)},</h1>
-        <p style="color:#334155;line-height:1.6;font-size:14px">
+        <h1 style="font-size:22px;margin:0 0 8px;color:#17191C">Bonjour {_esc(student_name)},</h1>
+        <p style="color:#41464C;line-height:1.6;font-size:14px">
           L'adresse e-mail de votre compte SmartVote vient d'être remplacée par
           <strong>{_esc(_mask(new_email))}</strong>. Cette adresse ne recevra plus de message.
         </p>
-        <p style="color:#334155;line-height:1.6;font-size:14px">
+        <p style="color:#41464C;line-height:1.6;font-size:14px">
           Si vous n'êtes pas à l'origine de ce changement, contactez l'administration de l'école
           sans attendre.
         </p>
@@ -469,20 +469,20 @@ async def send_vote_reminder_email(
     html = _layout(
         "ESATIC SmartVote, rappel de scrutin",
         f"""
-        <h1 style="font-size:22px;margin:0 0 8px;color:#0A2540">Bonjour {_esc(voter_name)},</h1>
-        <p style="color:#334155;line-height:1.6;font-size:14px">
+        <h1 style="font-size:22px;margin:0 0 8px;color:#17191C">Bonjour {_esc(voter_name)},</h1>
+        <p style="color:#41464C;line-height:1.6;font-size:14px">
           Le scrutin « {_esc(election_title)} » ferme le
           <strong>{_esc(_french_datetime(ends_at))}</strong> (heure d'Abidjan), et votre
           bulletin n'est pas encore dans l'urne. Voter prend moins d'une minute.
         </p>
         <p style="margin-top:20px">
           <a href="{_esc(vote_url)}"
-             style="display:inline-block;padding:12px 22px;background:#0A2540;color:white;
+             style="display:inline-block;padding:12px 22px;background:#17191C;color:white;
                     text-decoration:none;border-radius:10px;font-weight:500">
             Voter maintenant
           </a>
         </p>
-        <p style="color:#64748B;font-size:12px;margin-top:24px;border-top:1px solid #E5E8EE;
+        <p style="color:#62676E;font-size:12px;margin-top:24px;border-top:1px solid #E4E2DD;
                   padding-top:16px;line-height:1.5">
           Vous recevez ce rappel une seule fois par scrutin. Votre choix reste secret :
           personne, administration comprise, ne voit pour qui vous votez.

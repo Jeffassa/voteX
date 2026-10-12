@@ -45,10 +45,12 @@ import {
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 
+import { LOGO_HEIGHT, LOGO_SILHOUETTE, LOGO_WIDTH } from "@/components/logoGeometry";
 import { prefersReducedMotion } from "@/lib/motion";
 
-const NAVY = "#0a2540";
-const ORANGE = "#ff7a00";
+// Couleurs du logo : ardoise et cuivre.
+const SLATE = "#1f2226";
+const COPPER = "#c9967a";
 const BALLOT_COUNT = 5;
 const CYCLE = 5.2; // secondes entre deux passages d'un même bulletin
 // Instant de l'animation figé dans l'image fixe (src/assets/hero-urne-*.webp).
@@ -73,7 +75,7 @@ function restRotation(t: number) {
   return -0.35 + Math.sin(t * 0.25) * 0.05;
 }
 
-/** Bulletin : papier blanc, bandeau orange, cases à cocher dont une marquée. */
+/** Bulletin : papier blanc, bandeau cuivre, cases à cocher dont une marquée. */
 function ballotTexture(): CanvasTexture {
   const c = document.createElement("canvas");
   c.width = 256;
@@ -81,7 +83,7 @@ function ballotTexture(): CanvasTexture {
   const g = c.getContext("2d")!;
   g.fillStyle = "#ffffff";
   g.fillRect(0, 0, c.width, c.height);
-  g.fillStyle = ORANGE;
+  g.fillStyle = COPPER;
   g.fillRect(0, 0, c.width, 34);
   g.fillStyle = "#e4e4e7";
   for (let i = 0; i < 4; i++) {
@@ -93,7 +95,7 @@ function ballotTexture(): CanvasTexture {
     g.fillRect(80, y + 22, 90, 6);
   }
   // Une seule case cochée : le choix, anonyme.
-  g.strokeStyle = NAVY;
+  g.strokeStyle = SLATE;
   g.lineWidth = 7;
   g.lineCap = "round";
   g.beginPath();
@@ -113,11 +115,30 @@ function shadowTexture(): CanvasTexture {
   c.width = c.height = 128;
   const g = c.getContext("2d")!;
   const grad = g.createRadialGradient(64, 64, 4, 64, 64, 64);
-  grad.addColorStop(0, "rgba(10,37,64,0.35)");
-  grad.addColorStop(1, "rgba(10,37,64,0)");
+  grad.addColorStop(0, "rgba(19,21,23,0.32)");
+  grad.addColorStop(1, "rgba(19,21,23,0)");
   g.fillStyle = grad;
   g.fillRect(0, 0, 128, 128);
   return new CanvasTexture(c);
+}
+
+/** Plaque frontale : le V du logo, en ardoise sur cuivre. */
+function plateTexture(): CanvasTexture {
+  const c = document.createElement("canvas");
+  c.width = 512;
+  c.height = 194;
+  const g = c.getContext("2d")!;
+  g.fillStyle = COPPER;
+  g.fillRect(0, 0, c.width, c.height);
+  const scale = (c.height * 0.62) / LOGO_HEIGHT;
+  g.translate((c.width - LOGO_WIDTH * scale) / 2, (c.height - LOGO_HEIGHT * scale) / 2);
+  g.scale(scale, scale);
+  g.fillStyle = SLATE;
+  g.fill(new Path2D(LOGO_SILHOUETTE), "evenodd");
+  const t = new CanvasTexture(c);
+  t.colorSpace = SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
 }
 
 export default function BallotBoxScene({
@@ -167,12 +188,12 @@ export default function BallotBoxScene({
     const rig = new Group();
     scene.add(rig);
 
-    // Urne : parois de verre, couvercle marine percé d'une fente.
+    // Urne : parois de verre, couvercle ardoise percé d'une fente.
     const W = 2.4, H = 1.9, D = 1.7;
     const glass = new Mesh(
       new RoundedBoxGeometry(W, H, D, 4, 0.12),
       new MeshPhysicalMaterial({
-        color: new Color("#f4f8ff"),
+        color: new Color("#f6f5f2"),
         roughness: 0.04,
         metalness: 0,
         transmission: 1,
@@ -192,29 +213,29 @@ export default function BallotBoxScene({
     // Arêtes discrètes : sans elles, le verre clair se perd dans le fond blanc.
     const edges = new LineSegments(
       new EdgesGeometry(new BoxGeometry(W - 0.02, H - 0.02, D - 0.02)),
-      new LineBasicMaterial({ color: NAVY, transparent: true, opacity: 0.28 })
+      new LineBasicMaterial({ color: SLATE, transparent: true, opacity: 0.26 })
     );
     edges.position.y = H / 2;
     rig.add(edges);
 
     const lid = new Mesh(
       new RoundedBoxGeometry(W + 0.12, 0.16, D + 0.12, 3, 0.05),
-      new MeshStandardMaterial({ color: NAVY, roughness: 0.45, metalness: 0.15 })
+      new MeshStandardMaterial({ color: SLATE, roughness: 0.42, metalness: 0.2 })
     );
     lid.position.y = H + 0.06;
     rig.add(lid);
 
     const slot = new Mesh(
       new RoundedBoxGeometry(1.1, 0.05, 0.12, 2, 0.02),
-      new MeshBasicMaterial({ color: "#020617" })
+      new MeshBasicMaterial({ color: "#0b0c0d" })
     );
     slot.position.y = H + 0.15;
     rig.add(slot);
 
-    // Plaque frontale orange.
+    // Plaque frontale cuivrée, frappée du logo.
     const plate = new Mesh(
       new RoundedBoxGeometry(0.9, 0.34, 0.03, 2, 0.04),
-      new MeshStandardMaterial({ color: ORANGE, roughness: 0.5 })
+      new MeshStandardMaterial({ map: plateTexture(), roughness: 0.38, metalness: 0.35 })
     );
     plate.position.set(0, H * 0.62, D / 2 + 0.02);
     rig.add(plate);

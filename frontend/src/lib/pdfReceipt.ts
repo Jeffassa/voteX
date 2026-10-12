@@ -13,10 +13,11 @@ interface BuildPdfArgs {
   voterMatricule: string;
 }
 
-const NAVY: [number, number, number] = [10, 37, 64];
-const ORANGE: [number, number, number] = [255, 122, 0];
-const INK_500: [number, number, number] = [100, 116, 139];
-const INK_700: [number, number, number] = [51, 65, 85];
+// Ardoise et cuivre du logo.
+const NAVY: [number, number, number] = [23, 25, 28];
+const ORANGE: [number, number, number] = [168, 112, 79];
+const INK_500: [number, number, number] = [98, 103, 110];
+const INK_700: [number, number, number] = [65, 70, 76];
 
 export function buildVoteReceiptPdf({
   receipt,

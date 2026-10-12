@@ -15,6 +15,9 @@ const root = process.cwd();
 const pub = join(root, "public");
 // Version claire uniquement : les icônes ne suivent pas le thème du système.
 const svg = readFileSync(join(pub, "favicon.svg"), "utf8").replace(/@media[^}]*\}[^}]*\}\}/, "");
+// Version claire du logo pour le panneau sombre de l'image de partage.
+const svgInverse = readFileSync(join(root, "..", "docs", "brand", "logo-inverse.svg"), "utf8")
+  .replace("<svg ", '<svg width="100%" height="100%" ');
 mkdirSync(join(pub, "icons"), { recursive: true });
 
 const PAPER = "#F1EDE2";
@@ -35,30 +38,29 @@ const icons = [
 ];
 
 const og = `<!doctype html><html><head><meta charset="utf-8"><style>
-  @font-face { font-family: Newsreader; font-weight: 200 800;
-    src: url(data:font/woff2;base64,${font("newsreader", "newsreader-latin-wght-normal.woff2")}) format("woff2"); }
-  @font-face { font-family: Geist; font-weight: 100 900;
-    src: url(data:font/woff2;base64,${font("geist", "geist-latin-wght-normal.woff2")}) format("woff2"); }
-  body { margin:0; width:1200px; height:630px; background:${PAPER}; color:#0A2540; overflow:hidden;
-         font-family: Geist, Arial, sans-serif; display:grid; grid-template-columns: 1fr 430px; }
-  .text { padding: 64px 0 60px 80px; display:flex; flex-direction:column; }
-  .ref { font: 500 18px/1 Geist; letter-spacing:.14em; text-transform:uppercase; color:#5B5F6B;
-         border-bottom: 2px solid #0A2540; padding-bottom: 18px; }
-  h1 { font: 520 78px/1.02 Newsreader, Georgia, serif; letter-spacing:-.015em; margin: auto 0 22px; max-width: 640px; }
-  p { font-size: 26px; line-height:1.35; color:#3A3E49; margin:0; max-width:620px; }
-  .stamps { display:flex; gap:14px; margin-top:34px; }
-  .stamp { font: 600 17px/1 Geist; letter-spacing:.1em; text-transform:uppercase; color:#0A2540;
-           border:2px solid #0A2540; border-radius:4px; padding:11px 16px; }
-  .mark { display:grid; place-items:center; border-left: 1px solid #CBC4B5; }
-  .mark svg { width: 300px; height: 300px; }
+  @font-face { font-family: Mona; font-weight: 200 900; font-stretch: 75% 125%;
+    src: url(data:font/woff2;base64,${font("mona-sans", "mona-sans-latin-standard-normal.woff2")}) format("woff2"); }
+  body { margin:0; width:1200px; height:630px; background:#F5F4F1; color:#131517; overflow:hidden;
+         font-family: Mona, Arial, sans-serif; display:grid; grid-template-columns: 1fr 420px; }
+  .text { padding: 70px 0 64px 80px; display:flex; flex-direction:column; }
+  .kicker { display:flex; align-items:center; gap:14px; font-size: 22px; font-weight: 560; color:#62676E; }
+  .kicker::before { content:""; width:26px; height:6px; border-radius:2px; background:#C9967A; transform:skewX(-28deg); }
+  h1 { font-size: 86px; font-weight: 660; font-stretch: 118%; line-height: 0.96; letter-spacing: -0.05em; margin: auto 0 26px; max-width: 690px; }
+  p { font-size: 26px; line-height:1.4; color:#41464C; margin:0; max-width:640px; }
+  .chips { display:flex; gap:12px; margin-top:34px; }
+  .chip { font-size: 19px; font-weight: 600; color:#131517; background:#fff; border:1px solid #E4E2DD; border-radius: 999px; padding: 10px 18px; }
+  .mark { position:relative; display:grid; place-items:center; background:#17191C; }
+  .mark .echo { position:absolute; left:50%; bottom:40px; width: 400px; transform: translateX(-50%); }
+  .mark .echo path[stroke="#131517"] { stroke: #F3F1EC; }
+  .mark .logo { position:relative; width: 180px; height: 180px; margin-top: -60px; }
 </style></head><body>
   <div class="text">
-    <div class="ref">ESATIC SmartVote · Abidjan</div>
-    <h1>Le vote des chefs de classe, secret et vérifiable.</h1>
-    <p>Plateforme officielle de vote en ligne de l'ESATIC.</p>
-    <div class="stamps"><div class="stamp">Vote secret</div><div class="stamp">Reçu vérifiable</div><div class="stamp">Ancrage blockchain</div></div>
+    <div class="kicker">ESATIC SmartVote · Abidjan</div>
+    <h1>Le vote des chefs de classe, en ligne.</h1>
+    <p>Secret, vérifiable, depuis votre téléphone.</p>
+    <div class="chips"><div class="chip">Vote secret</div><div class="chip">Reçu vérifiable</div><div class="chip">Ancrage blockchain</div></div>
   </div>
-  <div class="mark">${svg}</div>
+  <div class="mark"><svg class="echo" viewBox="0 0 400 320"><path d="M78.1 70L200 300L321.9 70" fill="none" stroke="#C9967A" stroke-opacity="0.90" stroke-width="2"/><path d="M78.1 44L200 274L321.9 44" fill="none" stroke="#C9967A" stroke-opacity="0.75" stroke-width="2"/><path d="M78.1 18L200 248L321.9 18" fill="none" stroke="#C9967A" stroke-opacity="0.60" stroke-width="2"/><path d="M78.1 -8L200 222L321.9 -8" fill="none" stroke="#131517" stroke-opacity="0.17" stroke-width="2"/><path d="M78.1 -34L200 196L321.9 -34" fill="none" stroke="#131517" stroke-opacity="0.16" stroke-width="2"/><path d="M78.1 -60L200 170L321.9 -60" fill="none" stroke="#131517" stroke-opacity="0.15" stroke-width="2"/><path d="M78.1 -86L200 144L321.9 -86" fill="none" stroke="#131517" stroke-opacity="0.13" stroke-width="2"/><path d="M78.1 -112L200 118L321.9 -112" fill="none" stroke="#131517" stroke-opacity="0.12" stroke-width="2"/><path d="M78.1 -138L200 92L321.9 -138" fill="none" stroke="#131517" stroke-opacity="0.10" stroke-width="2"/></svg><div class="logo">${svgInverse}</div></div>
 </body></html>`;
 
 const browser = await chromium.launch();

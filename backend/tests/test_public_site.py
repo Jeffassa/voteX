@@ -121,3 +121,24 @@ def test_https_responses_carry_hsts(db, monkeypatch):
         assert "max-age=" in r.headers["strict-transport-security"]
     finally:
         app.dependency_overrides.clear()
+
+
+def test_live_status_aggregates_running_elections(client, db, open_election, voter, candidate_students):
+    """La page d'accueil lit des totaux, jamais un scrutin ni une classe."""
+    from app.models import VoterRecord
+
+    db.add(VoterRecord(election_id=open_election.id, student_id=voter.id))
+    db.commit()
+
+    body = client.get("/api/live-status").json()
+    assert body["open_elections"] == 1
+    # 1 votant sur 4 inscrits actifs (l'électeur et les trois candidats).
+    assert body["turnout_percent"] == 25
+    assert body["next_close_at"] is not None
+    assert set(body) == {"open_elections", "turnout_percent", "next_close_at"}
+
+
+def test_live_status_without_running_election(client):
+    assert client.get("/api/live-status").json() == {
+        "open_elections": 0, "turnout_percent": None, "next_close_at": None,
+    }

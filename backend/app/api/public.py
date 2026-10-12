@@ -21,14 +21,22 @@ consentement positif, l'appel est accepté et ignoré — le serveur ne se fie p
 au seul frontend pour respecter le refus.
 """
 
+from datetime import datetime, timezone
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Cookie, Request, Response
+from fastapi import APIRouter, Cookie, Depends, Request, Response
 from pydantic import BaseModel
+from sqlalchemy import func
+from sqlalchemy.orm import Session
 
+from app.core.cache import cache_get, cache_set
 from app.core.config import settings
+from app.core.database import get_db
 from app.core.metrics import FRONTEND_EVENTS_TOTAL, PAGE_VIEWS_TOTAL
 from app.core.rate_limit import limiter
+from app.models import Election, Student, VoterRecord
+from app.models.election import ElectionStatus
+from app.models.student import UserRole
 
 
 router = APIRouter()
@@ -115,3 +123,53 @@ def record_hit(
     elif hit.kind == "event" and hit.name in EVENTS:
         FRONTEND_EVENTS_TOTAL.labels(event=hit.name).inc()
     return Response(status_code=204)
+
+
+# ── État des scrutins, pour la page d'accueil ─────────────────────────────
+
+class LiveStatus(BaseModel):
+    """Chiffres agrégés de tous les scrutins en cours, sans rien par classe.
+
+    Ce que montre déjà la page de participation à un électeur connecté, réduit à
+    un total : aucun nom, aucun scrutin désigné, aucun score.
+    """
+
+    open_elections: int
+    turnout_percent: int | None
+    next_close_at: datetime | None
+
+
+_LIVE_CACHE_KEY = "public:live-status"
+
+
+@router.get("/live-status", response_model=LiveStatus)
+@limiter.limit("60/minute")
+def live_status(request: Request, db: Annotated[Session, Depends(get_db)]):
+    cached = cache_get(_LIVE_CACHE_KEY)
+    if cached is not None:
+        return cached
+    now = datetime.now(timezone.utc)
+    running = (
+        db.query(Election)
+        .filter(Election.status == ElectionStatus.OPEN, Election.starts_at <= now, Election.ends_at > now)
+        .all()
+    )
+    turnout = None
+    if running:
+        ids = [e.id for e in running]
+        eligible = 0
+        for e in running:
+            eligible += (
+                db.query(func.count(Student.id))
+                .filter(Student.class_id == e.class_id, Student.is_active.is_(True), Student.role == UserRole.STUDENT)
+                .scalar() or 0
+            )
+        voted = db.query(func.count(VoterRecord.id)).filter(VoterRecord.election_id.in_(ids)).scalar() or 0
+        turnout = round(voted * 100 / eligible) if eligible else None
+    payload = LiveStatus(
+        open_elections=len(running),
+        turnout_percent=turnout,
+        next_close_at=min((e.ends_at for e in running), default=None),
+    )
+    cache_set(_LIVE_CACHE_KEY, payload.model_dump(mode="json"), ttl=30)
+    return payload

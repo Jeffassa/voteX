@@ -1,12 +1,15 @@
 import { Suspense, lazy, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Check } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, Check, Copy, Lock } from "lucide-react";
 
 import { Brand } from "@/components/Brand";
-import { Microtext, Rosette, Stamp, WaveBand } from "@/components/SecurityPattern";
+import { BrandEcho, CheckMark, Stamp } from "@/components/SecurityPattern";
 import { HERO_POSTER, loadBallotBoxScene, wantsHero3d } from "@/components/three/heroScene";
 import { Reveal } from "@/components/Reveal";
+import { api } from "@/lib/api";
 import { useConsentStore } from "@/lib/consent";
+import { timeLeft } from "@/lib/dates";
 
 /**
  * Scène 3D chargée à la demande : Three.js n'est téléchargé que par la page
@@ -15,30 +18,15 @@ import { useConsentStore } from "@/lib/consent";
  */
 const BallotBoxScene = lazy(loadBallotBoxScene);
 
-const STEPS = [
-  {
-    title: "Connectez-vous",
-    text: "Avec votre matricule ESATIC et votre mot de passe, ou avec l'adresse Google enregistrée par l'école.",
-  },
-  {
-    title: "Cochez",
-    text: "Le bulletin présente les candidats de votre classe. Tracez votre croix, puis maintenez le bouton pour la confirmer. Le vote blanc est possible.",
-  },
-  {
-    title: "Vérifiez",
-    text: "Vous recevez un reçu avec une empreinte unique. Elle prouve que votre bulletin est compté, sans révéler votre choix.",
-  },
-];
-
-/** Les garanties, rédigées comme les articles d'une charte du scrutin. */
-const ARTICLES = [
+/** Les garanties, comme une fiche technique : un numéro, un énoncé, une preuve. */
+const GUARANTEES = [
   {
     title: "Vote secret",
-    text: "Le bulletin est enregistré sans votre identité ni l'heure du vote. Rien ne relie un électeur à son choix.",
+    text: "Le bulletin est enregistré sans votre identité ni l'heure du vote. Rien ne relie un électeur à son choix, pas même pour l'administration.",
   },
   {
     title: "Reçu vérifiable",
-    text: "Chaque bulletin reçoit une empreinte SHA-256, que vous pouvez contrôler sur ce site à tout moment.",
+    text: "Chaque bulletin reçoit une empreinte SHA-256, que vous contrôlez sur ce site à tout moment.",
   },
   {
     title: "Résultats à la clôture",
@@ -58,36 +46,47 @@ const ARTICLES = [
   },
 ];
 
-const GUARANTEES = [
+const SECURITY = [
   "Votre choix n'est visible par personne, administration comprise.",
-  "Un compte Google ne peut ouvrir que le compte que l'école vous a attribué.",
+  "Un compte Google n'ouvre que le compte attribué par l'école.",
   "Le code source est public et peut être audité.",
   "Les scores ne sont publiés qu'à la fermeture du scrutin.",
 ];
+
+interface LiveStatus {
+  open_elections: number;
+  turnout_percent: number | null;
+  next_close_at: string | null;
+}
+
+/** État réel des scrutins (totaux seulement) ; rien ne s'affiche si l'API ne répond pas. */
+function useLiveStatus() {
+  return useQuery<LiveStatus>({
+    queryKey: ["public", "live-status"],
+    queryFn: async () => (await api.get("/api/live-status")).data,
+    staleTime: 30_000,
+    retry: false,
+  });
+}
 
 export default function LandingPage() {
   const reopenConsent = useConsentStore((s) => s.reopen);
   const [want3d] = useState(wantsHero3d);
   const [sceneReady, setSceneReady] = useState(false);
+  const { data: live } = useLiveStatus();
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+    <div className="lp">
+      <header className="lp-header">
+        <div className="lp-wrap lp-header-inner">
           <Link to="/" aria-label="ESATIC SmartVote, accueil">
             <Brand />
           </Link>
-          <nav aria-label="Navigation principale" className="flex items-center gap-1 text-sm">
-            <a href="#fonctionnement" className="hidden rounded-[5px] px-3 py-2 text-[var(--ink-700)] hover:bg-muted sm:inline-block">
-              Fonctionnement
-            </a>
-            <a href="#securite" className="hidden rounded-[5px] px-3 py-2 text-[var(--ink-700)] hover:bg-muted sm:inline-block">
-              Sécurité
-            </a>
-            <Link to="/verify" className="hidden rounded-[5px] px-3 py-2 text-[var(--ink-700)] hover:bg-muted md:inline-block">
-              Vérifier un vote
-            </Link>
-            <Link to="/login" className="btn btn-primary btn-sm ml-2">
+          <nav aria-label="Navigation principale" className="lp-nav">
+            <a href="#fonctionnement" className="lp-nav-link">Fonctionnement</a>
+            <a href="#garanties" className="lp-nav-link">Garanties</a>
+            <Link to="/verify" className="lp-nav-link lp-hide-sm">Vérifier un vote</Link>
+            <Link to="/login" className="btn btn-primary btn-sm" style={{ marginLeft: 6 }}>
               Se connecter
             </Link>
           </nav>
@@ -95,21 +94,16 @@ export default function LandingPage() {
       </header>
 
       {/* Héros */}
-      <section className="relative overflow-hidden border-b border-border">
-        <div className="relative mx-auto grid max-w-6xl items-center gap-6 px-4 pb-10 pt-12 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:pb-20 lg:pt-20">
+      <section className="lp-hero">
+        <div className="lp-wrap lp-hero-grid">
           <Reveal>
-            <p className="inline-flex items-center gap-2 rounded-[3px] border border-[var(--border-strong)] bg-white px-2.5 py-1 font-mono text-[12px] text-[var(--ink-700)]">
-              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-[1px] bg-[var(--orange-500)]" />
-              Élections des chefs de classe 2026
-            </p>
-            <h1 className="mt-6 text-[44px] font-[540] leading-[1.02] tracking-[-0.02em] text-[var(--navy-900)] sm:text-[60px] lg:text-[72px]">
-              Le vote des chefs de classe, en ligne.
-            </h1>
-            <p className="mt-5 max-w-xl text-[17px] leading-relaxed text-[var(--ink-700)]">
+            <p className="sv-kicker">Élections des chefs de classe 2026</p>
+            <h1 className="lp-title">Le vote des chefs de classe, en ligne.</h1>
+            <p className="lp-lead">
               Votez en une minute depuis votre téléphone, puis vérifiez vous-même que votre
               bulletin a été compté. Personne ne voit votre choix, pas même l'administration.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="lp-actions">
               <Link to="/login" className="btn btn-primary btn-lg">
                 Voter maintenant <ArrowRight size={16} aria-hidden="true" />
               </Link>
@@ -117,24 +111,11 @@ export default function LandingPage() {
                 Vérifier un vote
               </Link>
             </div>
-            <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--ink-500)]">
-              {["Vote secret", "Reçu vérifiable", "Résultats à la clôture"].map((t) => (
-                <li key={t} className="flex items-center gap-2">
-                  <Check size={15} aria-hidden="true" className="text-[var(--navy-700)]" />
-                  {t}
-                </li>
-              ))}
-            </ul>
+            <LiveStrip live={live} />
           </Reveal>
 
-          <div className="relative h-[300px] sm:h-[380px] lg:h-[460px]">
-            {/* Rosace guillochée derrière l'urne : le fond des documents
-                infalsifiables, en écho au vote vérifiable. */}
-            <Rosette
-              size={520}
-              opacity={0.1}
-              style={{ color: "var(--navy-900)", left: "50%", top: "50%", transform: "translate(-50%, -50%)", maxWidth: "none" }}
-            />
+          <div className="lp-stage">
+            <BrandEcho size={520} style={{ color: "var(--ink-950)", left: "50%", bottom: "6%", transform: "translateX(-50%)" }} />
             {/* Image fixe d'abord, affichée dès le premier rendu ; la 3D se
                 fond par-dessus quand sa première image, identique, est prête. */}
             <img
@@ -155,9 +136,7 @@ export default function LandingPage() {
               <Suspense fallback={null}>
                 <BallotBoxScene
                   onReady={() => setSceneReady(true)}
-                  className={`absolute inset-0 transition-opacity duration-500 ${
-                    sceneReady ? "opacity-100" : "opacity-0"
-                  }`}
+                  className={`absolute inset-0 transition-opacity duration-500 ${sceneReady ? "opacity-100" : "opacity-0"}`}
                 />
               </Suspense>
             )}
@@ -165,133 +144,146 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Fonctionnement */}
-      <section id="fonctionnement" className="scroll-mt-20 py-16 sm:py-24">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <Reveal onScroll>
-            <p className="sv-ref">Fonctionnement</p>
-            <h2 className="sv-display mt-2 max-w-xl text-[36px] font-[540] leading-[1.1] text-[var(--navy-900)] sm:text-[44px]">
-              Trois étapes, une minute.
-            </h2>
+      {/* Fonctionnement : la vraie interface, en trois vignettes. */}
+      <section id="fonctionnement" className="lp-section">
+        <div className="lp-wrap">
+          <Reveal onScroll className="lp-section-head">
+            <p className="sv-kicker">Fonctionnement</p>
+            <h2 className="lp-h2">Trois gestes, moins d'une minute.</h2>
           </Reveal>
-          <ol className="mt-10 grid gap-x-10 gap-y-8 sm:grid-cols-3">
-            {STEPS.map((s, i) => (
-              <Reveal as="li" onScroll delay={i * 0.08} key={s.title} className="border-t-[1.5px] border-[var(--navy-900)] pt-5">
-                <span aria-hidden="true" className="sv-display block text-[60px] font-[480] leading-[0.9] text-[var(--orange-600)]">
-                  {i + 1}
+          <ol className="lp-steps">
+            <Reveal as="li" onScroll className="lp-step">
+              <StepHead n={1} title="Connectez-vous" text="Votre matricule ESATIC, ou l'adresse Google enregistrée par l'école." />
+              <div className="lp-vignette" aria-hidden="true">
+                <span className="lp-v-label">Matricule</span>
+                <span className="lp-v-input mono">24-ESATIC0398SB</span>
+                <span className="lp-v-label" style={{ marginTop: 12 }}>Mot de passe</span>
+                <span className="lp-v-input">••••••••••</span>
+                <span className="lp-v-button">Se connecter <ArrowRight size={13} /></span>
+              </div>
+            </Reveal>
+            <Reveal as="li" onScroll delay={0.08} className="lp-step">
+              <StepHead n={2} title="Cochez" text="Choisissez votre candidat, puis maintenez le bouton pour confirmer. Le vote blanc est possible." />
+              <div className="lp-vignette" aria-hidden="true">
+                <span className="lp-v-row">
+                  <span className="lp-v-avatar" style={{ background: "#b9764f26", color: "#8a5536" }}>AN</span>
+                  <span className="lp-v-name">Aïcha N'Guessan<small>Une classe qui s'écoute</small></span>
+                  <span className="lp-v-radio is-on"><CheckMark size={12} /></span>
                 </span>
-                <h3 className="sv-display mt-4 text-[26px] font-[560] leading-tight text-[var(--navy-900)]">
-                  <span className="sr-only">Étape {i + 1} : </span>
-                  {s.title}
-                </h3>
-                <p className="mt-2 text-[15px] leading-relaxed text-[var(--ink-700)]">{s.text}</p>
-              </Reveal>
-            ))}
+                <span className="lp-v-row">
+                  <span className="lp-v-avatar" style={{ background: "#4f6d8f26", color: "#3d5672" }}>YK</span>
+                  <span className="lp-v-name">Yao Konan<small>Des TP mieux équipés</small></span>
+                  <span className="lp-v-radio" />
+                </span>
+                <span className="lp-v-hold"><span className="lp-v-hold-fill" />Maintenir pour confirmer</span>
+              </div>
+            </Reveal>
+            <Reveal as="li" onScroll delay={0.16} className="lp-step">
+              <StepHead n={3} title="Vérifiez" text="Votre reçu porte une empreinte unique : elle prouve que le bulletin est compté, sans dire pour qui." />
+              <div className="lp-vignette" aria-hidden="true">
+                <Stamp small>A voté</Stamp>
+                <span className="lp-v-label" style={{ marginTop: 14 }}>Empreinte du bulletin</span>
+                <span className="lp-v-hash mono">0x8f3a…c21e <Copy size={12} /></span>
+                <span className="lp-v-ok"><Check size={13} strokeWidth={3} /> Bulletin compté</span>
+              </div>
+            </Reveal>
           </ol>
         </div>
       </section>
 
-      {/* Charte du scrutin */}
-      <section className="border-y border-border bg-white py-16 sm:py-24">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <Reveal onScroll>
-            <p className="sv-ref">Charte du scrutin</p>
-            <h2 className="sv-display mt-2 max-w-2xl text-[36px] font-[540] leading-[1.1] text-[var(--navy-900)] sm:text-[44px]">
-              Conçue pour qu'un vote en ligne mérite la même confiance qu'une urne.
-            </h2>
+      {/* Garanties : une fiche technique, pas une grille de cartes. */}
+      <section id="garanties" className="lp-section lp-section-alt">
+        <div className="lp-wrap lp-spec">
+          <Reveal onScroll className="lp-spec-head">
+            <p className="sv-kicker">Garanties</p>
+            <h2 className="lp-h2">Conçu pour mériter la confiance d'une urne.</h2>
+            <p className="lp-muted">
+              Six engagements, tenus par le code et vérifiables par chacun, pas seulement promis.
+            </p>
           </Reveal>
-          <ol className="mt-10 grid gap-x-12 sm:grid-cols-2 lg:grid-cols-3">
-            {ARTICLES.map((a, i) => (
-              <Reveal as="li" onScroll delay={(i % 3) * 0.06} key={a.title} className="border-t border-[var(--border-strong)] py-6">
-                <p className="sv-ref m-0">Article {i + 1}</p>
-                <h3 className="sv-display mt-2 text-[23px] font-[560] leading-tight text-[var(--navy-900)]">{a.title}</h3>
-                <p className="mt-2 text-[15px] leading-relaxed text-[var(--ink-700)]">{a.text}</p>
+          <ol className="lp-spec-list">
+            {GUARANTEES.map((g, i) => (
+              <Reveal as="li" onScroll delay={(i % 3) * 0.05} key={g.title} className="lp-spec-item">
+                <span className="lp-spec-no mono">{String(i + 1).padStart(2, "0")}</span>
+                <div>
+                  <h3>{g.title}</h3>
+                  <p>{g.text}</p>
+                </div>
               </Reveal>
             ))}
           </ol>
         </div>
       </section>
 
-      {/* Sécurité et vérification */}
-      <section id="securite" className="scroll-mt-20 py-16 sm:py-24">
-        <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2">
+      {/* Sécurité : panneau ardoise pleine largeur. */}
+      <section id="securite" className="sv-navy-panel lp-dark">
+        <BrandEcho size={760} style={{ right: -120, bottom: -140 }} />
+        <div className="lp-wrap lp-dark-grid">
           <Reveal onScroll>
-            <p className="sv-ref">Sécurité</p>
-            <h2 className="sv-display mt-2 text-[36px] font-[540] leading-[1.1] text-[var(--navy-900)] sm:text-[44px]">
-              Vous pouvez vérifier, sans avoir à nous croire sur parole.
-            </h2>
-            <ul className="mt-6 space-y-3">
-              {GUARANTEES.map((g) => (
-                <li key={g} className="flex gap-3 text-[15px] leading-relaxed text-[var(--ink-700)]">
-                  <Check size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-[var(--navy-700)]" />
+            <p className="lp-kicker-dark">Sécurité</p>
+            <h2 className="lp-h2 lp-h2-dark">Vous vérifiez, sans nous croire sur parole.</h2>
+            <ul className="lp-checks">
+              {SECURITY.map((g) => (
+                <li key={g}>
+                  <span aria-hidden="true"><Check size={13} strokeWidth={3} /></span>
                   {g}
                 </li>
               ))}
             </ul>
-            <Link to="/verify" className="btn btn-outline mt-8">
+            <Link to="/verify" className="btn btn-accent" style={{ marginTop: 30 }}>
               Vérifier un reçu <ArrowRight size={15} aria-hidden="true" />
             </Link>
           </Reveal>
 
           <Reveal onScroll delay={0.1}>
-            <figure className="relative m-0 overflow-hidden rounded-[7px] border border-border bg-white shadow-[var(--shadow-lg)]">
-              <WaveBand height={18} />
-              <div className="relative px-6 pb-5 pt-5">
-                <Stamp small style={{ position: "absolute", right: 22, top: 18 }}>A voté</Stamp>
+            <figure className="lp-receipt">
+              <div className="lp-receipt-head">
                 <figcaption className="sv-ref">Exemple de reçu</figcaption>
-                <p className="sv-display m-0 mt-1 text-[22px] font-[560] text-[var(--navy-900)]">Chef de classe, L3 Génie Logiciel</p>
-                <Microtext style={{ marginTop: 12 }} />
-                <dl className="mt-4 space-y-3 text-sm">
-                  <div>
-                    <dt className="text-[var(--ink-500)]">Empreinte du bulletin</dt>
-                    <dd className="mt-1 break-all rounded-[3px] border border-dashed border-[#b4c4da] bg-[var(--navy-50)] px-3 py-2 font-mono text-[12.5px] text-[var(--navy-800)]">
-                      0x8f3a51c0e9d7b4a2f6e1c3d5b7a9e0f2c4d6b8a0e2f4c6d8b0a2e4f6c8d0c21e
-                    </dd>
-                  </div>
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-[var(--ink-500)]">Statut</dt>
-                    <dd className="flex items-center gap-1.5 text-[var(--success-600)]">
-                      <Check size={14} aria-hidden="true" /> Bulletin compté
-                    </dd>
-                  </div>
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-[var(--ink-500)]">Candidat choisi</dt>
-                    <dd className="text-[var(--ink-900)]">Jamais affiché</dd>
-                  </div>
-                </dl>
+                <Stamp small>A voté</Stamp>
               </div>
+              <p className="lp-receipt-title">Chef de classe, L3 Génie Logiciel</p>
+              <dl className="lp-receipt-fields">
+                <div className="is-block">
+                  <dt>Empreinte du bulletin</dt>
+                  <dd className="mono lp-receipt-hash">0x8f3a51c0e9d7b4a2f6e1c3d5b7a9e0f2c4d6b8a0e2f4c6d8b0a2e4f6c8d0c21e</dd>
+                </div>
+                <div>
+                  <dt>Statut</dt>
+                  <dd style={{ color: "var(--success-600)" }}><Check size={14} aria-hidden="true" /> Bulletin compté</dd>
+                </div>
+                <div>
+                  <dt>Candidat choisi</dt>
+                  <dd><Lock size={13} aria-hidden="true" /> Jamais affiché</dd>
+                </div>
+              </dl>
             </figure>
           </Reveal>
         </div>
       </section>
 
       {/* Appel à l'action */}
-      <section className="px-4 pb-16 sm:px-6 sm:pb-24">
-        <Reveal onScroll className="sv-navy-panel mx-auto max-w-6xl rounded-[10px] px-6 py-12 text-center sm:px-12 sm:py-16">
-          <Rosette size={520} opacity={0.12} style={{ left: -160, top: -170 }} />
-          <Rosette size={420} opacity={0.1} style={{ right: -140, bottom: -180 }} />
-          <h2 className="sv-display text-[34px] font-[540] leading-tight sm:text-[44px]">Le scrutin de votre classe est ouvert ?</h2>
-          <p className="mx-auto mt-3 max-w-md text-[16px] text-white/80">
-            Connectez-vous pour voter. Cela prend moins d'une minute.
-          </p>
-          <Link to="/login" className="btn btn-accent btn-lg mt-8">
-            Se connecter <ArrowRight size={16} aria-hidden="true" />
-          </Link>
+      <section className="lp-section">
+        <Reveal onScroll className="lp-wrap lp-cta">
+          <h2 className="lp-cta-title">Le scrutin de votre classe est ouvert&nbsp;?</h2>
+          <div className="lp-cta-side">
+            <p className="lp-muted" style={{ margin: 0 }}>Connectez-vous pour voter. Cela prend moins d'une minute.</p>
+            <Link to="/login" className="btn btn-primary btn-lg">
+              Se connecter <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          </div>
         </Reveal>
       </section>
 
-      <footer className="border-t border-border bg-white">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-center md:justify-between">
+      <footer className="lp-footer">
+        <div className="lp-wrap lp-footer-inner">
           <div>
             <Brand />
-            <p className="mt-2 text-[13px] text-[var(--ink-500)]">
-              Projet de soutenance, L3 Génie Logiciel, ESATIC Abidjan, 2026.
-            </p>
+            <p className="lp-footnote">Projet de soutenance, L3 Génie Logiciel, ESATIC Abidjan, 2026.</p>
           </div>
-          <nav aria-label="Liens du pied de page" className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-[var(--ink-500)]">
-            <Link to="/verify" className="hover:text-[var(--ink-900)]">Vérifier un vote</Link>
-            <Link to="/confidentialite" className="hover:text-[var(--ink-900)]">Confidentialité</Link>
-            <Link to="/cgu" className="hover:text-[var(--ink-900)]">CGU</Link>
+          <nav aria-label="Liens du pied de page" className="lp-footer-nav">
+            <Link to="/verify">Vérifier un vote</Link>
+            <Link to="/confidentialite">Confidentialité</Link>
+            <Link to="/cgu">CGU</Link>
             <button type="button" className="sv-link-button" onClick={reopenConsent}>
               Gérer les cookies
             </button>
@@ -299,5 +291,49 @@ export default function LandingPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+function StepHead({ n, title, text }: { n: number; title: string; text: string }) {
+  return (
+    <div className="lp-step-head">
+      <span className="lp-step-no mono" aria-hidden="true">{String(n).padStart(2, "0")}</span>
+      <h3>
+        <span className="sr-only">Étape {n} : </span>
+        {title}
+      </h3>
+      <p>{text}</p>
+    </div>
+  );
+}
+
+/** Bandeau d'état réel : scrutins ouverts, participation agrégée, prochaine clôture. */
+function LiveStrip({ live }: { live?: LiveStatus }) {
+  if (!live) return null;
+  if (live.open_elections === 0) {
+    return (
+      <p className="lp-live">
+        <span className="lp-live-dot is-idle" aria-hidden="true" />
+        Aucun scrutin ouvert en ce moment.
+      </p>
+    );
+  }
+  return (
+    <p className="lp-live">
+      <span className="lp-live-dot" aria-hidden="true" />
+      <strong>{live.open_elections} scrutin{live.open_elections > 1 ? "s" : ""} ouvert{live.open_elections > 1 ? "s" : ""}</strong>
+      {live.turnout_percent !== null && (
+        <>
+          <span className="lp-live-sep" aria-hidden="true" />
+          {live.turnout_percent} % de participation
+        </>
+      )}
+      {live.next_close_at && (
+        <>
+          <span className="lp-live-sep" aria-hidden="true" />
+          clôture dans {timeLeft(live.next_close_at).replace(/^encore /, "")}
+        </>
+      )}
+    </p>
   );
 }
